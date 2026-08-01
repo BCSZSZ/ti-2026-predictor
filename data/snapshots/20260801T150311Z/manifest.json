@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "snapshot_id": "20260801T150311Z",
+  "as_of": "2026-08-01T15:03:11Z",
+  "data_run_id": "data-ae1c61103f213dd7",
+  "data_sha256": "f84499a97877301c77e848febbb89718e4cc0e71a08132de342bfdcc2c7519c3",
+  "archive": {
+    "path": "ti-data.7z",
+    "bytes": 67664535,
+    "sha256": "afa2a2bdb2af74fc14087713bcca34f7e1c9ed0eec2bae9701f8a1d5c3be2eec",
+    "format": "7z",
+    "compression": "LZMA2 solid"
+  },
+  "contents": {
+    "raw_files": 5192,
+    "raw_bytes": 676403263,
+    "processed_files": 7,
+    "processed_bytes": 1936188,
+    "duckdb_bytes": 6303744,
+    "target_players": 80,
+    "target_matches": 2043,
+    "target_player_games": 12376,
+    "parsed_complete": 2041,
+    "base_complete": 1,
+    "unavailable": 1
+  },
+  "known_gaps": [
+    {
+      "match_id": 8794503692,
+      "status": "unavailable",
+      "reason": "OpenDota HTTP 500"
+    },
+    {
+      "match_id": 8923790600,
+      "status": "base_complete",
+      "reason": "OpenDota replay not parsed at collection time"
+    }
+  ],
+  "restore": {
+    "working_directory": "repository root",
+    "command": "7z x data/snapshots/20260801T150311Z/ti-data.7z -o."
+  }
+}

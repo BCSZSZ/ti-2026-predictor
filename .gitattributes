@@ -10,3 +10,4 @@
 .gitattributes text eol=lf
 .gitignore text eol=lf
 .python-version text eol=lf
+data/snapshots/**/*.7z filter=lfs diff=lfs merge=lfs -text

@@ -11,7 +11,7 @@ from ti_predictor.config import load_rules, load_tournament_manifest
 from ti_predictor.hashing import sha256_bytes
 from ti_predictor.ocr import inspect_screenshot
 from ti_predictor.paths import PATHS
-from ti_predictor.reporting import filling_checklist
+from ti_predictor.reporting import discover_runs, filling_checklist
 from ti_predictor.rules import validate_rules
 from ti_predictor.storage import read_parquet_if_exists
 
@@ -19,16 +19,7 @@ st.set_page_config(page_title="TI 2026 决策台", page_icon="🏆", layout="wid
 
 
 def _runs(kind: str | None = None) -> list[dict]:
-    result = []
-    for path in PATHS.artifacts.glob("*/run.json"):
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        if kind is None or payload.get("kind") == kind:
-            payload["_folder"] = str(path.parent)
-            result.append(payload)
-    return sorted(result, key=lambda item: item.get("created_at", ""), reverse=True)
+    return discover_runs(PATHS.artifacts, kind)
 
 
 def _status_badge(status: str) -> None:

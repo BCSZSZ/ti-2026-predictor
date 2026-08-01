@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from ti_predictor.reporting import filling_checklist
+import json
+import os
+
+from ti_predictor.reporting import discover_runs, filling_checklist
 
 
 def test_group_checklist_uses_game_order() -> None:
@@ -16,3 +19,20 @@ def test_group_checklist_uses_game_order() -> None:
     assert len(rows) == 16
     assert rows[0]["section"] == "4-0"
     assert rows[-1]["section"] == "0-4"
+
+
+def test_discover_runs_uses_manifest_mtime_when_created_at_ties(tmp_path) -> None:
+    created_at = "2026-08-12T23:00:00Z"
+    for run_id, modified_at in (("fantasy-old", 100), ("fantasy-new", 200)):
+        run_dir = tmp_path / run_id
+        run_dir.mkdir()
+        manifest = run_dir / "run.json"
+        manifest.write_text(
+            json.dumps({"run_id": run_id, "kind": "fantasy", "created_at": created_at}),
+            encoding="utf-8",
+        )
+        os.utime(manifest, (modified_at, modified_at))
+
+    runs = discover_runs(tmp_path, kind="fantasy")
+
+    assert [run["run_id"] for run in runs] == ["fantasy-new", "fantasy-old"]

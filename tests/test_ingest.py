@@ -301,9 +301,7 @@ def test_fantasy_history_uses_player_ids_and_professional_catalog(project_paths)
         "league_name": "Professional Cup",
         "league_tier": "professional",
     }
-    pd.DataFrame([catalog_row]).to_parquet(
-        project_paths.processed / "matches.parquet", index=False
-    )
+    pd.DataFrame([catalog_row]).to_parquet(project_paths.processed / "matches.parquet", index=False)
     pd.DataFrame(
         [
             {

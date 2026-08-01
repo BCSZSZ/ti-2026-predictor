@@ -202,9 +202,7 @@ class OpenDotaClient:
             return None
 
     def _capture_rate_limits(self, response: httpx.Response) -> None:
-        self.rate_limit_remaining_minute = self._header_int(
-            response, "X-Rate-Limit-Remaining-Minute"
-        )
+        self.rate_limit_remaining_minute = self._header_int(response, "X-Rate-Limit-Remaining-Minute")
         self.rate_limit_remaining_day = self._header_int(response, "X-Rate-Limit-Remaining-Day")
 
     def get_json(self, resource: str, *, query: dict[str, int | str] | None = None) -> tuple[Any, datetime]:
@@ -469,9 +467,7 @@ def _fantasy_performance_rows(
     return rows
 
 
-def _merge_frames(
-    existing: pd.DataFrame, rows: list[dict[str, Any]], keys: list[str]
-) -> pd.DataFrame:
+def _merge_frames(existing: pd.DataFrame, rows: list[dict[str, Any]], keys: list[str]) -> pd.DataFrame:
     incoming = pd.DataFrame(rows)
     if existing.empty:
         combined = incoming
@@ -626,10 +622,7 @@ def sync_fantasy_player_history(
     year_start, year_end = utc_year_bounds(selected_year)
     if cutoff < year_start:
         raise ValueError(f"as_of {cutoff.isoformat()} is before requested year {selected_year}")
-    selected_tiers = {
-        normalize_league_tier(value)
-        for value in (league_tiers or {"premium", "professional"})
-    }
+    selected_tiers = {normalize_league_tier(value) for value in (league_tiers or {"premium", "professional"})}
     if not selected_tiers <= {"premium", "professional"}:
         raise ValueError("Fantasy player history only accepts premium/professional league tiers")
     if checkpoint_every < 1:
@@ -668,10 +661,7 @@ def sync_fantasy_player_history(
     ].drop_duplicates("match_id", keep="last")
     if catalog.empty:
         raise ValueError("professional match catalog has no Games for the selected year and tiers")
-    catalog_by_id = {
-        int(row["match_id"]): _clean_record(row)
-        for row in catalog.to_dict(orient="records")
-    }
+    catalog_by_id = {int(row["match_id"]): _clean_record(row) for row in catalog.to_dict(orient="records")}
     catalog_ids = set(catalog_by_id)
 
     existing_samples = read_parquet_if_exists(fantasy_samples_path)
@@ -714,9 +704,7 @@ def sync_fantasy_player_history(
     try:
         for index, account_id in enumerate(sorted(target_player_ids), start=1):
             try:
-                payload, fetched_at = api.player_matches(
-                    account_id, date_days=window_days, significant=0
-                )
+                payload, fetched_at = api.player_matches(account_id, date_days=window_days, significant=0)
             except OpenDotaDailyBudgetExhausted as error:
                 history_complete = False
                 issues.append(
@@ -848,9 +836,7 @@ def sync_fantasy_player_history(
                 match_buffer.clear()
                 _write_parquet_atomic(matches, matches_path)
             if sample_buffer:
-                existing_samples = _merge_frames(
-                    existing_samples, sample_buffer, ["match_id", "account_id"]
-                )
+                existing_samples = _merge_frames(existing_samples, sample_buffer, ["match_id", "account_id"])
                 sample_buffer.clear()
                 _write_parquet_atomic(existing_samples, fantasy_samples_path)
             if status_buffer:
@@ -880,8 +866,10 @@ def sync_fantasy_player_history(
                 skipped_parsed_details += 1
                 processed_since_checkpoint += 1
             else:
-                should_request = refresh_details or capture_status is None or (
-                    capture_status["status"] != "parsed_complete"
+                should_request = (
+                    refresh_details
+                    or capture_status is None
+                    or (capture_status["status"] != "parsed_complete")
                 )
                 if should_request and max_matches is not None and requested_details >= max_matches:
                     break
@@ -988,9 +976,7 @@ def sync_fantasy_player_history(
             if processed_since_checkpoint >= checkpoint_every:
                 checkpoint()
                 processed_since_checkpoint = 0
-            if progress is not None and (
-                position % checkpoint_every == 0 or position == len(ordered_ids)
-            ):
+            if progress is not None and (position % checkpoint_every == 0 or position == len(ordered_ids)):
                 progress(
                     {
                         "phase": "match-details",
@@ -1037,20 +1023,12 @@ def sync_fantasy_player_history(
         else statuses.iloc[0:0].copy()
     )
     parsed_complete = (
-        int(target_statuses["status"].eq("parsed_complete").sum())
-        if not target_statuses.empty
-        else 0
+        int(target_statuses["status"].eq("parsed_complete").sum()) if not target_statuses.empty else 0
     )
     base_complete = (
-        int(target_statuses["status"].eq("base_complete").sum())
-        if not target_statuses.empty
-        else 0
+        int(target_statuses["status"].eq("base_complete").sum()) if not target_statuses.empty else 0
     )
-    unavailable = (
-        int(target_statuses["status"].eq("unavailable").sum())
-        if not target_statuses.empty
-        else 0
-    )
+    unavailable = int(target_statuses["status"].eq("unavailable").sum()) if not target_statuses.empty else 0
     remaining_details = max(0, len(target_match_ids) - parsed_complete)
     if remaining_details:
         issues.append(

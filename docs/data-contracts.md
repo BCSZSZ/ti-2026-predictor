@@ -28,11 +28,17 @@ Each HTTP or client-rule capture is immutable and contains:
 contains player-Game observations extracted only from downloaded match details; its row count is
 not a player count or a Fantasy prediction count.
 
-Team-history summaries are retained for strength modeling. For Fantasy, the synchronizer also
-fetches a bounded recent detail window for every team in the reviewed TI manifest (20 matches per
-team by default). Detail responses are deduplicated by `match_id` and resumed from the existing
-Fantasy performance sample set; historical holdout anchors never make unrelated old team matches
-detail eligible.
+Team-history summaries are retained for strength modeling. The canonical Fantasy player history
+scope is selected by stable `account_id`: collect the reviewed TI players' UTC-year match IDs,
+intersect them with the professional match catalog, retain OpenDota league tier `premium` or
+`professional`, and deduplicate by `match_id`. This includes a current player's Games for former
+teams and excludes Pub matches. Player-history responses and match details are immutable raw
+captures. Detail synchronization checkpoints normalized rows and resumes from existing raw
+captures without requesting an already parsed Game again.
+
+An HTTP 200 detail response is not proof of replay parsing. A complete replay sample requires
+`od_data.has_parsed == true`, a non-null parser `version`, and ten player slots. Base-only responses
+remain available for basic statistics and are retried by a later overlapping incremental update.
 
 Primary endpoint definitions: [OpenDota API implementation](https://github.com/odota/core/blob/master/svc/api/spec.ts),
 [league tier schema](https://github.com/odota/core/blob/master/svc/api/responses/LeagueObjectResponse.ts),

@@ -57,6 +57,12 @@ One player's observed statistics in one completed Game, used as historical evide
 future Fantasy points. It is not a prediction or a player card.
 _Avoid_: Fantasy prediction, Fantasy recommendation, player count
 
+**Fantasy player history scope / Fantasy 选手历史范围**:
+The completed `premium` or `professional` Games in a fixed UTC year that include at least one
+reviewed TI Fantasy player account. Membership follows stable player identity, including Games
+played for former teams.
+_Avoid_: Current-team history, public match history, all professional Games
+
 **Fantasy recommendation / Fantasy 推荐**:
 A proposed set of three role cards plus Emblem and Coach choices for one settlement Period.
 _Avoid_: Fantasy performance sample, official lineup

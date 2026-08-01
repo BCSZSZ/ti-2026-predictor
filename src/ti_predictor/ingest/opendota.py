@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import math
 import os
 import time
 from collections.abc import Callable, Iterable
@@ -17,6 +19,7 @@ from ti_predictor.identity import RosterIndex
 from ti_predictor.match_catalog import (
     PatchPoint,
     build_patch_timeline,
+    filter_match_catalog,
     normalize_league_tier,
     patch_at,
     utc_year_bounds,
@@ -91,6 +94,35 @@ class SyncResult:
 
 
 @dataclass
+class FantasyHistorySyncResult:
+    scope_path: Path
+    matches_path: Path
+    fantasy_samples_path: Path
+    detail_status_path: Path
+    target_players: int
+    target_matches: int
+    target_player_games: int
+    requested_details: int
+    reused_raw_details: int
+    skipped_parsed_details: int
+    parsed_complete: int
+    base_complete: int
+    failed_details: int
+    remaining_details: int
+    rate_limit_remaining_day: int | None
+    data_sha256: str
+    issues: list[AuditIssue] = field(default_factory=list)
+
+    @property
+    def status(self) -> str:
+        if any(issue.severity == "blocking" for issue in self.issues):
+            return "blocked"
+        if self.remaining_details or any(issue.severity == "warning" for issue in self.issues):
+            return "warning"
+        return "publishable"
+
+
+@dataclass
 class MatchCandidate:
     league_id: int
     summary: dict[str, Any]
@@ -98,6 +130,10 @@ class MatchCandidate:
     source_hash: str
     detail_eligible: bool
     is_pro_match: bool = False
+
+
+class OpenDotaDailyBudgetExhausted(RuntimeError):
+    """Stop a resumable sync before consuming the caller's daily request reserve."""
 
 
 class OpenDotaClient:
@@ -109,6 +145,7 @@ class OpenDotaClient:
         client: httpx.Client | None = None,
         min_interval_seconds: float = 1.05,
         rate_limit_pause_seconds: float = 61.0,
+        daily_request_reserve: int = 0,
         sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
         self.base_url = base_url.rstrip("/")
@@ -117,9 +154,12 @@ class OpenDotaClient:
         self._owns_client = client is None
         self.min_interval_seconds = max(0.0, min_interval_seconds)
         self.rate_limit_pause_seconds = max(1.0, rate_limit_pause_seconds)
+        self.daily_request_reserve = max(0, daily_request_reserve)
         self._sleep = sleeper
         self._last_request = 0.0
         self._next_request_delay = 0.0
+        self.rate_limit_remaining_minute: int | None = None
+        self.rate_limit_remaining_day: int | None = None
 
     def close(self) -> None:
         if self._owns_client:
@@ -151,6 +191,22 @@ class OpenDotaClient:
                     pass
         return self.rate_limit_pause_seconds
 
+    @staticmethod
+    def _header_int(response: httpx.Response, name: str) -> int | None:
+        value = response.headers.get(name)
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except ValueError:
+            return None
+
+    def _capture_rate_limits(self, response: httpx.Response) -> None:
+        self.rate_limit_remaining_minute = self._header_int(
+            response, "X-Rate-Limit-Remaining-Minute"
+        )
+        self.rate_limit_remaining_day = self._header_int(response, "X-Rate-Limit-Remaining-Day")
+
     def get_json(self, resource: str, *, query: dict[str, int | str] | None = None) -> tuple[Any, datetime]:
         params: dict[str, int | str] = dict(query or {})
         if self.api_key:
@@ -158,6 +214,15 @@ class OpenDotaClient:
         url = f"{self.base_url}/{resource.lstrip('/')}"
         last_error: Exception | None = None
         for attempt in range(4):
+            if (
+                self.rate_limit_remaining_day is not None
+                and self.rate_limit_remaining_day <= self.daily_request_reserve
+            ):
+                raise OpenDotaDailyBudgetExhausted(
+                    "OpenDota daily request reserve reached "
+                    f"({self.rate_limit_remaining_day} remaining, "
+                    f"reserve {self.daily_request_reserve})"
+                )
             self._throttle()
             try:
                 response = self.client.get(url, params=params)
@@ -168,6 +233,7 @@ class OpenDotaClient:
                 self._sleep(min(0.5 * (2**attempt), 8.0))
                 continue
             self._last_request = time.monotonic()
+            self._capture_rate_limits(response)
             if response.status_code == 429:
                 if response.headers.get("X-Rate-Limit-Remaining-Day") == "0":
                     raise httpx.NetworkError("OpenDota daily rate limit reached; configure OPENDOTA_API_KEY")
@@ -198,6 +264,17 @@ class OpenDotaClient:
         payload, fetched_at = self.get_json(f"teams/{team_id}/matches")
         if not isinstance(payload, list):
             raise TypeError(f"OpenDota team {team_id} response is not a list")
+        return payload, fetched_at
+
+    def player_matches(
+        self, account_id: int, *, date_days: int, significant: int = 0
+    ) -> tuple[list[dict[str, Any]], datetime]:
+        payload, fetched_at = self.get_json(
+            f"players/{account_id}/matches",
+            query={"date": date_days, "significant": significant},
+        )
+        if not isinstance(payload, list):
+            raise TypeError(f"OpenDota player {account_id} matches response is not a list")
         return payload, fetched_at
 
     def pro_matches(self, less_than_match_id: int | None = None) -> tuple[list[dict[str, Any]], datetime]:
@@ -392,8 +469,9 @@ def _fantasy_performance_rows(
     return rows
 
 
-def _merge_rows(path: Path, rows: list[dict[str, Any]], keys: list[str]) -> pd.DataFrame:
-    existing = read_parquet_if_exists(path)
+def _merge_frames(
+    existing: pd.DataFrame, rows: list[dict[str, Any]], keys: list[str]
+) -> pd.DataFrame:
     incoming = pd.DataFrame(rows)
     if existing.empty:
         combined = incoming
@@ -404,6 +482,17 @@ def _merge_rows(path: Path, rows: list[dict[str, Any]], keys: list[str]) -> pd.D
     if not combined.empty:
         combined = combined.drop_duplicates(subset=keys, keep="last").sort_values(keys).reset_index(drop=True)
     return combined
+
+
+def _merge_rows(path: Path, rows: list[dict[str, Any]], keys: list[str]) -> pd.DataFrame:
+    return _merge_frames(read_parquet_if_exists(path), rows, keys)
+
+
+def _write_parquet_atomic(frame: pd.DataFrame, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp")
+    frame.to_parquet(temporary, index=False)
+    os.replace(temporary, path)
 
 
 def _coverage_issues(samples: pd.DataFrame) -> list[AuditIssue]:
@@ -428,6 +517,592 @@ def _coverage_issues(samples: pd.DataFrame) -> list[AuditIssue]:
             )
         )
     return issues
+
+
+def _manifest_fantasy_players(manifest: Any) -> list[dict[str, Any]]:
+    players: list[dict[str, Any]] = []
+    for team in manifest.teams:
+        for role, entries in team.players.items():
+            for player in entries:
+                players.append(
+                    {
+                        "account_id": player.account_id,
+                        "player_name": player.name,
+                        "manifest_team_id": team.team_id,
+                        "manifest_team_name": team.name,
+                        "fantasy_role": role,
+                    }
+                )
+    return players
+
+
+def _latest_raw_match_capture(
+    paths: ProjectPaths, match_id: int
+) -> tuple[dict[str, Any], datetime, str] | None:
+    root = paths.raw / "opendota" / "matches" / str(match_id)
+    if not root.is_dir():
+        return None
+    for body_path in sorted(root.glob("*/response.json"), reverse=True):
+        metadata_path = body_path.with_name("metadata.json")
+        try:
+            payload = json.loads(body_path.read_text(encoding="utf-8"))
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            fetched_at = as_utc(metadata["fetched_at"])
+            source_hash = str(metadata["content_sha256"])
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, dict) or fetched_at is None:
+            continue
+        return payload, fetched_at, source_hash
+    return None
+
+
+def _detail_status_row(
+    payload: dict[str, Any],
+    *,
+    match_id: int,
+    fetched_at: datetime,
+    source_hash: str,
+    target_player_ids: set[int],
+    as_of: datetime,
+) -> dict[str, Any]:
+    players = payload.get("players") if isinstance(payload.get("players"), list) else []
+    account_ids = {
+        int(player["account_id"])
+        for player in players
+        if isinstance(player, dict) and player.get("account_id") and int(player["account_id"]) > 0
+    }
+    od_data = payload.get("od_data") if isinstance(payload.get("od_data"), dict) else {}
+    has_parsed = od_data.get("has_parsed") is True
+    version = payload.get("version")
+    if has_parsed and version is not None and len(players) == 10 and len(account_ids) == 10:
+        status = "parsed_complete"
+    elif has_parsed and version is not None:
+        status = "parsed_field_incomplete"
+    elif len(players) == 10 and len(account_ids) == 10:
+        status = "base_complete"
+    else:
+        status = "identity_incomplete"
+    return {
+        "match_id": match_id,
+        "status": status,
+        "has_parsed": has_parsed,
+        "parser_version": version,
+        "player_slots": len(players),
+        "identified_players": len(account_ids),
+        "target_players_present": len(account_ids & target_player_ids),
+        "source_sha256": source_hash,
+        "fetched_at": fetched_at,
+        "as_of": as_of,
+        "error": None,
+    }
+
+
+def _clean_record(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: None if not isinstance(value, (list, dict)) and pd.isna(value) else value
+        for key, value in row.items()
+    }
+
+
+def sync_fantasy_player_history(
+    *,
+    as_of: datetime,
+    year: int | None = None,
+    league_tiers: set[str] | None = None,
+    history_days: int | None = None,
+    max_matches: int | None = None,
+    checkpoint_every: int = 25,
+    daily_request_reserve: int = 50,
+    refresh_details: bool = False,
+    client: OpenDotaClient | None = None,
+    paths: ProjectPaths = PATHS,
+    progress: Callable[[dict[str, Any]], None] | None = None,
+) -> FantasyHistorySyncResult:
+    """Synchronize detailed Games for the reviewed TI players' professional history."""
+
+    cutoff = as_utc(as_of)
+    selected_year = year or cutoff.year
+    year_start, year_end = utc_year_bounds(selected_year)
+    if cutoff < year_start:
+        raise ValueError(f"as_of {cutoff.isoformat()} is before requested year {selected_year}")
+    selected_tiers = {
+        normalize_league_tier(value)
+        for value in (league_tiers or {"premium", "professional"})
+    }
+    if not selected_tiers <= {"premium", "professional"}:
+        raise ValueError("Fantasy player history only accepts premium/professional league tiers")
+    if checkpoint_every < 1:
+        raise ValueError("checkpoint_every must be positive")
+
+    manifest = load_tournament_manifest(paths.tournament)
+    manifest_players = _manifest_fantasy_players(manifest)
+    player_by_id = {int(row["account_id"]): row for row in manifest_players}
+    target_player_ids = set(player_by_id)
+    rules = load_rules(paths.rules)
+    provenance = {stat_id: rules["fantasy"]["stats"][stat_id]["provenance"] for stat_id in FANTASY_STAT_IDS}
+    roster_as_of = max(cutoff, manifest.roster_valid_from)
+    roster_index = RosterIndex(roster_intervals(manifest, as_of=roster_as_of))
+    store = DataStore(paths)
+
+    matches_path = paths.processed / "matches.parquet"
+    fantasy_samples_path = paths.processed / "fantasy_performance_samples.parquet"
+    scope_path = paths.processed / "fantasy_player_history_scope.parquet"
+    detail_status_path = paths.processed / "match_detail_status.parquet"
+    roster_path = paths.processed / "roster_intervals.parquet"
+    leagues_path = paths.processed / "leagues.parquet"
+    patches_path = paths.processed / "patches.parquet"
+
+    matches = read_parquet_if_exists(matches_path)
+    if matches.empty:
+        raise ValueError("professional match catalog is empty; run `ti data sync --no-details` first")
+    catalog = filter_match_catalog(
+        matches,
+        start_at=year_start,
+        end_before=year_end,
+        league_tiers=selected_tiers,
+        pro_only=True,
+    )
+    catalog = catalog.loc[
+        pd.to_datetime(catalog["start_time"], utc=True, errors="coerce") <= pd.Timestamp(cutoff)
+    ].drop_duplicates("match_id", keep="last")
+    if catalog.empty:
+        raise ValueError("professional match catalog has no Games for the selected year and tiers")
+    catalog_by_id = {
+        int(row["match_id"]): _clean_record(row)
+        for row in catalog.to_dict(orient="records")
+    }
+    catalog_ids = set(catalog_by_id)
+
+    existing_samples = read_parquet_if_exists(fantasy_samples_path)
+    existing_sample_ids = (
+        {int(value) for value in existing_samples["match_id"].dropna()}
+        if "match_id" in existing_samples
+        else set()
+    )
+    scopes = read_parquet_if_exists(scope_path)
+    statuses = read_parquet_if_exists(detail_status_path)
+    league_rows = read_parquet_if_exists(leagues_path)
+    patch_rows = read_parquet_if_exists(patches_path)
+    league_index = (
+        {
+            int(row["leagueid"]): _clean_record(row)
+            for row in league_rows.to_dict(orient="records")
+            if row.get("leagueid") is not None
+        }
+        if not league_rows.empty
+        else {}
+    )
+    patch_records = patch_rows.to_dict(orient="records") if not patch_rows.empty else []
+    patch_timeline = build_patch_timeline(patch_records)
+    patch_source_hash = (
+        str(patch_records[0].get("source_sha256"))
+        if patch_records and patch_records[0].get("source_sha256")
+        else None
+    )
+
+    own_client = client is None
+    api = client or OpenDotaClient(daily_request_reserve=daily_request_reserve)
+    issues: list[AuditIssue] = []
+    scope_rows: list[dict[str, Any]] = []
+    history_complete = True
+    window_days = history_days or max(
+        1,
+        math.ceil((utc_now() - year_start).total_seconds() / 86400) + 2,
+    )
+
+    try:
+        for index, account_id in enumerate(sorted(target_player_ids), start=1):
+            try:
+                payload, fetched_at = api.player_matches(
+                    account_id, date_days=window_days, significant=0
+                )
+            except OpenDotaDailyBudgetExhausted as error:
+                history_complete = False
+                issues.append(
+                    AuditIssue(
+                        code="opendota-daily-budget-reserve",
+                        severity="blocking",
+                        message=str(error),
+                        context={"phase": "player-history", "completed_players": index - 1},
+                    )
+                )
+                break
+            except (httpx.HTTPError, OSError, TypeError) as error:
+                history_complete = False
+                issues.append(
+                    AuditIssue(
+                        code="player-history-request-failed",
+                        severity="blocking",
+                        message=f"OpenDota player history failed for account {account_id}: {error}",
+                    )
+                )
+                continue
+
+            _, source_hash = store.write_raw_json(
+                source="opendota",
+                resource=f"players/{account_id}/matches/{selected_year}",
+                payload=payload,
+                request={
+                    "method": "GET",
+                    "url": (
+                        f"{getattr(api, 'base_url', 'https://api.opendota.com/api')}"
+                        f"/players/{account_id}/matches"
+                    ),
+                    "http_status": 200,
+                    "account_id": account_id,
+                    "date": window_days,
+                    "significant": 0,
+                },
+                fetched_at=fetched_at,
+            )
+            identity = player_by_id[account_id]
+            for item in payload:
+                match_id = int(item.get("match_id") or 0)
+                if match_id not in catalog_ids:
+                    continue
+                catalog_row = catalog_by_id[match_id]
+                started_at = as_utc(catalog_row["start_time"])
+                if started_at is None or not (year_start <= started_at < year_end and started_at <= cutoff):
+                    continue
+                scope_rows.append(
+                    {
+                        "account_id": account_id,
+                        "player_name": identity["player_name"],
+                        "manifest_team_id": identity["manifest_team_id"],
+                        "manifest_team_name": identity["manifest_team_name"],
+                        "fantasy_role": identity["fantasy_role"],
+                        "match_id": match_id,
+                        "start_time": started_at,
+                        "league_id": catalog_row.get("league_id"),
+                        "league_name": catalog_row.get("league_name"),
+                        "league_tier": catalog_row.get("league_tier"),
+                        "patch_name": catalog_row.get("patch_name"),
+                        "player_history_source_sha256": source_hash,
+                        "fetched_at": fetched_at,
+                        "as_of": cutoff,
+                    }
+                )
+            if progress is not None and (index % 10 == 0 or index == len(target_player_ids)):
+                progress(
+                    {
+                        "phase": "player-history",
+                        "completed": index,
+                        "total": len(target_player_ids),
+                        "candidate_games": len({int(row["match_id"]) for row in scope_rows}),
+                        "remaining_day": getattr(api, "rate_limit_remaining_day", None),
+                    }
+                )
+
+        scopes = _merge_frames(scopes, scope_rows, ["account_id", "match_id"])
+        if not scopes.empty:
+            scope_starts = pd.to_datetime(scopes["start_time"], utc=True, errors="coerce")
+            active_scope = scopes.loc[
+                scopes["account_id"].isin(target_player_ids)
+                & scopes["match_id"].isin(catalog_ids)
+                & (scope_starts >= pd.Timestamp(year_start))
+                & (scope_starts < pd.Timestamp(year_end))
+                & (scope_starts <= pd.Timestamp(cutoff))
+            ].copy()
+        else:
+            active_scope = scopes.copy()
+        _write_parquet_atomic(scopes, scope_path)
+
+        target_match_ids = (
+            {int(value) for value in active_scope["match_id"].dropna()}
+            if "match_id" in active_scope
+            else set()
+        )
+        if not history_complete:
+            target_match_ids = set()
+        if not target_match_ids:
+            issues.append(
+                AuditIssue(
+                    code="fantasy-player-history-empty",
+                    severity="blocking",
+                    message="No complete Fantasy player history scope was available for detail sync",
+                )
+            )
+
+        ordered_ids = sorted(
+            target_match_ids,
+            key=lambda match_id: (
+                as_utc(catalog_by_id[match_id]["start_time"]),
+                match_id,
+            ),
+            reverse=True,
+        )
+        match_buffer: list[dict[str, Any]] = []
+        sample_buffer: list[dict[str, Any]] = []
+        status_buffer: list[dict[str, Any]] = []
+        requested_details = 0
+        reused_raw_details = 0
+        skipped_parsed_details = 0
+        failed_details = 0
+        processed_since_checkpoint = 0
+
+        def checkpoint() -> None:
+            nonlocal matches, existing_samples, statuses
+            if match_buffer:
+                matches = _merge_frames(matches, match_buffer, ["match_id"])
+                match_buffer.clear()
+                _write_parquet_atomic(matches, matches_path)
+            if sample_buffer:
+                existing_samples = _merge_frames(
+                    existing_samples, sample_buffer, ["match_id", "account_id"]
+                )
+                sample_buffer.clear()
+                _write_parquet_atomic(existing_samples, fantasy_samples_path)
+            if status_buffer:
+                statuses = _merge_frames(statuses, status_buffer, ["match_id"])
+                status_buffer.clear()
+                _write_parquet_atomic(statuses, detail_status_path)
+
+        for position, match_id in enumerate(ordered_ids, start=1):
+            capture = _latest_raw_match_capture(paths, match_id)
+            capture_status = None
+            if capture is not None:
+                capture_status = _detail_status_row(
+                    capture[0],
+                    match_id=match_id,
+                    fetched_at=capture[1],
+                    source_hash=capture[2],
+                    target_player_ids=target_player_ids,
+                    as_of=cutoff,
+                )
+            if (
+                not refresh_details
+                and capture_status is not None
+                and capture_status["status"] == "parsed_complete"
+                and match_id in existing_sample_ids
+            ):
+                status_buffer.append(capture_status)
+                skipped_parsed_details += 1
+                processed_since_checkpoint += 1
+            else:
+                should_request = refresh_details or capture_status is None or (
+                    capture_status["status"] != "parsed_complete"
+                )
+                if should_request and max_matches is not None and requested_details >= max_matches:
+                    break
+                if should_request:
+                    try:
+                        detail, detail_fetched_at = api.match(match_id)
+                    except OpenDotaDailyBudgetExhausted as error:
+                        issues.append(
+                            AuditIssue(
+                                code="opendota-daily-budget-reserve",
+                                severity="warning",
+                                message=str(error),
+                                context={"phase": "match-details", "match_id": match_id},
+                            )
+                        )
+                        break
+                    except (httpx.HTTPError, OSError, TypeError) as error:
+                        failed_details += 1
+                        status_buffer.append(
+                            {
+                                "match_id": match_id,
+                                "status": "unavailable",
+                                "has_parsed": False,
+                                "parser_version": None,
+                                "player_slots": 0,
+                                "identified_players": 0,
+                                "target_players_present": 0,
+                                "source_sha256": None,
+                                "fetched_at": utc_now(),
+                                "as_of": cutoff,
+                                "error": str(error),
+                            }
+                        )
+                        processed_since_checkpoint += 1
+                        continue
+                    _, detail_hash = store.write_raw_json(
+                        source="opendota",
+                        resource=f"matches/{match_id}",
+                        payload=detail,
+                        request={
+                            "method": "GET",
+                            "url": (
+                                f"{getattr(api, 'base_url', 'https://api.opendota.com/api')}"
+                                f"/matches/{match_id}"
+                            ),
+                            "http_status": 200,
+                            "match_id": match_id,
+                        },
+                        fetched_at=detail_fetched_at,
+                    )
+                    requested_details += 1
+                else:
+                    detail, detail_fetched_at, detail_hash = capture
+                    reused_raw_details += 1
+
+                detail_status = _detail_status_row(
+                    detail,
+                    match_id=match_id,
+                    fetched_at=detail_fetched_at,
+                    source_hash=detail_hash,
+                    target_player_ids=target_player_ids,
+                    as_of=cutoff,
+                )
+                status_buffer.append(detail_status)
+                catalog_row = catalog_by_id[match_id]
+                normalized = {**catalog_row, **detail}
+                resolved_league_id = int(
+                    normalized.get("leagueid")
+                    or normalized.get("league_id")
+                    or catalog_row.get("league_id")
+                    or 0
+                )
+                league_metadata = league_index.get(resolved_league_id)
+                started_at = _unix_utc(normalized.get("start_time"))
+                patch_point = patch_at(started_at, patch_timeline)
+                snapshot = _match_snapshot(
+                    normalized,
+                    league_id=resolved_league_id,
+                    league_metadata=league_metadata,
+                    patch_point=patch_point,
+                    is_pro_match=True,
+                    fetched_at=detail_fetched_at,
+                    source_hash=detail_hash,
+                    league_source_hash=(
+                        str(catalog_row.get("league_source_sha256"))
+                        if catalog_row.get("league_source_sha256")
+                        else None
+                    ),
+                    patch_source_hash=patch_source_hash,
+                    as_of=cutoff,
+                )
+                match_buffer.append(snapshot.model_dump())
+                sample_buffer.extend(
+                    _fantasy_performance_rows(
+                        detail,
+                        source_hash=detail_hash,
+                        as_of=cutoff,
+                        roster_index=roster_index,
+                        provenance=provenance,
+                    )
+                )
+                processed_since_checkpoint += 1
+
+            if processed_since_checkpoint >= checkpoint_every:
+                checkpoint()
+                processed_since_checkpoint = 0
+            if progress is not None and (
+                position % checkpoint_every == 0 or position == len(ordered_ids)
+            ):
+                progress(
+                    {
+                        "phase": "match-details",
+                        "visited": position,
+                        "target": len(ordered_ids),
+                        "requested": requested_details,
+                        "reused_raw": reused_raw_details,
+                        "skipped_parsed": skipped_parsed_details,
+                        "remaining_day": getattr(api, "rate_limit_remaining_day", None),
+                    }
+                )
+
+        checkpoint()
+    finally:
+        if own_client:
+            api.close()
+
+    if not matches_path.is_file():
+        _write_parquet_atomic(matches, matches_path)
+    if not fantasy_samples_path.is_file():
+        _write_parquet_atomic(existing_samples, fantasy_samples_path)
+    if not detail_status_path.is_file():
+        empty_status = pd.DataFrame(
+            columns=[
+                "match_id",
+                "status",
+                "has_parsed",
+                "parser_version",
+                "player_slots",
+                "identified_players",
+                "target_players_present",
+                "source_sha256",
+                "fetched_at",
+                "as_of",
+                "error",
+            ]
+        )
+        _write_parquet_atomic(empty_status, detail_status_path)
+        statuses = empty_status
+
+    target_statuses = (
+        statuses.loc[statuses["match_id"].isin(target_match_ids)].copy()
+        if not statuses.empty and "match_id" in statuses
+        else statuses.iloc[0:0].copy()
+    )
+    parsed_complete = (
+        int(target_statuses["status"].eq("parsed_complete").sum())
+        if not target_statuses.empty
+        else 0
+    )
+    base_complete = (
+        int(target_statuses["status"].eq("base_complete").sum())
+        if not target_statuses.empty
+        else 0
+    )
+    unavailable = (
+        int(target_statuses["status"].eq("unavailable").sum())
+        if not target_statuses.empty
+        else 0
+    )
+    remaining_details = max(0, len(target_match_ids) - parsed_complete)
+    if remaining_details:
+        issues.append(
+            AuditIssue(
+                code="fantasy-player-history-detail-incomplete",
+                severity="warning",
+                message=f"{remaining_details} target Games do not yet have parsed-complete details",
+                context={
+                    "target_games": len(target_match_ids),
+                    "parsed_complete": parsed_complete,
+                    "base_complete": base_complete,
+                    "unavailable": unavailable,
+                },
+            )
+        )
+
+    rosters = pd.DataFrame(
+        [interval.model_dump() for interval in roster_intervals(manifest, as_of=roster_as_of)]
+    )
+    _write_parquet_atomic(rosters, roster_path)
+    tables = {
+        "matches": matches_path,
+        "fantasy_performance_samples": fantasy_samples_path,
+        "fantasy_player_history_scope": scope_path,
+        "match_detail_status": detail_status_path,
+        "roster_intervals": roster_path,
+    }
+    if leagues_path.is_file():
+        tables["leagues"] = leagues_path
+    if patches_path.is_file():
+        tables["patches"] = patches_path
+    store.refresh_duckdb(tables)
+
+    return FantasyHistorySyncResult(
+        scope_path=scope_path,
+        matches_path=matches_path,
+        fantasy_samples_path=fantasy_samples_path,
+        detail_status_path=detail_status_path,
+        target_players=len(target_player_ids),
+        target_matches=len(target_match_ids),
+        target_player_games=len(active_scope),
+        requested_details=requested_details,
+        reused_raw_details=reused_raw_details,
+        skipped_parsed_details=skipped_parsed_details,
+        parsed_complete=parsed_complete,
+        base_complete=base_complete,
+        failed_details=failed_details,
+        remaining_details=remaining_details,
+        rate_limit_remaining_day=getattr(api, "rate_limit_remaining_day", None),
+        data_sha256=store.data_hash(),
+        issues=issues,
+    )
 
 
 def sync_opendota(

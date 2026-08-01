@@ -4,8 +4,15 @@ from datetime import UTC, datetime
 
 import httpx
 import pandas as pd
+import pytest
 
-from ti_predictor.ingest.opendota import OpenDotaClient, extract_fantasy_stats, sync_opendota
+from ti_predictor.ingest.opendota import (
+    OpenDotaClient,
+    OpenDotaDailyBudgetExhausted,
+    extract_fantasy_stats,
+    sync_fantasy_player_history,
+    sync_opendota,
+)
 
 
 def _detail() -> dict:
@@ -94,6 +101,33 @@ def test_client_waits_for_minute_window_after_rate_limit() -> None:
     assert payload == [{"match_id": 123}]
     assert sleeps == [61]
     assert requests == 2
+    http_client.close()
+
+
+def test_client_stops_before_daily_request_reserve() -> None:
+    requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(
+            200,
+            headers={"X-Rate-Limit-Remaining-Day": "50"},
+            json=[{"match_id": 123}],
+        )
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = OpenDotaClient(
+        client=http_client,
+        min_interval_seconds=0,
+        daily_request_reserve=50,
+    )
+
+    payload, _ = client.player_matches(152962063, date_days=30)
+    assert payload == [{"match_id": 123}]
+    with pytest.raises(OpenDotaDailyBudgetExhausted):
+        client.player_matches(152962063, date_days=30)
+    assert requests == 1
     http_client.close()
 
 
@@ -234,3 +268,120 @@ def test_sync_builds_complete_year_catalog_with_patch_and_league_tier(project_pa
     assert matches.loc[0, "league_tier"] == "premium"
     assert bool(matches.loc[0, "is_pro_match"])
     assert matches.loc[0, "radiant_team_name"] == "Radiant"
+
+
+def test_fantasy_history_uses_player_ids_and_professional_catalog(project_paths) -> None:
+    project_paths.ensure_runtime_dirs()
+    fetched = datetime(2026, 8, 1, tzinfo=UTC)
+    start_time = int(datetime(2026, 7, 1, tzinfo=UTC).timestamp())
+    source_hash = "1" * 64
+    catalog_row = {
+        "match_id": 123,
+        "league_id": 99,
+        "series_id": 44,
+        "series_type": 1,
+        "start_time": datetime(2026, 7, 1, tzinfo=UTC),
+        "radiant_team_id": 2163,
+        "radiant_team_name": "Team Liquid",
+        "dire_team_id": 7119388,
+        "dire_team_name": "Team Spirit",
+        "radiant_win": True,
+        "duration": 2100,
+        "patch": 60,
+        "patch_name": "7.41",
+        "radiant_score": 30,
+        "dire_score": 20,
+        "data_source": "opendota",
+        "is_pro_match": True,
+        "source_sha256": source_hash,
+        "league_source_sha256": "2" * 64,
+        "patch_source_sha256": "3" * 64,
+        "fetched_at": fetched,
+        "as_of": fetched,
+        "league_name": "Professional Cup",
+        "league_tier": "professional",
+    }
+    pd.DataFrame([catalog_row]).to_parquet(
+        project_paths.processed / "matches.parquet", index=False
+    )
+    pd.DataFrame(
+        [
+            {
+                "leagueid": 99,
+                "name": "Professional Cup",
+                "tier": "professional",
+                "source_sha256": "2" * 64,
+            }
+        ]
+    ).to_parquet(project_paths.processed / "leagues.parquet", index=False)
+    pd.DataFrame(
+        [
+            {
+                "id": 60,
+                "name": "7.41",
+                "date": "2026-03-24T00:50:59Z",
+                "source_sha256": "3" * 64,
+            }
+        ]
+    ).to_parquet(project_paths.processed / "patches.parquet", index=False)
+
+    player_template = _detail()["players"][0]
+    detail_players = []
+    account_ids = [152962063, 97590558, 201358612, 77490514, 16497807]
+    account_ids.extend([900000001, 900000002, 900000003, 900000004, 900000005])
+    for index, account_id in enumerate(account_ids):
+        detail_players.append(
+            {
+                **player_template,
+                "account_id": account_id,
+                "player_slot": index if index < 5 else 128 + index - 5,
+            }
+        )
+    detail = {
+        **_detail(),
+        "match_id": 123,
+        "leagueid": 99,
+        "start_time": start_time,
+        "players": detail_players,
+        "version": 22,
+        "od_data": {"has_parsed": True},
+    }
+    player_calls: list[int] = []
+    detail_calls: list[int] = []
+
+    class FakeClient:
+        base_url = "https://example.test/api"
+        rate_limit_remaining_day = 2000
+
+        def player_matches(self, account_id, *, date_days, significant=0):
+            player_calls.append(account_id)
+            assert date_days >= 1
+            assert significant == 0
+            if account_id == 152962063:
+                return [{"match_id": 123, "start_time": start_time}], fetched
+            return [], fetched
+
+        def match(self, match_id):
+            detail_calls.append(match_id)
+            return detail, fetched
+
+    result = sync_fantasy_player_history(
+        as_of=datetime(2026, 8, 1, 1, tzinfo=UTC),
+        year=2026,
+        client=FakeClient(),
+        paths=project_paths,
+        checkpoint_every=1,
+    )
+
+    assert len(player_calls) == 80
+    assert detail_calls == [123]
+    assert result.target_players == 80
+    assert result.target_matches == 1
+    assert result.target_player_games == 1
+    assert result.parsed_complete == 1
+    assert result.remaining_details == 0
+    scope = pd.read_parquet(result.scope_path)
+    assert scope.loc[0, "account_id"] == 152962063
+    assert scope.loc[0, "match_id"] == 123
+    statuses = pd.read_parquet(result.detail_status_path)
+    assert statuses.loc[0, "status"] == "parsed_complete"

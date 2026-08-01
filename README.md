@@ -26,6 +26,16 @@ uv run ti web
 OpenDota 赛事级别。Web 可按时间、版本和赛事级别过滤。同步还会补齐当前 16 队每队最近
 20 场逐场详情，并按 `match_id` 断点续传；可用 `--team-detail-limit 0` 只保留比赛摘要。
 
+Fantasy 的正式历史范围按当前 TI 名单中的稳定玩家 ID 选择，并包含他们在旧战队参加的
+`premium/professional` 比赛。首次全量或后续增量同步使用：
+
+```powershell
+uv run ti data fantasy-history --as-of 2026-08-01T15:00:00Z --year 2026
+```
+
+该命令逐个请求、遵守 OpenDota 响应中的限额、每批落盘并可断点续传；它不会请求 `.dem`
+或自动提交 replay 解析任务。
+
 `fantasy_performance_samples.parquet` 中一行表示“一名玩家在一局比赛中的表现”，只是
 Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策略才是 Fantasy 推荐结果。
 

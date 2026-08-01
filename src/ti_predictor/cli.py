@@ -12,7 +12,7 @@ from ti_predictor import __version__
 from ti_predictor.audit import audit_run
 from ti_predictor.backtesting import run_ti2025_backtest
 from ti_predictor.forecasting import generate_bracket, generate_fantasy, generate_group
-from ti_predictor.ingest.opendota import sync_opendota
+from ti_predictor.ingest.opendota import sync_fantasy_player_history, sync_opendota
 from ti_predictor.ocr import inspect_screenshot
 from ti_predictor.paths import PATHS
 from ti_predictor.rules import create_rule_snapshot, parse_as_of, validate_snapshot
@@ -179,6 +179,85 @@ def data_sync(
                 "rosters": str(result.roster_path),
                 "leagues": str(result.leagues_path) if result.leagues_path else None,
                 "patches": str(result.patches_path) if result.patches_path else None,
+            },
+            "issues": [item.model_dump(mode="json") for item in result.issues],
+        }
+    )
+    _exit_for_status(result.status)
+
+
+@data_app.command("fantasy-history")
+def data_fantasy_history(
+    as_of: Annotated[str, typer.Option("--as-of", help="只纳入该时点前已完成的比赛。")],
+    year: Annotated[
+        int | None,
+        typer.Option("--year", min=2013, help="目标 UTC 日历年；默认使用 as-of 所在年份。"),
+    ] = None,
+    tier: Annotated[
+        list[str] | None,
+        typer.Option("--tier", help="可重复指定，仅接受 premium/professional。"),
+    ] = None,
+    history_days: Annotated[
+        int | None,
+        typer.Option(
+            "--history-days",
+            min=1,
+            help="玩家历史重叠窗口；首次同步默认覆盖目标年，增量时可缩短。",
+        ),
+    ] = None,
+    max_matches: Annotated[
+        int | None,
+        typer.Option("--max-matches", min=1, help="本次最多新请求多少场详情，适合烟雾测试。"),
+    ] = None,
+    checkpoint_every: Annotated[
+        int,
+        typer.Option("--checkpoint-every", min=1, help="每多少个访问目标检查点落盘。"),
+    ] = 25,
+    daily_reserve: Annotated[
+        int,
+        typer.Option("--daily-reserve", min=0, help="停止前保留的 OpenDota 当日请求额度。"),
+    ] = 50,
+    refresh_details: Annotated[
+        bool,
+        typer.Option("--refresh-details", help="重新请求已经完整解析的详情。"),
+    ] = False,
+) -> None:
+    cutoff = parse_as_of(as_of)
+
+    def progress(payload: dict) -> None:
+        typer.echo(json.dumps(payload, ensure_ascii=False, default=str), err=True)
+
+    result = sync_fantasy_player_history(
+        as_of=cutoff,
+        year=year,
+        league_tiers=set(tier) if tier else None,
+        history_days=history_days,
+        max_matches=max_matches,
+        checkpoint_every=checkpoint_every,
+        daily_request_reserve=daily_reserve,
+        refresh_details=refresh_details,
+        progress=progress,
+    )
+    _echo(
+        {
+            "status": result.status,
+            "target_players": result.target_players,
+            "target_matches": result.target_matches,
+            "target_player_games": result.target_player_games,
+            "requested_details": result.requested_details,
+            "reused_raw_details": result.reused_raw_details,
+            "skipped_parsed_details": result.skipped_parsed_details,
+            "parsed_complete": result.parsed_complete,
+            "base_complete": result.base_complete,
+            "failed_details": result.failed_details,
+            "remaining_details": result.remaining_details,
+            "rate_limit_remaining_day": result.rate_limit_remaining_day,
+            "data_sha256": result.data_sha256,
+            "paths": {
+                "scope": str(result.scope_path),
+                "matches": str(result.matches_path),
+                "fantasy_performance_samples": str(result.fantasy_samples_path),
+                "detail_status": str(result.detail_status_path),
             },
             "issues": [item.model_dump(mode="json") for item in result.issues],
         }

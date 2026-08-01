@@ -1067,7 +1067,6 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "streamlit" },
-    { name = "tenacity" },
     { name = "typer" },
 ]
 
@@ -1107,7 +1106,6 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.6,<2" },
     { name = "scipy", specifier = ">=1.15,<2" },
     { name = "streamlit", specifier = ">=1.42,<2" },
-    { name = "tenacity", specifier = ">=9,<10" },
     { name = "typer", specifier = ">=0.15,<1" },
 ]
 provides-extras = ["ocr", "dev"]

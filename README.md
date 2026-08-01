@@ -15,15 +15,19 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 uv sync --extra dev
 uv run ti rules snapshot --as-of 2026-08-12T23:00:00Z
 uv run ti rules validate
-uv run ti data sync --as-of 2026-08-12T23:00:00Z --team-detail-limit 20
+uv run ti data sync --as-of 2026-08-12T23:00:00Z --year 2026 --team-detail-limit 20
 uv run ti forecast group --as-of 2026-08-12T23:00:00Z --profile all
 uv run ti fantasy recommend --as-of 2026-08-12T23:00:00Z --period group --profile all
 uv run ti web
 ```
 
 默认网页只监听 `127.0.0.1`。首次同步会访问 OpenDota；测试永远不访问实时 API。
-数据同步默认补齐当前 16 队每队最近 20 场逐场详情，并按 `match_id` 断点续传；可用
-`--team-detail-limit 0` 只保留队伍历史摘要。
+数据同步默认分页获取 `as_of` 所在 UTC 年份的 OpenDota 职业比赛目录，并关联游戏版本与
+OpenDota 赛事级别。Web 可按时间、版本和赛事级别过滤。同步还会补齐当前 16 队每队最近
+20 场逐场详情，并按 `match_id` 断点续传；可用 `--team-detail-limit 0` 只保留比赛摘要。
+
+`fantasy_performance_samples.parquet` 中一行表示“一名玩家在一局比赛中的表现”，只是
+Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策略才是 Fantasy 推荐结果。
 
 完整操作顺序、主赛事种子导入和状态含义见 [docs/runbook.md](docs/runbook.md)。模型的时间
 切分、覆盖门槛和三种目标见 [docs/modeling.md](docs/modeling.md)。

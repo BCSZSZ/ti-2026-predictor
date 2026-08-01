@@ -104,6 +104,21 @@ def rules_validate(
 @data_app.command("sync")
 def data_sync(
     as_of: Annotated[str, typer.Option("--as-of", help="只纳入该时点前已公开的比赛。")],
+    year: Annotated[
+        int | None,
+        typer.Option(
+            "--year",
+            min=2013,
+            help="同步该 UTC 日历年的完整 OpenDota 职业比赛目录；默认使用 as-of 所在年份。",
+        ),
+    ] = None,
+    pro_catalog: Annotated[
+        bool,
+        typer.Option(
+            "--pro-catalog/--no-pro-catalog",
+            help="是否分页同步 OpenDota /proMatches 职业比赛目录。",
+        ),
+    ] = True,
     league: Annotated[
         list[int] | None, typer.Option("--league", help="可重复指定；默认使用配置中的历史与当前联赛。")
     ] = None,
@@ -137,9 +152,11 @@ def data_sync(
         ),
     ] = False,
 ) -> None:
+    cutoff = parse_as_of(as_of)
     result = sync_opendota(
-        as_of=parse_as_of(as_of),
+        as_of=cutoff,
         league_ids=league,
+        pro_year=(year or cutoff.year) if pro_catalog else None,
         include_details=details,
         include_team_history=team_history,
         team_history_detail_limit=team_detail_limit,
@@ -149,15 +166,19 @@ def data_sync(
     _echo(
         {
             "status": result.status,
+            "pro_year": result.pro_year,
             "leagues": result.requested_leagues,
-            "matches": result.match_count,
-            "players": result.player_count,
+            "match_catalog_rows": result.match_count,
+            "professional_matches": result.pro_match_count,
+            "fantasy_performance_samples": result.fantasy_sample_count,
             "detailed_matches": result.detailed_match_count,
             "data_sha256": result.data_sha256,
             "paths": {
                 "matches": str(result.matches_path),
-                "fantasy": str(result.players_path),
+                "fantasy_performance_samples": str(result.fantasy_samples_path),
                 "rosters": str(result.roster_path),
+                "leagues": str(result.leagues_path) if result.leagues_path else None,
+                "patches": str(result.patches_path) if result.patches_path else None,
             },
             "issues": [item.model_dump(mode="json") for item in result.issues],
         }

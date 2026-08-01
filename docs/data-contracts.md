@@ -13,18 +13,30 @@ Each HTTP or client-rule capture is immutable and contains:
 
 ## Normalized records
 
+- The professional match catalog is the requested UTC-year slice of OpenDota `/proMatches`. It is
+  paginated with `less_than_match_id` and does not include `/publicMatches` rows.
 - Match identity: `match_id`, `league_id`, `series_id`, `start_time`, Radiant/Dire stable team IDs and winner.
+- Match filters: `patch`/`patch_name` from the OpenDota patch timeline and `league_tier` from
+  OpenDota league metadata. Tier values are preserved rather than re-labelled as Tier 1/2/3.
 - Player identity: `account_id`, stable team ID, display name and temporally valid Fantasy role.
 - Every normalized row carries the raw response `source_sha256`, `fetched_at` where applicable,
   and the run cutoff `as_of`.
 - Unknown numeric data is `null`, never zero-filled.
 - Fantasy fields additionally carry one of `exact`, `derived`, `proxy`, `unavailable`.
 
+`matches.parquet` is the match catalog and modeling history. `fantasy_performance_samples.parquet`
+contains player-Game observations extracted only from downloaded match details; its row count is
+not a player count or a Fantasy prediction count.
+
 Team-history summaries are retained for strength modeling. For Fantasy, the synchronizer also
 fetches a bounded recent detail window for every team in the reviewed TI manifest (20 matches per
 team by default). Detail responses are deduplicated by `match_id` and resumed from the existing
-Parquet observation set; historical holdout anchors never make unrelated old team matches detail
-eligible.
+Fantasy performance sample set; historical holdout anchors never make unrelated old team matches
+detail eligible.
+
+Primary endpoint definitions: [OpenDota API implementation](https://github.com/odota/core/blob/master/svc/api/spec.ts),
+[league tier schema](https://github.com/odota/core/blob/master/svc/api/responses/LeagueObjectResponse.ts),
+and [patch timeline](https://github.com/odota/dotaconstants/blob/master/build/patch.json).
 
 ## Run artifacts
 

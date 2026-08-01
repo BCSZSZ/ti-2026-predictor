@@ -284,7 +284,7 @@ def generate_fantasy(
     selected_profiles = _profiles(profile)
     manifest = load_tournament_manifest(paths.tournament)
     rules = load_rules(paths.rules)
-    observations = read_parquet_if_exists(paths.processed / "fantasy_observations.parquet")
+    observations = read_parquet_if_exists(paths.processed / "fantasy_performance_samples.parquet")
     matches = read_parquet_if_exists(paths.processed / "matches.parquet")
     if not observations.empty and not matches.empty and "duration" in matches:
         observations = observations.merge(matches[["match_id", "duration"]], on="match_id", how="left")

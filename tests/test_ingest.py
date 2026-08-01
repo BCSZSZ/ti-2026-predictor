@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import httpx
+import pandas as pd
 
 from ti_predictor.ingest.opendota import OpenDotaClient, extract_fantasy_stats, sync_opendota
 
@@ -63,6 +64,39 @@ def test_client_uses_mock_transport_without_live_network() -> None:
     http_client.close()
 
 
+def test_client_waits_for_minute_window_after_rate_limit() -> None:
+    requests = 0
+    sleeps: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        if requests == 1:
+            return httpx.Response(
+                429,
+                headers={
+                    "X-Rate-Limit-Remaining-Minute": "0",
+                    "X-Rate-Limit-Remaining-Day": "2000",
+                },
+            )
+        return httpx.Response(200, json=[{"match_id": 123}])
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = OpenDotaClient(
+        client=http_client,
+        min_interval_seconds=0,
+        rate_limit_pause_seconds=61,
+        sleeper=sleeps.append,
+    )
+
+    payload, _ = client.pro_matches()
+
+    assert payload == [{"match_id": 123}]
+    assert sleeps == [61]
+    assert requests == 2
+    http_client.close()
+
+
 def test_sync_writes_raw_parquet_and_duckdb(project_paths) -> None:
     detail = _detail()
     fetched = datetime(2026, 8, 1, tzinfo=UTC)
@@ -87,7 +121,8 @@ def test_sync_writes_raw_parquet_and_duckdb(project_paths) -> None:
         paths=project_paths,
     )
     assert result.match_count == 1
-    assert result.player_count == 1
+    assert result.fantasy_sample_count == 1
+    assert result.fantasy_samples_path.name == "fantasy_performance_samples.parquet"
     assert result.matches_path.is_file()
     assert project_paths.database.is_file()
     assert len(list((project_paths.raw / "opendota").rglob("metadata.json"))) == 2
@@ -139,4 +174,63 @@ def test_current_team_history_details_are_eligible_for_fantasy(project_paths) ->
 
     assert detail_calls == [456]
     assert result.detailed_match_count == 1
-    assert result.player_count == 1
+    assert result.fantasy_sample_count == 1
+
+
+def test_sync_builds_complete_year_catalog_with_patch_and_league_tier(project_paths) -> None:
+    fetched = datetime(2026, 8, 1, tzinfo=UTC)
+    current = {
+        "match_id": 500,
+        "leagueid": 99,
+        "league_name": "Premium Cup",
+        "start_time": int(datetime(2026, 6, 1, tzinfo=UTC).timestamp()),
+        "duration": 2100,
+        "radiant_team_id": 1,
+        "radiant_name": "Radiant",
+        "dire_team_id": 2,
+        "dire_name": "Dire",
+        "radiant_win": True,
+    }
+    older = {
+        **current,
+        "match_id": 300,
+        "start_time": int(datetime(2025, 12, 31, tzinfo=UTC).timestamp()),
+    }
+    cursors: list[int | None] = []
+
+    class FakeClient:
+        base_url = "https://example.test/api"
+
+        def leagues(self):
+            return [{"leagueid": 99, "name": "Premium Cup", "tier": "premium"}], fetched
+
+        def patches(self):
+            return [
+                {"id": 59, "name": "7.40", "date": "2025-12-16T00:50:40Z"},
+                {"id": 60, "name": "7.41", "date": "2026-03-24T00:50:59Z"},
+            ], fetched
+
+        def pro_matches(self, cursor):
+            cursors.append(cursor)
+            return ([current] if cursor is None else [older]), fetched
+
+        def league_matches(self, league_id):
+            return [], fetched
+
+    result = sync_opendota(
+        as_of=datetime(2026, 8, 1, tzinfo=UTC),
+        league_ids=[19719],
+        pro_year=2026,
+        include_details=False,
+        include_team_history=False,
+        client=FakeClient(),
+        paths=project_paths,
+    )
+
+    assert cursors == [None, 500]
+    assert result.pro_match_count == 1
+    matches = pd.read_parquet(result.matches_path)
+    assert matches.loc[0, "patch_name"] == "7.41"
+    assert matches.loc[0, "league_tier"] == "premium"
+    assert bool(matches.loc[0, "is_pro_match"])
+    assert matches.loc[0, "radiant_team_name"] == "Radiant"

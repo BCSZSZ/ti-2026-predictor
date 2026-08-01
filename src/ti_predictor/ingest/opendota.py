@@ -2,20 +2,33 @@ from __future__ import annotations
 
 import os
 import time
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
 
 import httpx
 import pandas as pd
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ti_predictor.config import load_rules, load_tournament_manifest, roster_intervals
 from ti_predictor.identity import RosterIndex
+from ti_predictor.match_catalog import (
+    PatchPoint,
+    build_patch_timeline,
+    normalize_league_tier,
+    patch_at,
+    utc_year_bounds,
+)
 from ti_predictor.paths import PATHS, ProjectPaths
-from ti_predictor.schemas import AuditIssue, FantasyObservation, MatchSnapshot, as_utc, utc_now
+from ti_predictor.schemas import (
+    AuditIssue,
+    FantasyPerformanceSample,
+    MatchSnapshot,
+    as_utc,
+    utc_now,
+)
 from ti_predictor.storage import DataStore, read_parquet_if_exists
 
 FANTASY_STAT_IDS = (
@@ -39,15 +52,31 @@ FANTASY_STAT_IDS = (
     "courier_kills",
 )
 
+FANTASY_SAMPLE_BASE_COLUMNS = (
+    "match_id",
+    "series_id",
+    "account_id",
+    "team_id",
+    "role",
+    "start_time",
+    "source_sha256",
+    "as_of",
+    "duration",
+)
+
 
 @dataclass
 class SyncResult:
     matches_path: Path
-    players_path: Path
+    fantasy_samples_path: Path
     roster_path: Path
+    leagues_path: Path | None
+    patches_path: Path | None
     requested_leagues: list[int]
+    pro_year: int | None
     match_count: int
-    player_count: int
+    pro_match_count: int
+    fantasy_sample_count: int
     detailed_match_count: int
     data_sha256: str
     issues: list[AuditIssue] = field(default_factory=list)
@@ -61,6 +90,16 @@ class SyncResult:
         return "publishable"
 
 
+@dataclass
+class MatchCandidate:
+    league_id: int
+    summary: dict[str, Any]
+    fetched_at: datetime
+    source_hash: str
+    detail_eligible: bool
+    is_pro_match: bool = False
+
+
 class OpenDotaClient:
     def __init__(
         self,
@@ -69,13 +108,18 @@ class OpenDotaClient:
         api_key: str | None = None,
         client: httpx.Client | None = None,
         min_interval_seconds: float = 1.05,
+        rate_limit_pause_seconds: float = 61.0,
+        sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key or os.getenv("OPENDOTA_API_KEY")
         self.client = client or httpx.Client(timeout=45.0, headers={"User-Agent": "ti-predictor/0.1"})
         self._owns_client = client is None
         self.min_interval_seconds = max(0.0, min_interval_seconds)
+        self.rate_limit_pause_seconds = max(1.0, rate_limit_pause_seconds)
+        self._sleep = sleeper
         self._last_request = 0.0
+        self._next_request_delay = 0.0
 
     def close(self) -> None:
         if self._owns_client:
@@ -88,25 +132,55 @@ class OpenDotaClient:
         self.close()
 
     def _throttle(self) -> None:
-        remaining = self.min_interval_seconds - (time.monotonic() - self._last_request)
-        if remaining > 0:
-            time.sleep(remaining)
+        interval_delay = self.min_interval_seconds - (time.monotonic() - self._last_request)
+        delay = max(0.0, interval_delay, self._next_request_delay)
+        self._next_request_delay = 0.0
+        if delay > 0:
+            self._sleep(delay)
 
-    @retry(
-        retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
-        stop=stop_after_attempt(4),
-        wait=wait_exponential(multiplier=0.5, min=0.5, max=8),
-        reraise=True,
-    )
-    def get_json(self, resource: str) -> tuple[Any, datetime]:
-        self._throttle()
-        params = {"api_key": self.api_key} if self.api_key else None
-        response = self.client.get(f"{self.base_url}/{resource.lstrip('/')}", params=params)
-        self._last_request = time.monotonic()
-        if response.status_code == 429:
-            raise httpx.NetworkError("OpenDota rate limit reached")
-        response.raise_for_status()
-        return response.json(), utc_now()
+    def _rate_limit_delay(self, response: httpx.Response) -> float:
+        retry_after = response.headers.get("Retry-After")
+        if retry_after:
+            try:
+                return max(1.0, float(retry_after))
+            except ValueError:
+                try:
+                    retry_at = parsedate_to_datetime(retry_after).astimezone(UTC)
+                    return max(1.0, (retry_at - utc_now()).total_seconds())
+                except (TypeError, ValueError):
+                    pass
+        return self.rate_limit_pause_seconds
+
+    def get_json(self, resource: str, *, query: dict[str, int | str] | None = None) -> tuple[Any, datetime]:
+        params: dict[str, int | str] = dict(query or {})
+        if self.api_key:
+            params["api_key"] = self.api_key
+        url = f"{self.base_url}/{resource.lstrip('/')}"
+        last_error: Exception | None = None
+        for attempt in range(4):
+            self._throttle()
+            try:
+                response = self.client.get(url, params=params)
+            except (httpx.TimeoutException, httpx.NetworkError) as error:
+                last_error = error
+                if attempt == 3:
+                    raise
+                self._sleep(min(0.5 * (2**attempt), 8.0))
+                continue
+            self._last_request = time.monotonic()
+            if response.status_code == 429:
+                if response.headers.get("X-Rate-Limit-Remaining-Day") == "0":
+                    raise httpx.NetworkError("OpenDota daily rate limit reached; configure OPENDOTA_API_KEY")
+                last_error = httpx.NetworkError("OpenDota minute rate limit reached")
+                if attempt == 3:
+                    raise last_error
+                self._sleep(self._rate_limit_delay(response))
+                continue
+            response.raise_for_status()
+            if response.headers.get("X-Rate-Limit-Remaining-Minute") == "0":
+                self._next_request_delay = self.rate_limit_pause_seconds
+            return response.json(), utc_now()
+        raise RuntimeError("OpenDota request retry loop exhausted") from last_error
 
     def league_matches(self, league_id: int) -> tuple[list[dict[str, Any]], datetime]:
         payload, fetched_at = self.get_json(f"leagues/{league_id}/matches")
@@ -124,6 +198,25 @@ class OpenDotaClient:
         payload, fetched_at = self.get_json(f"teams/{team_id}/matches")
         if not isinstance(payload, list):
             raise TypeError(f"OpenDota team {team_id} response is not a list")
+        return payload, fetched_at
+
+    def pro_matches(self, less_than_match_id: int | None = None) -> tuple[list[dict[str, Any]], datetime]:
+        query = {"less_than_match_id": less_than_match_id} if less_than_match_id is not None else None
+        payload, fetched_at = self.get_json("proMatches", query=query)
+        if not isinstance(payload, list):
+            raise TypeError("OpenDota proMatches response is not a list")
+        return payload, fetched_at
+
+    def leagues(self) -> tuple[list[dict[str, Any]], datetime]:
+        payload, fetched_at = self.get_json("leagues")
+        if not isinstance(payload, list):
+            raise TypeError("OpenDota leagues response is not a list")
+        return payload, fetched_at
+
+    def patches(self) -> tuple[list[dict[str, Any]], datetime]:
+        payload, fetched_at = self.get_json("constants/patch")
+        if not isinstance(payload, list):
+            raise TypeError("OpenDota constants/patch response is not a list")
         return payload, fetched_at
 
 
@@ -210,30 +303,48 @@ def _match_snapshot(
     payload: dict[str, Any],
     *,
     league_id: int,
+    league_metadata: dict[str, Any] | None,
+    patch_point: PatchPoint | None,
+    is_pro_match: bool,
     fetched_at: datetime,
     source_hash: str,
+    league_source_hash: str | None,
+    patch_source_hash: str | None,
     as_of: datetime,
 ) -> MatchSnapshot:
+    resolved_league_id = int(payload.get("leagueid") or payload.get("league_id") or league_id)
+    league_metadata = league_metadata or {}
+    patch_id = payload.get("patch")
+    if patch_id is None and patch_point is not None:
+        patch_id = patch_point.patch_id
     return MatchSnapshot(
         match_id=int(payload["match_id"]),
-        league_id=int(payload.get("leagueid") or payload.get("league_id") or league_id),
+        league_id=resolved_league_id if resolved_league_id > 0 else None,
+        league_name=payload.get("league_name") or league_metadata.get("name"),
+        league_tier=normalize_league_tier(league_metadata.get("tier")),
         series_id=payload.get("series_id"),
         series_type=payload.get("series_type"),
         start_time=_unix_utc(payload.get("start_time")),
         radiant_team_id=payload.get("radiant_team_id"),
+        radiant_team_name=payload.get("radiant_name") or payload.get("radiant_team_name"),
         dire_team_id=payload.get("dire_team_id"),
+        dire_team_name=payload.get("dire_name") or payload.get("dire_team_name"),
         radiant_win=payload.get("radiant_win"),
         duration=payload.get("duration"),
-        patch=payload.get("patch"),
+        patch=patch_id,
+        patch_name=patch_point.name if patch_point is not None else None,
         radiant_score=payload.get("radiant_score"),
         dire_score=payload.get("dire_score"),
+        is_pro_match=is_pro_match,
         source_sha256=source_hash,
+        league_source_sha256=league_source_hash,
+        patch_source_sha256=patch_source_hash,
         fetched_at=fetched_at,
         as_of=as_of,
     )
 
 
-def _fantasy_rows(
+def _fantasy_performance_rows(
     payload: dict[str, Any],
     *,
     source_hash: str,
@@ -251,7 +362,7 @@ def _fantasy_rows(
         team_id = payload.get("dire_team_id") if player_slot >= 128 else payload.get("radiant_team_id")
         roster = roster_index.resolve(int(account_id), start_time)
         stats = extract_fantasy_stats(player)
-        observation = FantasyObservation(
+        observation = FantasyPerformanceSample(
             match_id=int(payload["match_id"]),
             series_id=payload.get("series_id"),
             account_id=int(account_id),
@@ -295,9 +406,9 @@ def _merge_rows(path: Path, rows: list[dict[str, Any]], keys: list[str]) -> pd.D
     return combined
 
 
-def _coverage_issues(players: pd.DataFrame) -> list[AuditIssue]:
+def _coverage_issues(samples: pd.DataFrame) -> list[AuditIssue]:
     issues: list[AuditIssue] = []
-    if players.empty:
+    if samples.empty:
         return [
             AuditIssue(
                 code="fantasy-no-detail-data",
@@ -306,7 +417,7 @@ def _coverage_issues(players: pd.DataFrame) -> list[AuditIssue]:
             )
         ]
     for stat_id in FANTASY_STAT_IDS:
-        coverage = float(players[stat_id].notna().mean()) if stat_id in players else 0.0
+        coverage = float(samples[stat_id].notna().mean()) if stat_id in samples else 0.0
         severity = "warning" if coverage < 0.95 else "info"
         issues.append(
             AuditIssue(
@@ -323,6 +434,7 @@ def sync_opendota(
     *,
     as_of: datetime,
     league_ids: list[int] | None = None,
+    pro_year: int | None = None,
     include_details: bool = True,
     include_team_history: bool = False,
     team_history_limit: int = 100,
@@ -342,31 +454,166 @@ def sync_opendota(
     roster_index = RosterIndex(intervals)
     store = DataStore(paths)
     matches_path = paths.processed / "matches.parquet"
-    players_path = paths.processed / "fantasy_observations.parquet"
+    fantasy_samples_path = paths.processed / "fantasy_performance_samples.parquet"
     roster_path = paths.processed / "roster_intervals.parquet"
+    leagues_path = paths.processed / "leagues.parquet"
+    patches_path = paths.processed / "patches.parquet"
     existing_matches = read_parquet_if_exists(matches_path)
-    existing_players = read_parquet_if_exists(players_path)
+    existing_samples = read_parquet_if_exists(fantasy_samples_path)
+    existing_leagues = read_parquet_if_exists(leagues_path)
+    existing_patches = read_parquet_if_exists(patches_path)
     existing_match_ids = (
         {int(value) for value in existing_matches["match_id"].dropna()}
         if "match_id" in existing_matches
         else set()
     )
     existing_detail_ids = (
-        {int(value) for value in existing_players["match_id"].dropna()}
-        if "match_id" in existing_players
+        {int(value) for value in existing_samples["match_id"].dropna()}
+        if "match_id" in existing_samples
         else set()
     )
     own_client = client is None
     api = client or OpenDotaClient()
     match_rows: list[dict[str, Any]] = []
-    player_rows: list[dict[str, Any]] = []
+    fantasy_sample_rows: list[dict[str, Any]] = []
     detailed = 0
     issues: list[AuditIssue] = []
 
+    league_rows = existing_leagues.to_dict(orient="records") if not existing_leagues.empty else []
+    patch_rows = existing_patches.to_dict(orient="records") if not existing_patches.empty else []
+    league_index = {int(row["leagueid"]): row for row in league_rows if row.get("leagueid") is not None}
+    patch_timeline = build_patch_timeline(patch_rows)
+    patch_source_hash = (
+        str(patch_rows[0].get("source_sha256")) if patch_rows and patch_rows[0].get("source_sha256") else None
+    )
+
     try:
-        candidates: dict[int, tuple[int, dict[str, Any], datetime, str, bool]] = {}
+        candidates: dict[int, MatchCandidate] = {}
         league_team_ids: set[int] = set()
         history_anchors: list[datetime] = []
+
+        if pro_year is not None:
+            year_start, year_end = utc_year_bounds(pro_year)
+            if cutoff < year_start:
+                raise ValueError(f"as_of {cutoff.isoformat()} is before requested pro year {pro_year}")
+
+            league_payload, league_fetched_at = api.leagues()
+            _, league_source_hash = store.write_raw_json(
+                source="opendota",
+                resource="leagues",
+                payload=league_payload,
+                request={
+                    "method": "GET",
+                    "url": f"{getattr(api, 'base_url', 'https://api.opendota.com/api')}/leagues",
+                    "http_status": 200,
+                },
+                fetched_at=league_fetched_at,
+            )
+            league_rows = [
+                {
+                    **row,
+                    "tier": normalize_league_tier(row.get("tier")),
+                    "source_sha256": league_source_hash,
+                    "fetched_at": league_fetched_at,
+                    "as_of": cutoff,
+                }
+                for row in league_payload
+                if row.get("leagueid") is not None
+            ]
+            league_index = {int(row["leagueid"]): row for row in league_rows}
+
+            patch_payload, patch_fetched_at = api.patches()
+            _, patch_source_hash = store.write_raw_json(
+                source="opendota",
+                resource="constants/patch",
+                payload=patch_payload,
+                request={
+                    "method": "GET",
+                    "url": f"{getattr(api, 'base_url', 'https://api.opendota.com/api')}/constants/patch",
+                    "http_status": 200,
+                },
+                fetched_at=patch_fetched_at,
+            )
+            patch_rows = [
+                {
+                    **row,
+                    "source_sha256": patch_source_hash,
+                    "fetched_at": patch_fetched_at,
+                    "as_of": cutoff,
+                }
+                for row in patch_payload
+            ]
+            patch_timeline = build_patch_timeline(patch_rows)
+
+            cursor: int | None = None
+            seen_cursors: set[int] = set()
+            while True:
+                payload, fetched_at = api.pro_matches(cursor)
+                resource = f"proMatches/{cursor}" if cursor is not None else "proMatches/latest"
+                _, source_hash = store.write_raw_json(
+                    source="opendota",
+                    resource=resource,
+                    payload=payload,
+                    request={
+                        "method": "GET",
+                        "url": f"{getattr(api, 'base_url', 'https://api.opendota.com/api')}/proMatches",
+                        "http_status": 200,
+                        "less_than_match_id": cursor,
+                    },
+                    fetched_at=fetched_at,
+                )
+                if not payload:
+                    break
+
+                page_times = [
+                    _unix_utc(row["start_time"]) for row in payload if row.get("start_time") is not None
+                ]
+                for row in payload:
+                    if not row.get("match_id") or row.get("start_time") is None:
+                        continue
+                    started_at = _unix_utc(row["start_time"])
+                    if not (year_start <= started_at < year_end and started_at <= cutoff):
+                        continue
+                    if not _completed_by(row, cutoff):
+                        continue
+                    match_id = int(row["match_id"])
+                    candidates[match_id] = MatchCandidate(
+                        league_id=int(row.get("leagueid") or 0),
+                        summary=row,
+                        fetched_at=fetched_at,
+                        source_hash=source_hash,
+                        detail_eligible=False,
+                        is_pro_match=True,
+                    )
+
+                if page_times and max(page_times) < year_start:
+                    break
+                page_ids = [int(row["match_id"]) for row in payload if row.get("match_id")]
+                if not page_ids:
+                    issues.append(
+                        AuditIssue(
+                            code="pro-catalog-pagination-missing-match-id",
+                            severity="blocking",
+                            message=(
+                                "OpenDota proMatches page had no usable match ID; catalog may be incomplete"
+                            ),
+                        )
+                    )
+                    break
+                next_cursor = min(page_ids)
+                if next_cursor in seen_cursors or (cursor is not None and next_cursor >= cursor):
+                    issues.append(
+                        AuditIssue(
+                            code="pro-catalog-pagination-stalled",
+                            severity="blocking",
+                            message="OpenDota proMatches pagination stopped making progress",
+                            context={"cursor": cursor, "next_cursor": next_cursor},
+                        )
+                    )
+                    break
+                seen_cursors.add(next_cursor)
+                cursor = next_cursor
+
         for league_id in requested:
             payload, fetched_at = api.league_matches(league_id)
             _, source_hash = store.write_raw_json(
@@ -395,7 +642,17 @@ def sync_opendota(
                 if not _completed_by(match, cutoff):
                     continue
                 match_id = int(match["match_id"])
-                candidates[match_id] = (league_id, match, fetched_at, source_hash, True)
+                existing = candidates.get(match_id)
+                if existing is not None:
+                    existing.detail_eligible = True
+                else:
+                    candidates[match_id] = MatchCandidate(
+                        league_id=league_id,
+                        summary=match,
+                        fetched_at=fetched_at,
+                        source_hash=source_hash,
+                        detail_eligible=True,
+                    )
 
         if include_team_history:
             manifest_team_ids = {team.team_id for team in manifest.teams}
@@ -451,33 +708,38 @@ def sync_opendota(
                     detail_eligible = match_id in recent_detail_ids
                     existing = candidates.get(match_id)
                     if existing is None:
-                        candidates[match_id] = (
-                            int(item.get("leagueid") or 0),
-                            normalized,
-                            fetched_at,
-                            source_hash,
-                            detail_eligible,
+                        candidates[match_id] = MatchCandidate(
+                            league_id=int(item.get("leagueid") or 0),
+                            summary=normalized,
+                            fetched_at=fetched_at,
+                            source_hash=source_hash,
+                            detail_eligible=detail_eligible,
                         )
-                    elif detail_eligible and not existing[4]:
-                        candidates[match_id] = (*existing[:4], True)
+                    elif detail_eligible:
+                        existing.detail_eligible = True
 
         ordered = sorted(
-            candidates.values(), key=lambda item: (int(item[1]["start_time"]), int(item[1]["match_id"]))
+            candidates.values(),
+            key=lambda item: (int(item.summary["start_time"]), int(item.summary["match_id"])),
         )
         detail_candidates = [
-            int(item[1]["match_id"])
+            int(item.summary["match_id"])
             for item in ordered
-            if item[4] and (refresh_details or int(item[1]["match_id"]) not in existing_detail_ids)
+            if item.detail_eligible
+            and (refresh_details or int(item.summary["match_id"]) not in existing_detail_ids)
         ]
         if max_matches is not None:
             detail_candidates = detail_candidates[-max_matches:]
         detail_ids = set(detail_candidates)
 
-        for league_id, summary, fetched_at, summary_hash, detail_eligible in ordered:
+        for candidate in ordered:
+            summary = candidate.summary
             detail = summary
-            detail_hash = summary_hash
-            detail_fetched = fetched_at
-            use_detail = include_details and detail_eligible and int(summary["match_id"]) in detail_ids
+            detail_hash = candidate.source_hash
+            detail_fetched = candidate.fetched_at
+            use_detail = (
+                include_details and candidate.detail_eligible and int(summary["match_id"]) in detail_ids
+            )
             if use_detail:
                 detail, detail_fetched = api.match(int(summary["match_id"]))
                 _, detail_hash = store.write_raw_json(
@@ -493,19 +755,39 @@ def sync_opendota(
                     fetched_at=detail_fetched,
                 )
                 detailed += 1
-            if int(summary["match_id"]) in existing_match_ids and not use_detail:
+            if (
+                int(summary["match_id"]) in existing_match_ids
+                and not use_detail
+                and not candidate.is_pro_match
+            ):
                 continue
+            normalized = {**summary, **detail}
+            resolved_league_id = int(
+                normalized.get("leagueid") or normalized.get("league_id") or candidate.league_id
+            )
+            league_metadata = league_index.get(resolved_league_id)
+            started_at = _unix_utc(normalized.get("start_time"))
+            patch_point = patch_at(started_at, patch_timeline)
             snapshot = _match_snapshot(
-                detail,
-                league_id=league_id,
+                normalized,
+                league_id=candidate.league_id,
+                league_metadata=league_metadata,
+                patch_point=patch_point,
+                is_pro_match=candidate.is_pro_match,
                 fetched_at=detail_fetched,
                 source_hash=detail_hash,
+                league_source_hash=(
+                    str(league_metadata.get("source_sha256"))
+                    if league_metadata and league_metadata.get("source_sha256")
+                    else None
+                ),
+                patch_source_hash=patch_source_hash,
                 as_of=cutoff,
             )
             match_rows.append(snapshot.model_dump())
             if use_detail:
-                player_rows.extend(
-                    _fantasy_rows(
+                fantasy_sample_rows.extend(
+                    _fantasy_performance_rows(
                         detail,
                         source_hash=detail_hash,
                         as_of=cutoff,
@@ -518,16 +800,33 @@ def sync_opendota(
             api.close()
 
     matches = _merge_rows(matches_path, match_rows, ["match_id"])
-    players = _merge_rows(players_path, player_rows, ["match_id", "account_id"])
+    fantasy_samples = _merge_rows(fantasy_samples_path, fantasy_sample_rows, ["match_id", "account_id"])
+    if matches.empty and not len(matches.columns):
+        matches = pd.DataFrame(columns=list(MatchSnapshot.model_fields))
+    if fantasy_samples.empty and not len(fantasy_samples.columns):
+        fantasy_sample_columns = list(FANTASY_SAMPLE_BASE_COLUMNS)
+        for stat_id in FANTASY_STAT_IDS:
+            fantasy_sample_columns.extend((stat_id, f"{stat_id}_provenance"))
+        fantasy_samples = pd.DataFrame(columns=fantasy_sample_columns)
     rosters = pd.DataFrame([interval.model_dump() for interval in intervals])
     matches.to_parquet(matches_path, index=False)
-    players.to_parquet(players_path, index=False)
+    fantasy_samples.to_parquet(fantasy_samples_path, index=False)
     rosters.to_parquet(roster_path, index=False)
-    store.refresh_duckdb(
-        {"matches": matches_path, "fantasy_observations": players_path, "roster_intervals": roster_path}
-    )
-    issues.extend(_coverage_issues(players))
-    if not match_rows:
+    tables = {
+        "matches": matches_path,
+        "fantasy_performance_samples": fantasy_samples_path,
+        "roster_intervals": roster_path,
+    }
+    if pro_year is not None:
+        pd.DataFrame(league_rows).to_parquet(leagues_path, index=False)
+        pd.DataFrame(patch_rows).to_parquet(patches_path, index=False)
+    if leagues_path.is_file():
+        tables["leagues"] = leagues_path
+    if patches_path.is_file():
+        tables["patches"] = patches_path
+    store.refresh_duckdb(tables)
+    issues.extend(_coverage_issues(fantasy_samples))
+    if matches.empty:
         issues.append(
             AuditIssue(
                 code="sync-no-matches",
@@ -535,13 +834,39 @@ def sync_opendota(
                 message="No matches at or before as_of were returned for the requested leagues",
             )
         )
+
+    pro_match_count = 0
+    if not matches.empty and "is_pro_match" in matches:
+        pro_matches = matches.loc[matches["is_pro_match"].eq(True)].copy()
+        if pro_year is not None and not pro_matches.empty:
+            year_start, year_end = utc_year_bounds(pro_year)
+            starts = pd.to_datetime(pro_matches["start_time"], utc=True, errors="coerce")
+            pro_matches = pro_matches.loc[
+                (starts >= pd.Timestamp(year_start)) & (starts < pd.Timestamp(year_end))
+            ]
+        pro_match_count = len(pro_matches)
+    if pro_year is not None:
+        issues.append(
+            AuditIssue(
+                code="pro-catalog-coverage",
+                severity="info",
+                message=(
+                    f"OpenDota professional match catalog contains {pro_match_count} Games for {pro_year}"
+                ),
+                context={"year": pro_year, "games": pro_match_count},
+            )
+        )
     return SyncResult(
         matches_path=matches_path,
-        players_path=players_path,
+        fantasy_samples_path=fantasy_samples_path,
         roster_path=roster_path,
+        leagues_path=leagues_path if leagues_path.is_file() else None,
+        patches_path=patches_path if patches_path.is_file() else None,
         requested_leagues=requested,
+        pro_year=pro_year,
         match_count=len(matches),
-        player_count=len(players),
+        pro_match_count=pro_match_count,
+        fantasy_sample_count=len(fantasy_samples),
         detailed_match_count=detailed,
         data_sha256=store.data_hash(),
         issues=issues,

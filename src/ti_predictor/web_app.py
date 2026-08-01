@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -9,6 +10,7 @@ import streamlit as st
 from ti_predictor.audit import audit_run
 from ti_predictor.config import load_rules, load_tournament_manifest
 from ti_predictor.hashing import sha256_bytes
+from ti_predictor.match_catalog import filter_match_catalog, utc_year_bounds
 from ti_predictor.ocr import inspect_screenshot
 from ti_predictor.paths import PATHS
 from ti_predictor.reporting import discover_runs, filling_checklist
@@ -39,28 +41,113 @@ def _load_recommendations(run: dict) -> list[dict]:
 def data_page() -> None:
     st.title("数据与规则状态")
     rules = load_rules()
+    tournament = load_tournament_manifest()
     issues = validate_rules(rules)
     blocking = [item for item in issues if item.severity == "blocking"]
     _status_badge("blocked" if blocking else ("warning" if issues else "publishable"))
+    matches = read_parquet_if_exists(PATHS.processed / "matches.parquet")
+    fantasy_samples = read_parquet_if_exists(PATHS.processed / "fantasy_performance_samples.parquet")
+    rosters = read_parquet_if_exists(PATHS.processed / "roster_intervals.parquet")
+    catalog_year = tournament.group_lock_at.year
+    year_start, year_end = utc_year_bounds(catalog_year)
+    year_catalog = filter_match_catalog(
+        matches,
+        start_at=year_start,
+        end_before=year_end,
+        pro_only=True,
+    )
+    detailed_games = (
+        int(fantasy_samples["match_id"].nunique())
+        if not fantasy_samples.empty and "match_id" in fantasy_samples
+        else 0
+    )
+
+    st.subheader("本地数据")
+    data_columns = st.columns(4)
+    data_columns[0].metric(f"{catalog_year} 职业比赛目录", len(year_catalog))
+    data_columns[1].metric("Fantasy 表现样本", len(fantasy_samples))
+    data_columns[2].metric("已解析比赛详情", detailed_games)
+    data_columns[3].metric("TI 审核阵容", len(rosters))
+    st.caption(
+        "Fantasy 表现样本 = 一名玩家在一局已结束比赛中的统计；它是模型输入，"
+        "不是 Fantasy 预测。三位置卡片、徽标和教练选择请看 Fantasy 推荐页。"
+    )
+
+    st.subheader("比赛数据浏览器")
+    if year_catalog.empty:
+        st.warning(
+            f"尚无 {catalog_year} 全年职业比赛目录。请运行 "
+            f"`uv run ti data sync --as-of {catalog_year}-08-01T23:59:59Z --year {catalog_year}`。"
+        )
+    else:
+        minimum_day = year_catalog["start_time"].min().date()
+        maximum_day = year_catalog["start_time"].max().date()
+        filter_columns = st.columns(3)
+        with filter_columns[0]:
+            selected_days = st.date_input(
+                "时间（UTC）",
+                value=(minimum_day, maximum_day),
+                min_value=minimum_day,
+                max_value=maximum_day,
+            )
+        patch_options = sorted(year_catalog["patch_name"].dropna().astype(str).unique())
+        with filter_columns[1]:
+            selected_patches = st.multiselect("游戏版本", patch_options, default=patch_options)
+        tier_options = sorted(year_catalog["league_tier"].fillna("unknown").astype(str).unique())
+        with filter_columns[2]:
+            selected_tiers = st.multiselect("赛事级别", tier_options, default=tier_options)
+
+        if isinstance(selected_days, (tuple, list)) and len(selected_days) == 2:
+            selected_start = datetime.combine(selected_days[0], datetime.min.time(), tzinfo=UTC)
+            selected_end = datetime.combine(
+                selected_days[1] + timedelta(days=1), datetime.min.time(), tzinfo=UTC
+            )
+        else:
+            selected_start, selected_end = year_start, year_end
+        filtered = filter_match_catalog(
+            year_catalog,
+            start_at=selected_start,
+            end_before=selected_end,
+            patch_names=set(selected_patches),
+            league_tiers=set(selected_tiers),
+            pro_only=True,
+        )
+        st.caption(
+            "赛事级别沿用 OpenDota 的 premium / professional / amateur / excluded / unknown，"
+            "不擅自换算为社区 Tier 1/2/3。"
+        )
+        st.metric("筛选后比赛", len(filtered))
+        display = filtered.copy()
+        if "duration" in display:
+            display["duration_minutes"] = (display["duration"] / 60).round(1)
+        columns = [
+            "start_time",
+            "patch_name",
+            "league_tier",
+            "league_name",
+            "radiant_team_name",
+            "dire_team_name",
+            "radiant_score",
+            "dire_score",
+            "radiant_win",
+            "duration_minutes",
+            "series_id",
+            "match_id",
+        ]
+        st.dataframe(display[[column for column in columns if column in display]], hide_index=True)
+
     left, right = st.columns(2)
     with left:
         st.subheader("规则")
-        st.metric("Fantasy 统计", len(rules["fantasy"]["stats"]))
+        st.metric("Fantasy 统计项", len(rules["fantasy"]["stats"]))
         st.metric("小组预测槽位", sum(item["count"] for item in rules["prediction"]["group"]["slots"]))
-        st.dataframe(pd.DataFrame([item.model_dump() for item in issues]), hide_index=True, width="stretch")
+        st.dataframe(pd.DataFrame([item.model_dump() for item in issues]), hide_index=True)
     with right:
-        st.subheader("本地数据")
-        for filename, label in (
-            ("matches.parquet", "比赛"),
-            ("fantasy_observations.parquet", "玩家逐局"),
-            ("roster_intervals.parquet", "阵容区间"),
-        ):
-            frame = read_parquet_if_exists(PATHS.processed / filename)
-            st.metric(label, len(frame))
+        st.subheader("客户端规则快照")
         snapshots = sorted((PATHS.raw / "rules").glob("*/rule_snapshot.json"), reverse=True)
         if snapshots:
             snapshot = json.loads(snapshots[0].read_text(encoding="utf-8"))
-            st.caption(f"最新客户端规则快照：{snapshot['snapshot_id']} · build {snapshot.get('steam_build')}")
+            st.caption(f"最新快照：{snapshot['snapshot_id']} · build {snapshot.get('steam_build')}")
         else:
             st.error("尚无本机客户端规则快照；请先运行 `uv run ti rules snapshot`。")
 

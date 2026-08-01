@@ -138,7 +138,7 @@ def audit_run(run_id: str, paths: ProjectPaths = PATHS, *, write: bool = True) -
             output_hashes[relative] = sha256_file(output)
 
     cutoff = pd.Timestamp(run.as_of)
-    for name in ("matches.parquet", "fantasy_observations.parquet"):
+    for name in ("matches.parquet", "fantasy_performance_samples.parquet"):
         frame = read_parquet_if_exists(paths.processed / name)
         if frame.empty or "start_time" not in frame:
             continue

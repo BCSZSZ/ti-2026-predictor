@@ -1,19 +1,96 @@
-# Domain glossary
+# TI 2026 decision support domain
 
-| Term | Canonical meaning |
-|---|---|
-| InGamePrediction / 游戏内预测 | Valve TI 活动中由玩家填写的结果槽位或淘汰赛节点。不是模型概率。 |
-| Forecast / 模型预测 | 本项目在给定 `as_of` 下产生的概率分布与推荐。 |
-| Game / 单局 | 一张地图，从选人到一方获胜。 |
-| Series / 系列赛 | 两支队伍之间的 BO1/BO2/BO3/BO5，由若干 Game 组成。 |
-| Period / 结算期 | Fantasy 锁定一次阵容并结算的一段赛事；2026 年为 Group 与 Main。 |
-| Team identity / 战队身份 | Valve/OpenDota 的稳定 team ID，不等同于展示名称。 |
-| Roster interval / 阵容区间 | 某选手为某战队生效的 `[valid_from, valid_to)` 时间区间。 |
-| Fantasy role / 梦幻定位 | `core`（1/3 号位双人组）、`mid`（2 号位）、`support`（4/5 号位双人组）。 |
-| War Banner / 战旗 | 某 Fantasy role 的徽标容器；小组期 3 槽，主赛事 5 槽。 |
-| Emblem / 徽标 | 带颜色、统计项、品质和特质的 Fantasy 加分项。 |
-| Coach title / 指导员称号 | 全阵容共享的前缀与后缀条件加成。 |
-| Rule snapshot / 规则快照 | 从指定客户端 build 提取并哈希的活动规则集合。 |
-| Data snapshot / 数据快照 | 在指定抓取时刻冻结的原始与规范化数据集合。 |
-| Forecast run / 预测运行 | 规则、数据、配置、代码和随机种子全部固定的一次计算。 |
-| Publishable / 可发布 | 审计通过，可作为游戏内填写依据；不代表必然正确。 |
+This project separates Valve's in-game activities from the historical evidence and model outputs
+used to recommend what the player should enter.
+
+## Predictions
+
+**InGamePrediction / 游戏内预测**:
+A result slot or bracket node that a player fills in Valve's TI activity.
+_Avoid_: Forecast, model prediction
+
+**Forecast / 模型预测**:
+A probability distribution produced by this project at a fixed `as_of` time.
+_Avoid_: In-game prediction, official answer
+
+**Forecast run / 预测运行**:
+One reproducible calculation with fixed rules, data, configuration, code and random seed.
+_Avoid_: Data sync, Fantasy performance sample
+
+**Publishable / 可发布**:
+An audited recommendation that may be used as an in-game entry; it is not a guarantee of correctness.
+_Avoid_: Official, confirmed winner
+
+## Match evidence
+
+**Game / 单局**:
+One Dota map from draft through one team's victory.
+_Avoid_: Series, match day
+
+**Series / 系列赛**:
+A BO1/BO2/BO3/BO5 contest between two teams made up of one or more Games.
+_Avoid_: Game, tournament
+
+**Professional match catalog / 职业比赛目录**:
+The time-bounded set of Games returned by OpenDota's `/proMatches` feed, enriched with league and
+patch metadata. Membership describes the upstream feed, while `league tier` describes event level.
+_Avoid_: Fantasy predictions, all parsed match details
+
+**League tier / 赛事级别**:
+OpenDota's league classification (`premium`, `professional`, `amateur`, `excluded` or `unknown`).
+It is not an invented Tier 1/2/3 ranking.
+_Avoid_: Match type, patch
+
+**Patch / 游戏版本**:
+The Dota gameplay version active when a Game started, derived from OpenDota's patch timeline when
+the match response does not provide it directly.
+_Avoid_: API version, replay parser version
+
+**Data snapshot / 数据快照**:
+An immutable view of raw and normalized evidence available at a fixed collection time.
+_Avoid_: Forecast run
+
+## Fantasy
+
+**Fantasy performance sample / Fantasy 表现样本**:
+One player's observed statistics in one completed Game, used as historical evidence for estimating
+future Fantasy points. It is not a prediction or a player card.
+_Avoid_: Fantasy prediction, Fantasy recommendation, player count
+
+**Fantasy recommendation / Fantasy 推荐**:
+A proposed set of three role cards plus Emblem and Coach choices for one settlement Period.
+_Avoid_: Fantasy performance sample, official lineup
+
+**Period / 结算期**:
+A stage for which one Fantasy lineup is locked and scored; in 2026 the Periods are Group and Main.
+_Avoid_: Series, tournament day
+
+**Fantasy role / 梦幻定位**:
+One of `core` (position 1/3 pair), `mid` (position 2), or `support` (position 4/5 pair).
+_Avoid_: Individual lane assignment
+
+**War Banner / 战旗**:
+The Emblem container attached to one Fantasy role; it has three slots in Group and five in Main.
+_Avoid_: Player card, lineup
+
+**Emblem / 徽标**:
+A Fantasy modifier with a color, statistic, quality and trait.
+_Avoid_: Player card, Coach title
+
+**Coach title / 指导员称号**:
+A prefix and suffix condition shared by the complete Fantasy lineup.
+_Avoid_: Emblem, team coach
+
+## Identity and rules
+
+**Team identity / 战队身份**:
+A stable Valve/OpenDota team ID, distinct from its display name.
+_Avoid_: Team name
+
+**Roster interval / 阵容区间**:
+The half-open time interval `[valid_from, valid_to)` during which a player belongs to a team.
+_Avoid_: Current roster applied to history
+
+**Rule snapshot / 规则快照**:
+A hashed set of activity rules extracted from one identified Dota client build.
+_Avoid_: Data snapshot, forecast run

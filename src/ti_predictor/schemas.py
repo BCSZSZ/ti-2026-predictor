@@ -136,18 +136,26 @@ class RosterInterval(StrictModel):
 class MatchSnapshot(StrictModel):
     match_id: int = Field(gt=0)
     league_id: int | None = None
+    league_name: str | None = None
+    league_tier: str = "unknown"
     series_id: int | None = None
     series_type: int | None = None
     start_time: datetime
     radiant_team_id: int | None = None
+    radiant_team_name: str | None = None
     dire_team_id: int | None = None
+    dire_team_name: str | None = None
     radiant_win: bool | None = None
     duration: int | None = Field(default=None, ge=0)
     patch: int | None = None
+    patch_name: str | None = None
     radiant_score: int | None = Field(default=None, ge=0)
     dire_score: int | None = Field(default=None, ge=0)
     data_source: str = "opendota"
+    is_pro_match: bool = False
     source_sha256: str
+    league_source_sha256: str | None = None
+    patch_source_sha256: str | None = None
     fetched_at: datetime
     as_of: datetime
 
@@ -166,7 +174,7 @@ class MatchSnapshot(StrictModel):
         return self
 
 
-class FantasyObservation(StrictModel):
+class FantasyPerformanceSample(StrictModel):
     match_id: int = Field(gt=0)
     series_id: int | None = None
     account_id: int = Field(gt=0)
@@ -181,7 +189,7 @@ class FantasyObservation(StrictModel):
     _utc_times = field_validator("start_time", "as_of", mode="before")(as_utc)
 
     @model_validator(mode="after")
-    def reject_future_observation(self) -> FantasyObservation:
+    def reject_future_observation(self) -> FantasyPerformanceSample:
         if self.start_time > self.as_of:
             raise ValueError("fantasy observation starts after as_of")
         missing_provenance = set(self.stats) - set(self.provenance)

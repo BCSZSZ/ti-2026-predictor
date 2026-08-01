@@ -1,0 +1,57 @@
+[project]
+name = "ti-predictor"
+version = "0.1.0"
+description = "Reproducible local decision support for TI 2026 in-game Predictions and Fantasy"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "duckdb>=1.3,<2",
+  "httpx>=0.28,<1",
+  "numpy>=2.1,<3",
+  "pandas>=2.2,<3",
+  "plotly>=6,<7",
+  "pyarrow>=18,<24",
+  "pydantic>=2.10,<3",
+  "pydantic-settings>=2.7,<3",
+  "pyyaml>=6,<7",
+  "scikit-learn>=1.6,<2",
+  "scipy>=1.15,<2",
+  "streamlit>=1.42,<2",
+  "tenacity>=9,<10",
+  "typer>=0.15,<1",
+]
+
+[project.optional-dependencies]
+ocr = [
+  "onnxruntime>=1.20,<2",
+  "pillow>=11,<13",
+  "rapidocr>=3.0,<4",
+]
+dev = [
+  "hypothesis>=6.120,<7",
+  "pytest>=8.3,<10",
+  "pytest-cov>=6,<8",
+  "respx>=0.22,<1",
+  "ruff>=0.9,<1",
+]
+
+[project.scripts]
+ti = "ti_predictor.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ti_predictor"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

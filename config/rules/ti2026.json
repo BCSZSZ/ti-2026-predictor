@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "event": {
+    "event_id": "international_2026",
+    "league_id": 19719,
+    "rules_version": "client-2026-07-31",
+    "group_lock_at": "2026-08-13T02:00:00Z",
+    "main_lock_at": "2026-08-20T02:00:00Z",
+    "nominal_total_points": 48000
+  },
+  "prediction": {
+    "group": {
+      "slots": [
+        {"id": "four_zero", "label": "4-0", "count": 1},
+        {"id": "four_one", "label": "4-1", "count": 2},
+        {"id": "elimination_winner", "label": "淘汰轮胜者", "count": 5},
+        {"id": "elimination_loser", "label": "淘汰轮败者", "count": 5},
+        {"id": "one_four", "label": "1-4", "count": 2},
+        {"id": "zero_four", "label": "0-4", "count": 1}
+      ],
+      "cumulative_points": [0, 30, 60, 120, 360, 720, 1200, 1800, 2520, 3360, 4320, 5400, 6600, 7920, 9360, 10920, 12000]
+    },
+    "main": {
+      "nodes": 14,
+      "cumulative_points": [0, 120, 360, 720, 1200, 1800, 2520, 3360, 4320, 5400, 6600, 7920, 9360, 10920, 12000]
+    }
+  },
+  "fantasy": {
+    "periods": [
+      {"id": "group", "index": 0, "banner_slots": 3, "new_rolls": 40, "carried_slots": []},
+      {"id": "main", "index": 1, "banner_slots": 5, "new_rolls": 30, "carried_slots": [1, 2, 3]}
+    ],
+    "role_banners": {
+      "core": ["red", "green", "red", "green", "red"],
+      "mid": ["red", "blue", "green", "red", "green"],
+      "support": ["blue", "green", "blue", "green", "blue"]
+    },
+    "role_scoring": {
+      "core": {"selection": "team_duo", "aggregate_players": "mean"},
+      "mid": {"selection": "team_mid", "aggregate_players": "identity"},
+      "support": {"selection": "team_duo", "aggregate_players": "mean"},
+      "series": "sum_top_two_games",
+      "period": "maximum_series"
+    },
+    "stats": {
+      "kills": {"label": "击杀", "color": "red", "mode": "linear", "factor": 1.07, "source": "kills", "provenance": "exact"},
+      "deaths": {"label": "死亡", "color": "red", "mode": "inverse", "base": 19.50, "factor": 1.95, "floor": 0.0, "source": "deaths", "provenance": "exact"},
+      "creep_score": {"label": "正补与反补", "color": "red", "mode": "linear", "factor": 0.03, "source": "last_hits+denies", "provenance": "derived"},
+      "gpm": {"label": "GPM", "color": "red", "mode": "linear", "factor": 0.02, "source": "gold_per_min", "provenance": "exact"},
+      "madstone_collected": {"label": "魔石拾取", "color": "red", "mode": "linear", "factor": 0.13, "source": "item_uses.madstone_bundle", "provenance": "proxy"},
+      "tower_kills": {"label": "防御塔最后一击", "color": "red", "mode": "linear", "factor": 3.52, "source": "towers_killed", "provenance": "exact"},
+      "wards_placed": {"label": "假眼放置", "color": "blue", "mode": "linear", "factor": 1.17, "source": "obs_placed", "provenance": "exact"},
+      "camps_stacked": {"label": "堆叠野怪营地", "color": "blue", "mode": "linear", "factor": 2.34, "source": "camps_stacked", "provenance": "exact"},
+      "runes_grabbed": {"label": "神符拾取", "color": "blue", "mode": "linear", "factor": 1.41, "source": "rune_pickups", "provenance": "exact"},
+      "smokes_used": {"label": "诡计之雾使用", "color": "blue", "mode": "linear", "factor": 2.93, "source": "item_uses.smoke_of_deceit", "provenance": "proxy"},
+      "watchers_taken": {"label": "瞭望台占领", "color": "blue", "mode": "linear", "factor": 1.47, "source": "ability_uses.ability_lamp_use", "provenance": "proxy"},
+      "lotuses_gained": {"label": "莲花拾取", "color": "blue", "mode": "linear", "factor": 1.76, "source": "item_uses.famango+great_famango+greater_famango", "provenance": "proxy"},
+      "roshan_kills": {"label": "Roshan 击杀", "color": "green", "mode": "linear", "factor": 11.72, "source": "roshans_killed", "provenance": "exact"},
+      "teamfight_participation": {"label": "团战参与", "color": "green", "mode": "linear", "factor": 21.24, "cap": 21.24, "source": "teamfight_participation", "provenance": "exact"},
+      "first_blood": {"label": "第一滴血", "color": "green", "mode": "linear", "factor": 19.34, "source": "firstblood_claimed", "provenance": "exact"},
+      "stuns": {"label": "眩晕秒数", "color": "green", "mode": "linear", "factor": 0.10, "source": "stuns", "provenance": "exact"},
+      "tormentor_kills": {"label": "魔方击杀", "color": "green", "mode": "linear", "factor": 8.79, "source": "killed.npc_dota_miniboss", "provenance": "proxy"},
+      "courier_kills": {"label": "信使击杀", "color": "green", "mode": "linear", "factor": 7.03, "source": "courier_kills", "provenance": "exact"}
+    },
+    "qualities": [
+      {"tier": 1, "bonus_percent": 10, "roll_weight": 10},
+      {"tier": 2, "bonus_percent": 30, "roll_weight": 20},
+      {"tier": 3, "bonus_percent": 60, "roll_weight": 10},
+      {"tier": 4, "bonus_percent": 100, "roll_weight": 5},
+      {"tier": 5, "bonus_percent": 150, "roll_weight": 2}
+    ],
+    "traits": [
+      {"id": "fractal", "condition": "all_qualities_distinct", "self_bonus_percent": 60, "adjacent_bonus_percent": 0},
+      {"id": "benevolent", "condition": "always", "self_bonus_percent": 0, "adjacent_bonus_percent": 20},
+      {"id": "vampiric", "condition": "always", "self_bonus_percent": 50, "adjacent_bonus_percent": -10},
+      {"id": "unique", "condition": "only_unique_trait", "self_bonus_percent": 30, "adjacent_bonus_percent": 0},
+      {"id": "friendly", "condition": "at_least_three_friendly", "self_bonus_percent": 50, "adjacent_bonus_percent": 0}
+    ],
+    "coach": {
+      "prefixes": [
+        {"id": "crimson", "label": "红色英雄", "bonus_percent": 6, "condition": "hero_red", "verified": true},
+        {"id": "cerulean", "label": "蓝色英雄", "bonus_percent": 11, "condition": "hero_blue", "verified": true},
+        {"id": "emerald", "label": "绿色英雄", "bonus_percent": 6, "condition": "hero_green", "verified": true},
+        {"id": "royal", "label": "紫色英雄", "bonus_percent": 10, "condition": "hero_purple", "verified": true},
+        {"id": "golden", "label": "黄色或棕色英雄", "bonus_percent": 8, "condition": "hero_yellow_or_brown", "verified": true},
+        {"id": "elemental", "label": "水/火/冰英雄", "bonus_percent": 8, "condition": "hero_elemental", "verified": true},
+        {"id": "otherworldly", "label": "亡灵/恶魔/精魂英雄", "bonus_percent": 7, "condition": "hero_otherworldly", "verified": true},
+        {"id": "heroic", "label": "披风或面具英雄", "bonus_percent": 9, "condition": "hero_masked_or_cloaked", "verified": true}
+      ],
+      "suffixes": [
+        {"id": "tormented", "label": "有人死于魔方", "bonus_percent": 23, "condition": "match_deaths_to_tormentor", "verified": true},
+        {"id": "early_first_blood", "label": "号角前或一分钟内一血", "bonus_percent": 9, "condition": "first_blood_before_horn_or_minute", "verified": true},
+        {"id": "late_first_blood", "label": "迟到的一血", "bonus_percent": 23, "condition": "first_blood_after_6_or_10_minutes", "verified": false},
+        {"id": "loser", "label": "所选队伍输掉单局", "bonus_percent": 6, "condition": "team_lose", "verified": true},
+        {"id": "quick", "label": "比赛少于 25 分钟", "bonus_percent": 24, "condition": "duration_under_25", "verified": true},
+        {"id": "clutch", "label": "系列赛最后可能进行的一局", "bonus_percent": 16, "condition": "last_possible_game", "verified": true},
+        {"id": "lucky", "label": "比赛时间以 8 结尾", "bonus_percent": 21, "condition": "duration_ends_8", "verified": true},
+        {"id": "fountain", "label": "有人在己方泉水阵亡", "bonus_percent": 13, "condition": "kill_in_enemy_fountain", "verified": true}
+      ]
+    },
+    "period_point_cap": 12000
+  },
+  "conflicts": [
+    {
+      "id": "late_first_blood_threshold",
+      "severity": "blocking_for_feature",
+      "internal": "first_blood_after_6_minutes",
+      "localized": "after 10 minutes",
+      "policy": "exclude_from_publishable_default"
+    },
+    {
+      "id": "fantasy_percentile_tables",
+      "severity": "warning",
+      "internal": "legacy 25/50/75/... action thresholds",
+      "localized": "10/20/40/60/80/90/95/99/100",
+      "policy": "optimize_raw_fantasy_points"
+    }
+  ]
+}

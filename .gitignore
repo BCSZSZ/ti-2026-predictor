@@ -1,0 +1,28 @@
+.venv/
+.uv-cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.streamlit/secrets.toml
+.env
+
+# Local data and generated runs
+data/raw/
+data/processed/
+data/cache/
+data/*.duckdb
+data/*.wal
+artifacts/*
+!artifacts/.gitkeep
+
+# User screenshots and OCR models
+screenshots/
+.ocr-models/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

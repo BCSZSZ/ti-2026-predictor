@@ -1,0 +1,52 @@
+# TI 2026 游戏内预测决策台
+
+这是一个只在本机运行、可复现的 TI 2026 游戏内活动辅助工具。它覆盖：
+
+- 小组赛 16 项预测；
+- 主赛事 14 节点双败预测；
+- 2026 新版 Fantasy（核心双人组、中单、辅助双人组、战旗与教练）；
+- 规则、数据覆盖、时间泄漏和运行产物审计。
+
+LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统计模型和固定随机种子产生。
+
+## 快速开始
+
+```powershell
+uv sync --extra dev
+uv run ti rules snapshot --as-of 2026-08-12T23:00:00Z
+uv run ti rules validate
+uv run ti data sync --as-of 2026-08-12T23:00:00Z --team-detail-limit 20
+uv run ti forecast group --as-of 2026-08-12T23:00:00Z --profile all
+uv run ti fantasy recommend --as-of 2026-08-12T23:00:00Z --period group --profile all
+uv run ti web
+```
+
+默认网页只监听 `127.0.0.1`。首次同步会访问 OpenDota；测试永远不访问实时 API。
+数据同步默认补齐当前 16 队每队最近 20 场逐场详情，并按 `match_id` 断点续传；可用
+`--team-detail-limit 0` 只保留队伍历史摘要。
+
+完整操作顺序、主赛事种子导入和状态含义见 [docs/runbook.md](docs/runbook.md)。模型的时间
+切分、覆盖门槛和三种目标见 [docs/modeling.md](docs/modeling.md)。
+
+## 可选 OCR
+
+```powershell
+uv sync --extra dev --extra ocr
+uv run ti ocr inspect path\to\fantasy-screenshot.png
+```
+
+OCR 结果只生成待确认草稿，不控制 Steam，也不会自动提交游戏内选择。
+
+## 数据与发布状态
+
+- 原始响应、抓取元数据和哈希保存在 `data/raw/`。
+- 规范化 Parquet 和 DuckDB 保存在 `data/processed/` 与 `data/ti.duckdb`。
+- 每次推荐写入 `artifacts/<run_id>/`，包括输入哈希、Git 版本、模型参数、随机种子和审计结论。
+- 当规则、阵容或关键数据覆盖不满足要求时，结果状态为 `blocked`，不能作为可发布推荐。
+
+## 当前边界
+
+- 瑞士轮完整配对细则尚未发布，因此小组结果包含三种合法容量情景的敏感度警告。
+- 主赛事实际八队与种子未写入前，14 节点网格会生成但保持 `blocked`。
+- Fantasy 默认只用 `exact/derived` 字段；魔石、烟雾、瞭望台、莲花和魔方代理字段不参与默认最优解。
+- OCR 是可选第二阶段，只输出需要人工确认的草稿。

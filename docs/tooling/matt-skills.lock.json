@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/mattpocock/skills",
+  "commit": "2ab958093e83e0ec752e6c1c5932da465bf23e0c",
+  "installed_at": "2026-08-01",
+  "skills": [
+    "setup-matt-pocock-skills",
+    "research",
+    "domain-modeling",
+    "diagnosing-bugs"
+  ],
+  "setup": {
+    "issue_tracker": "local_markdown",
+    "domain_contexts": ["docs/agents/domain.md"],
+    "tracker_file": "docs/agents/issue-tracker.md"
+  }
+}

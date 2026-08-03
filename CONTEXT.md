@@ -46,6 +46,27 @@ The Dota gameplay version active when a Game started, derived from OpenDota's pa
 the match response does not provide it directly.
 _Avoid_: API version, replay parser version
 
+**Major gameplay patch / 游戏大版本**:
+The normalized Patch family used to compare model evidence: lettered hotfixes share their numeric
+family (`7.41d` and `7.41e` are `7.41`), while `7.41` and `7.42` are different families.
+_Avoid_: Exact hotfix Patch, calendar year, API version
+
+**Game evidence weight / 单局证据权重**:
+A preregistered non-negative measure of how much one historical Game informs a Forecast, based
+only on its Major gameplay patch, League tier and age at the run's `as_of`.
+_Avoid_: Sampling probability, confidence score, post-hoc performance adjustment
+
+**Target-team evidence network / 目标队证据网络**:
+The union of connected components in the positive-weight, `as_of`-prior professional Game graph
+that contain a declared Forecast target team. It recursively includes opponents while excluding
+disconnected competition ecosystems.
+_Avoid_: Target-team-only history, complete professional catalog, current-team history
+
+**Tournament holdout / 赛事留出集**:
+A complete tournament excluded from model fitting and parameter selection, then evaluated only
+after the candidate model and evaluation protocol are locked.
+_Avoid_: Calibration window, rolling validation window, training tournament
+
 **Data snapshot / 数据快照**:
 An immutable view of raw and normalized evidence available at a fixed collection time.
 _Avoid_: Forecast run

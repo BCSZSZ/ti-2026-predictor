@@ -41,6 +41,10 @@ class ProjectPaths:
         return self.data / "processed"
 
     @property
+    def cache(self) -> Path:
+        return self.data / "cache"
+
+    @property
     def database(self) -> Path:
         return self.data / "ti.duckdb"
 
@@ -49,7 +53,7 @@ class ProjectPaths:
         return self.root / "artifacts"
 
     def ensure_runtime_dirs(self) -> None:
-        for path in (self.raw, self.processed, self.artifacts):
+        for path in (self.raw, self.processed, self.cache, self.artifacts):
             path.mkdir(parents=True, exist_ok=True)
 
 

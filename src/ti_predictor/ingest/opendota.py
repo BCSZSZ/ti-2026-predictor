@@ -65,7 +65,14 @@ FANTASY_SAMPLE_BASE_COLUMNS = (
     "source_sha256",
     "as_of",
     "duration",
+    "assists",
+    "team_total_kills",
 )
+
+DEFAULT_OPENDOTA_RUN_REQUEST_LIMIT = 5_000
+DEFAULT_OPENDOTA_MONTHLY_REQUEST_LIMIT = 50_000
+OPENDOTA_USAGE_LEDGER_VERSION = 1
+RETRYABLE_HTTP_STATUSES = frozenset({500, 502, 503, 504})
 
 
 @dataclass
@@ -81,6 +88,8 @@ class SyncResult:
     pro_match_count: int
     fantasy_sample_count: int
     detailed_match_count: int
+    request_attempts: int
+    monthly_keyed_request_attempts: int | None
     data_sha256: str
     issues: list[AuditIssue] = field(default_factory=list)
 
@@ -110,6 +119,8 @@ class FantasyHistorySyncResult:
     failed_details: int
     remaining_details: int
     rate_limit_remaining_day: int | None
+    request_attempts: int
+    monthly_keyed_request_attempts: int | None
     data_sha256: str
     issues: list[AuditIssue] = field(default_factory=list)
 
@@ -132,8 +143,36 @@ class MatchCandidate:
     is_pro_match: bool = False
 
 
-class OpenDotaDailyBudgetExhausted(RuntimeError):
+class OpenDotaError(RuntimeError):
+    """A sanitized OpenDota client error that never includes the API key."""
+
+
+class OpenDotaSafetyStop(OpenDotaError):
+    """Stop all outbound OpenDota requests for the current run."""
+
+
+class OpenDotaDailyBudgetExhausted(OpenDotaSafetyStop):
     """Stop a resumable sync before consuming the caller's daily request reserve."""
+
+
+class OpenDotaRunBudgetExhausted(OpenDotaSafetyStop):
+    """Stop after the configured number of outbound attempts in one process."""
+
+
+class OpenDotaMonthlyBudgetExhausted(OpenDotaSafetyStop):
+    """Stop before the local monthly paid-request ceiling can be exceeded."""
+
+
+class OpenDotaRequestLoopDetected(OpenDotaSafetyStop):
+    """Stop when a successful request would be repeated during one client run."""
+
+
+class OpenDotaUsageLedgerError(OpenDotaSafetyStop):
+    """Fail closed when the paid-request ledger cannot be trusted or locked."""
+
+
+class OpenDotaRequestError(OpenDotaError):
+    """A bounded request failed without exposing credentials in its message."""
 
 
 class OpenDotaClient:
@@ -146,20 +185,63 @@ class OpenDotaClient:
         min_interval_seconds: float = 1.05,
         rate_limit_pause_seconds: float = 61.0,
         daily_request_reserve: int = 0,
+        run_request_limit: int = DEFAULT_OPENDOTA_RUN_REQUEST_LIMIT,
+        monthly_request_limit: int | None = None,
+        usage_ledger_path: Path | None = None,
+        max_attempts: int = 4,
+        retry_base_seconds: float = 1.0,
+        retry_max_seconds: float = 8.0,
         sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
         self.base_url = base_url.rstrip("/")
-        self.api_key = api_key or os.getenv("OPENDOTA_API_KEY")
+        configured_key = api_key if api_key is not None else os.getenv("OPENDOTA_API_KEY")
+        self.api_key = configured_key.strip() if configured_key and configured_key.strip() else None
         self.client = client or httpx.Client(timeout=45.0, headers={"User-Agent": "ti-predictor/0.1"})
         self._owns_client = client is None
         self.min_interval_seconds = max(0.0, min_interval_seconds)
         self.rate_limit_pause_seconds = max(1.0, rate_limit_pause_seconds)
         self.daily_request_reserve = max(0, daily_request_reserve)
+        if run_request_limit < 1:
+            raise ValueError("OpenDota run_request_limit must be positive")
+        self.run_request_limit = run_request_limit
+        self.monthly_request_limit = self._monthly_limit(monthly_request_limit)
+        self.usage_ledger_path = usage_ledger_path or PATHS.cache / "opendota_api_usage.json"
+        if not 1 <= max_attempts <= 4:
+            raise ValueError("OpenDota max_attempts must be between 1 and 4")
+        self.max_attempts = max_attempts
+        self.retry_base_seconds = max(0.0, retry_base_seconds)
+        self.retry_max_seconds = max(self.retry_base_seconds, retry_max_seconds)
         self._sleep = sleeper
         self._last_request = 0.0
         self._next_request_delay = 0.0
+        self._successful_request_signatures: set[tuple[str, tuple[tuple[str, str], ...]]] = set()
+        self.request_attempts = 0
+        self.monthly_keyed_request_attempts: int | None = None
         self.rate_limit_remaining_minute: int | None = None
         self.rate_limit_remaining_day: int | None = None
+
+    @staticmethod
+    def _monthly_limit(explicit_limit: int | None) -> int:
+        value: int
+        if explicit_limit is not None:
+            value = explicit_limit
+        else:
+            configured = os.getenv("OPENDOTA_MONTHLY_REQUEST_LIMIT")
+            if configured is None or not configured.strip():
+                value = DEFAULT_OPENDOTA_MONTHLY_REQUEST_LIMIT
+            else:
+                try:
+                    value = int(configured)
+                except ValueError:
+                    raise ValueError("OPENDOTA_MONTHLY_REQUEST_LIMIT must be a positive integer") from None
+        if value < 1:
+            raise ValueError("OpenDota monthly_request_limit must be positive")
+        if value > DEFAULT_OPENDOTA_MONTHLY_REQUEST_LIMIT:
+            raise ValueError(
+                "OpenDota monthly_request_limit cannot exceed the repository budget ceiling "
+                f"of {DEFAULT_OPENDOTA_MONTHLY_REQUEST_LIMIT}"
+            )
+        return value
 
     def close(self) -> None:
         if self._owns_client:
@@ -205,13 +287,139 @@ class OpenDotaClient:
         self.rate_limit_remaining_minute = self._header_int(response, "X-Rate-Limit-Remaining-Minute")
         self.rate_limit_remaining_day = self._header_int(response, "X-Rate-Limit-Remaining-Day")
 
+    @staticmethod
+    def _request_signature(
+        resource: str, query: dict[str, int | str]
+    ) -> tuple[str, tuple[tuple[str, str], ...]]:
+        normalized_resource = resource.lstrip("/")
+        normalized_query = tuple(sorted((str(key), str(value)) for key, value in query.items()))
+        return normalized_resource, normalized_query
+
+    @staticmethod
+    def _empty_usage_ledger() -> dict[str, Any]:
+        return {"version": OPENDOTA_USAGE_LEDGER_VERSION, "months": {}}
+
+    def _read_usage_ledger(self) -> dict[str, Any]:
+        if not self.usage_ledger_path.is_file():
+            return self._empty_usage_ledger()
+        try:
+            payload = json.loads(self.usage_ledger_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            raise OpenDotaUsageLedgerError(
+                "OpenDota paid-request ledger is unreadable; refusing keyed requests"
+            ) from None
+        if (
+            not isinstance(payload, dict)
+            or payload.get("version") != OPENDOTA_USAGE_LEDGER_VERSION
+            or not isinstance(payload.get("months"), dict)
+        ):
+            raise OpenDotaUsageLedgerError(
+                "OpenDota paid-request ledger has an invalid format; refusing keyed requests"
+            )
+        return payload
+
+    def _reserve_monthly_keyed_attempt(self) -> None:
+        try:
+            self.usage_ledger_path.parent.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            raise OpenDotaUsageLedgerError(
+                "OpenDota paid-request ledger directory cannot be created; refusing keyed requests"
+            ) from None
+        lock_path = self.usage_ledger_path.with_suffix(f"{self.usage_ledger_path.suffix}.lock")
+        try:
+            lock_descriptor = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            raise OpenDotaUsageLedgerError(
+                "OpenDota paid-request ledger is locked by another sync or a stale lock; "
+                "refusing keyed requests"
+            ) from None
+        except OSError:
+            raise OpenDotaUsageLedgerError(
+                "OpenDota paid-request ledger cannot be locked; refusing keyed requests"
+            ) from None
+
+        try:
+            with os.fdopen(lock_descriptor, "w", encoding="utf-8") as lock_file:
+                json.dump({"pid": os.getpid(), "acquired_at": utc_now().isoformat()}, lock_file)
+            ledger = self._read_usage_ledger()
+            month_key = utc_now().strftime("%Y-%m")
+            month_payload = ledger["months"].get(month_key, {})
+            if not isinstance(month_payload, dict):
+                raise OpenDotaUsageLedgerError(
+                    "OpenDota paid-request ledger has an invalid month entry; refusing keyed requests"
+                )
+            current = month_payload.get("keyed_request_attempts", 0)
+            if isinstance(current, bool) or not isinstance(current, int) or current < 0:
+                raise OpenDotaUsageLedgerError(
+                    "OpenDota paid-request ledger has an invalid counter; refusing keyed requests"
+                )
+            if current >= self.monthly_request_limit:
+                raise OpenDotaMonthlyBudgetExhausted(
+                    "OpenDota monthly keyed-request limit reached "
+                    f"({current}/{self.monthly_request_limit} attempts in UTC {month_key})"
+                )
+            next_count = current + 1
+            ledger["months"][month_key] = {
+                "keyed_request_attempts": next_count,
+                "updated_at": utc_now().isoformat(),
+            }
+            temporary_path = self.usage_ledger_path.with_name(f".{self.usage_ledger_path.name}.tmp")
+            try:
+                temporary_path.write_text(
+                    json.dumps(ledger, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                os.replace(temporary_path, self.usage_ledger_path)
+            except OSError:
+                raise OpenDotaUsageLedgerError(
+                    "OpenDota paid-request ledger cannot be updated; refusing keyed requests"
+                ) from None
+            self.monthly_keyed_request_attempts = next_count
+        finally:
+            try:
+                lock_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    def _reserve_request_attempt(self) -> None:
+        if self.request_attempts >= self.run_request_limit:
+            raise OpenDotaRunBudgetExhausted(
+                "OpenDota run request limit reached "
+                f"({self.request_attempts}/{self.run_request_limit} attempts)"
+            )
+        if self.api_key:
+            self._reserve_monthly_keyed_attempt()
+        self.request_attempts += 1
+
+    def _retry_delay(self, attempt: int) -> float:
+        return min(self.retry_base_seconds * (2**attempt), self.retry_max_seconds)
+
     def get_json(self, resource: str, *, query: dict[str, int | str] | None = None) -> tuple[Any, datetime]:
-        params: dict[str, int | str] = dict(query or {})
+        safe_resource = resource.lstrip("/")
+        request_query: dict[str, int | str] = dict(query or {})
+        if "?" in safe_resource or "#" in safe_resource:
+            raise ValueError("OpenDota resource must not contain a query string or fragment")
+        if any(str(key).casefold() == "api_key" for key in request_query):
+            raise ValueError("Configure the OpenDota api_key on the client, not in request query data")
+        signature = self._request_signature(safe_resource, request_query)
+        if (
+            self.rate_limit_remaining_day is not None
+            and self.rate_limit_remaining_day <= self.daily_request_reserve
+        ):
+            raise OpenDotaDailyBudgetExhausted(
+                "OpenDota daily request reserve reached "
+                f"({self.rate_limit_remaining_day} remaining, reserve {self.daily_request_reserve})"
+            )
+        if signature in self._successful_request_signatures:
+            raise OpenDotaRequestLoopDetected(
+                f"OpenDota repeated successful request detected for {safe_resource}; stopping"
+            )
+
+        params = dict(request_query)
         if self.api_key:
             params["api_key"] = self.api_key
-        url = f"{self.base_url}/{resource.lstrip('/')}"
-        last_error: Exception | None = None
-        for attempt in range(4):
+        url = f"{self.base_url}/{safe_resource}"
+        for attempt in range(self.max_attempts):
             if (
                 self.rate_limit_remaining_day is not None
                 and self.rate_limit_remaining_day <= self.daily_request_reserve
@@ -221,30 +429,49 @@ class OpenDotaClient:
                     f"({self.rate_limit_remaining_day} remaining, "
                     f"reserve {self.daily_request_reserve})"
                 )
+            self._reserve_request_attempt()
             self._throttle()
             try:
                 response = self.client.get(url, params=params)
-            except (httpx.TimeoutException, httpx.NetworkError) as error:
-                last_error = error
-                if attempt == 3:
-                    raise
-                self._sleep(min(0.5 * (2**attempt), 8.0))
+            except httpx.RequestError:
+                self._last_request = time.monotonic()
+                if attempt == self.max_attempts - 1:
+                    raise OpenDotaRequestError(
+                        f"OpenDota network request failed after {self.max_attempts} attempts "
+                        f"for {safe_resource}"
+                    ) from None
+                self._sleep(self._retry_delay(attempt))
                 continue
             self._last_request = time.monotonic()
             self._capture_rate_limits(response)
             if response.status_code == 429:
                 if response.headers.get("X-Rate-Limit-Remaining-Day") == "0":
-                    raise httpx.NetworkError("OpenDota daily rate limit reached; configure OPENDOTA_API_KEY")
-                last_error = httpx.NetworkError("OpenDota minute rate limit reached")
-                if attempt == 3:
-                    raise last_error
+                    raise OpenDotaDailyBudgetExhausted("OpenDota daily rate limit reached")
+                if attempt == self.max_attempts - 1:
+                    raise OpenDotaRequestError(
+                        f"OpenDota HTTP 429 persisted for {safe_resource} after {self.max_attempts} attempts"
+                    )
                 self._sleep(self._rate_limit_delay(response))
                 continue
-            response.raise_for_status()
+            if response.status_code in RETRYABLE_HTTP_STATUSES:
+                if attempt == self.max_attempts - 1:
+                    raise OpenDotaRequestError(
+                        f"OpenDota HTTP {response.status_code} persisted for {safe_resource} "
+                        f"after {self.max_attempts} attempts"
+                    )
+                self._sleep(self._retry_delay(attempt))
+                continue
+            if not 200 <= response.status_code < 300:
+                raise OpenDotaRequestError(f"OpenDota HTTP {response.status_code} for {safe_resource}")
             if response.headers.get("X-Rate-Limit-Remaining-Minute") == "0":
                 self._next_request_delay = self.rate_limit_pause_seconds
-            return response.json(), utc_now()
-        raise RuntimeError("OpenDota request retry loop exhausted") from last_error
+            try:
+                payload = response.json()
+            except ValueError:
+                raise OpenDotaRequestError(f"OpenDota returned invalid JSON for {safe_resource}") from None
+            self._successful_request_signatures.add(signature)
+            return payload, utc_now()
+        raise OpenDotaRequestError(f"OpenDota retry loop exhausted for {safe_resource}")
 
     def league_matches(self, league_id: int) -> tuple[list[dict[str, Any]], datetime]:
         payload, fetched_at = self.get_json(f"leagues/{league_id}/matches")
@@ -337,7 +564,43 @@ def _mapping_sum(player: dict[str, Any], mapping: str, keys: Iterable[str]) -> f
     return total if seen else None
 
 
-def extract_fantasy_stats(player: dict[str, Any]) -> dict[str, float | None]:
+def _team_total_kills(payload: dict[str, Any], player_slot: int) -> float | None:
+    score_key = "dire_score" if player_slot >= 128 else "radiant_score"
+    score = _number(payload.get(score_key))
+    if score is not None:
+        return score
+
+    players = [
+        item
+        for item in payload.get("players") or []
+        if (int(item.get("player_slot", 0)) >= 128) == (player_slot >= 128)
+    ]
+    if len(players) != 5:
+        return None
+    kills = [_number(item.get("kills")) for item in players]
+    if any(value is None for value in kills):
+        return None
+    return float(sum(value for value in kills if value is not None))
+
+
+def _teamfight_participation(
+    player: dict[str, Any],
+    team_total_kills: float | None,
+) -> float | None:
+    kills = _number(player.get("kills"))
+    assists = _number(player.get("assists"))
+    if kills is None or assists is None or team_total_kills is None or team_total_kills < 0:
+        return None
+    if team_total_kills == 0:
+        return None
+    return (kills + assists) / team_total_kills
+
+
+def extract_fantasy_stats(
+    player: dict[str, Any],
+    *,
+    team_total_kills: float | None = None,
+) -> dict[str, float | None]:
     last_hits = _number(player.get("last_hits"))
     denies = _number(player.get("denies"))
     creep_score = last_hits + denies if last_hits is not None and denies is not None else None
@@ -366,7 +629,7 @@ def extract_fantasy_stats(player: dict[str, Any]) -> dict[str, float | None]:
             ),
         ),
         "roshan_kills": _number(player.get("roshans_killed")),
-        "teamfight_participation": _number(player.get("teamfight_participation")),
+        "teamfight_participation": _teamfight_participation(player, team_total_kills),
         "first_blood": _number(player.get("firstblood_claimed")),
         "stuns": _number(player.get("stuns")),
         "tormentor_kills": _mapping_value(player, "killed", "npc_dota_miniboss"),
@@ -436,7 +699,8 @@ def _fantasy_performance_rows(
         player_slot = int(player.get("player_slot", 0))
         team_id = payload.get("dire_team_id") if player_slot >= 128 else payload.get("radiant_team_id")
         roster = roster_index.resolve(int(account_id), start_time)
-        stats = extract_fantasy_stats(player)
+        team_total_kills = _team_total_kills(payload, player_slot)
+        stats = extract_fantasy_stats(player, team_total_kills=team_total_kills)
         observation = FantasyPerformanceSample(
             match_id=int(payload["match_id"]),
             series_id=payload.get("series_id"),
@@ -459,6 +723,8 @@ def _fantasy_performance_rows(
             "source_sha256": observation.source_sha256,
             "as_of": observation.as_of,
             "duration": payload.get("duration"),
+            "assists": _number(player.get("assists")),
+            "team_total_kills": team_total_kills,
         }
         for stat_id, value in observation.stats.items():
             row[stat_id] = value
@@ -478,6 +744,23 @@ def _merge_frames(existing: pd.DataFrame, rows: list[dict[str, Any]], keys: list
     if not combined.empty:
         combined = combined.drop_duplicates(subset=keys, keep="last").sort_values(keys).reset_index(drop=True)
     return combined
+
+
+def _sample_match_ids_with_current_provenance(
+    samples: pd.DataFrame,
+    expected: dict[str, str],
+) -> set[int]:
+    if samples.empty or "match_id" not in samples:
+        return set()
+    current = pd.Series(True, index=samples.index)
+    for stat_id, expected_provenance in expected.items():
+        column = f"{stat_id}_provenance"
+        if column not in samples:
+            return set()
+        current &= samples[column].eq(expected_provenance)
+    valid_ids = samples["match_id"].notna()
+    per_match = current.loc[valid_ids].groupby(samples.loc[valid_ids, "match_id"]).all()
+    return {int(match_id) for match_id, is_current in per_match.items() if is_current}
 
 
 def _merge_rows(path: Path, rows: list[dict[str, Any]], keys: list[str]) -> pd.DataFrame:
@@ -610,6 +893,7 @@ def sync_fantasy_player_history(
     max_matches: int | None = None,
     checkpoint_every: int = 25,
     daily_request_reserve: int = 50,
+    request_limit: int = DEFAULT_OPENDOTA_RUN_REQUEST_LIMIT,
     refresh_details: bool = False,
     client: OpenDotaClient | None = None,
     paths: ProjectPaths = PATHS,
@@ -627,6 +911,8 @@ def sync_fantasy_player_history(
         raise ValueError("Fantasy player history only accepts premium/professional league tiers")
     if checkpoint_every < 1:
         raise ValueError("checkpoint_every must be positive")
+    if request_limit < 1:
+        raise ValueError("request_limit must be positive")
 
     manifest = load_tournament_manifest(paths.tournament)
     manifest_players = _manifest_fantasy_players(manifest)
@@ -665,11 +951,7 @@ def sync_fantasy_player_history(
     catalog_ids = set(catalog_by_id)
 
     existing_samples = read_parquet_if_exists(fantasy_samples_path)
-    existing_sample_ids = (
-        {int(value) for value in existing_samples["match_id"].dropna()}
-        if "match_id" in existing_samples
-        else set()
-    )
+    existing_sample_ids = _sample_match_ids_with_current_provenance(existing_samples, provenance)
     scopes = read_parquet_if_exists(scope_path)
     statuses = read_parquet_if_exists(detail_status_path)
     league_rows = read_parquet_if_exists(leagues_path)
@@ -692,7 +974,11 @@ def sync_fantasy_player_history(
     )
 
     own_client = client is None
-    api = client or OpenDotaClient(daily_request_reserve=daily_request_reserve)
+    api = client or OpenDotaClient(
+        daily_request_reserve=daily_request_reserve,
+        run_request_limit=request_limit,
+        usage_ledger_path=paths.cache / "opendota_api_usage.json",
+    )
     issues: list[AuditIssue] = []
     scope_rows: list[dict[str, Any]] = []
     history_complete = True
@@ -716,7 +1002,7 @@ def sync_fantasy_player_history(
                     )
                 )
                 break
-            except (httpx.HTTPError, OSError, TypeError) as error:
+            except (OpenDotaRequestError, httpx.HTTPError, OSError, TypeError) as error:
                 history_complete = False
                 issues.append(
                     AuditIssue(
@@ -779,6 +1065,10 @@ def sync_fantasy_player_history(
                         "total": len(target_player_ids),
                         "candidate_games": len({int(row["match_id"]) for row in scope_rows}),
                         "remaining_day": getattr(api, "rate_limit_remaining_day", None),
+                        "request_attempts": getattr(api, "request_attempts", 0),
+                        "monthly_keyed_request_attempts": getattr(
+                            api, "monthly_keyed_request_attempts", None
+                        ),
                     }
                 )
 
@@ -886,7 +1176,7 @@ def sync_fantasy_player_history(
                             )
                         )
                         break
-                    except (httpx.HTTPError, OSError, TypeError) as error:
+                    except (OpenDotaRequestError, httpx.HTTPError, OSError, TypeError) as error:
                         failed_details += 1
                         status_buffer.append(
                             {
@@ -986,6 +1276,10 @@ def sync_fantasy_player_history(
                         "reused_raw": reused_raw_details,
                         "skipped_parsed": skipped_parsed_details,
                         "remaining_day": getattr(api, "rate_limit_remaining_day", None),
+                        "request_attempts": getattr(api, "request_attempts", 0),
+                        "monthly_keyed_request_attempts": getattr(
+                            api, "monthly_keyed_request_attempts", None
+                        ),
                     }
                 )
 
@@ -1078,6 +1372,8 @@ def sync_fantasy_player_history(
         failed_details=failed_details,
         remaining_details=remaining_details,
         rate_limit_remaining_day=getattr(api, "rate_limit_remaining_day", None),
+        request_attempts=getattr(api, "request_attempts", 0),
+        monthly_keyed_request_attempts=getattr(api, "monthly_keyed_request_attempts", None),
         data_sha256=store.data_hash(),
         issues=issues,
     )
@@ -1093,10 +1389,13 @@ def sync_opendota(
     team_history_limit: int = 100,
     team_history_detail_limit: int = 20,
     max_matches: int | None = None,
+    request_limit: int = DEFAULT_OPENDOTA_RUN_REQUEST_LIMIT,
     refresh_details: bool = False,
     client: OpenDotaClient | None = None,
     paths: ProjectPaths = PATHS,
 ) -> SyncResult:
+    if request_limit < 1:
+        raise ValueError("request_limit must be positive")
     cutoff = as_utc(as_of)
     manifest = load_tournament_manifest(paths.tournament)
     requested = league_ids or [*manifest.history_league_ids, manifest.league_id]
@@ -1120,13 +1419,12 @@ def sync_opendota(
         if "match_id" in existing_matches
         else set()
     )
-    existing_detail_ids = (
-        {int(value) for value in existing_samples["match_id"].dropna()}
-        if "match_id" in existing_samples
-        else set()
-    )
+    existing_detail_ids = _sample_match_ids_with_current_provenance(existing_samples, provenance)
     own_client = client is None
-    api = client or OpenDotaClient()
+    api = client or OpenDotaClient(
+        run_request_limit=request_limit,
+        usage_ledger_path=paths.cache / "opendota_api_usage.json",
+    )
     match_rows: list[dict[str, Any]] = []
     fantasy_sample_rows: list[dict[str, Any]] = []
     detailed = 0
@@ -1521,6 +1819,8 @@ def sync_opendota(
         pro_match_count=pro_match_count,
         fantasy_sample_count=len(fantasy_samples),
         detailed_match_count=detailed,
+        request_attempts=getattr(api, "request_attempts", 0),
+        monthly_keyed_request_attempts=getattr(api, "monthly_keyed_request_attempts", None),
         data_sha256=store.data_hash(),
         issues=issues,
     )

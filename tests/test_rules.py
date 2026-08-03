@@ -14,7 +14,35 @@ def test_golden_rules_have_expected_shapes(project_paths) -> None:
     assert [slot["count"] for slot in rules["prediction"]["group"]["slots"]] == [1, 2, 5, 5, 2, 1]
     assert len(rules["prediction"]["group"]["cumulative_points"]) == 17
     assert len(rules["prediction"]["main"]["cumulative_points"]) == 15
+    assert rules["prediction"]["group"]["points_table_semantics"] == (
+        "total_event_points_by_correct_prediction_count"
+    )
+    assert rules["prediction"]["main"]["points_table_semantics"] == (
+        "total_event_points_by_correct_prediction_count"
+    )
+    rewards = rules["event"]["final_leaderboard_rewards"]
+    assert [tier["tyrian_regalias"] for tier in rewards["tiers"]] == [5, 2, 1, 0, 0]
+    assert rewards["dota_plus_shards"] == {"points_step": 1000, "shards_per_step": 300}
     assert len(rules["fantasy"]["stats"]) == 18
+    assert rules["fantasy"]["score_unit"] == "client_fantasy_points"
+    assert rules["fantasy"]["stats"]["kills"]["factor"] == 107.0
+    assert rules["fantasy"]["bonus_stacking"]["emblem_quality_and_trait_effects"] == (
+        "additive_percent_of_base_stat_score"
+    )
+    assert rules["fantasy"]["bonus_stacking"]["coach_prefix_and_suffix"] == "multiplicative"
+    coach = rules["fantasy"]["coach"]
+    assert coach["selection"] == {
+        "prefix_count": 1,
+        "suffix_count": 1,
+        "scope": "all_fantasy_players",
+        "bonus_target": "final_game_score",
+        "change_cost_roll_tokens": 0,
+    }
+    suffixes = {item["id"]: item for item in coach["suffixes"]}
+    assert suffixes["early_first_blood"]["condition"] == "first_blood_before_starting_horn"
+    assert suffixes["late_first_blood"]["condition"] == "first_blood_after_10_minutes"
+    assert suffixes["fountain"]["condition"] == "any_player_killed_in_own_fountain"
+    assert rules["fantasy"]["period_rewards"]["between_anchor_mapping"] == ("unknown_do_not_interpolate")
     assert [period["banner_slots"] for period in rules["fantasy"]["periods"]] == [3, 5]
 
 

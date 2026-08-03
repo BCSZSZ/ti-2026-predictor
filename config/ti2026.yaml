@@ -2,6 +2,7 @@ schema_version: 1
 event_id: international_2026
 display_name: The International 2026
 league_id: 19719
+team_strength_policy: models/team-strength-v2.json
 timezone: Asia/Shanghai
 history_league_ids:
   - 18324

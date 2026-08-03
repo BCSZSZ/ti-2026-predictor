@@ -81,6 +81,7 @@ class TournamentManifest(StrictModel):
     event_id: str
     display_name: str
     league_id: int = Field(gt=0)
+    team_strength_policy: str = Field(min_length=1)
     timezone: str
     history_league_ids: list[int] = Field(default_factory=list)
     group_lock_at: datetime

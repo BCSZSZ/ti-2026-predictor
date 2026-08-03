@@ -6,6 +6,7 @@ from ti_predictor.fantasy.scoring import (
     Emblem,
     aggregate_period,
     best_two_games,
+    coach_multiplier,
     duo_game_score,
     emblem_multipliers,
     score_game,
@@ -20,7 +21,10 @@ def test_all_eighteen_stat_rules_are_executable(rules_payload) -> None:
         result = score_stat(1.0, rule)
         assert result is not None, stat_id
         assert result >= 0
-    assert score_stat(3, stats["deaths"]) == pytest.approx(13.65)
+    assert score_stat(3, stats["deaths"]) == pytest.approx(1365.0)
+    assert score_stat(10, stats["deaths"]) == pytest.approx(0.0)
+    assert score_stat(11, stats["deaths"]) == pytest.approx(0.0)
+    assert score_stat(0.75, stats["teamfight_participation"]) == pytest.approx(1593.0)
     assert score_stat(None, stats["kills"]) is None
 
 
@@ -42,7 +46,7 @@ def test_quality_and_traits_apply_to_emblems(rules_payload) -> None:
     assert multipliers == pytest.approx([1.0, 2.0, 1.8])
     stats = {"kills": 10, "gpm": 500, "creep_score": 300}
     assert score_game(stats, emblems, rules_payload) == pytest.approx(
-        10 * 1.07 * 1.0 + 500 * 0.02 * 2.0 + 300 * 0.03 * 1.8
+        10 * 107.0 * 1.0 + 500 * 2.0 * 2.0 + 300 * 3.0 * 1.8
     )
 
 
@@ -55,3 +59,16 @@ def test_fractal_requires_all_distinct_qualities(rules_payload) -> None:
     repeated = [distinct[0], Emblem("gpm", "red", 1), distinct[2]]
     assert emblem_multipliers(distinct, rules_payload)[0] == pytest.approx(1.7)
     assert emblem_multipliers(repeated, rules_payload)[0] == pytest.approx(1.1)
+
+
+def test_coach_and_emblem_bonuses_stack_multiplicatively(rules_payload) -> None:
+    emblems = [Emblem("kills", "red", 1, "unique")]
+    stats = {"kills": 2}
+
+    assert coach_multiplier(10, 20) == pytest.approx(1.32)
+    assert score_game(
+        stats,
+        emblems,
+        rules_payload,
+        coach_bonus_percents=[10, 20],
+    ) == pytest.approx(2 * 107.0 * (1.0 + 0.1 + 0.3) * 1.1 * 1.2)

@@ -7,6 +7,7 @@ __pycache__/
 htmlcov/
 .streamlit/secrets.toml
 .env
+.scratch/
 
 # Local data and generated runs
 data/raw/

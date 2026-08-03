@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import ceil
 from typing import Any
 
 import numpy as np
@@ -19,20 +20,93 @@ class EmpiricalEstimate:
     coverage: float
 
 
-def _weighted_estimate(values: pd.Series, times: pd.Series, as_of) -> EmpiricalEstimate:
+def _weighted_estimate(
+    values: pd.Series,
+    times: pd.Series,
+    as_of,
+    *,
+    evidence_weights: pd.Series | None = None,
+) -> EmpiricalEstimate:
     numeric = pd.to_numeric(values, errors="coerce")
-    coverage = float(numeric.notna().mean()) if len(numeric) else 0.0
-    available = numeric.notna()
+    if evidence_weights is None:
+        eligible = pd.Series(True, index=numeric.index, dtype=bool)
+        normalized_weights = None
+    else:
+        normalized_weights = pd.to_numeric(evidence_weights, errors="coerce").fillna(0.0)
+        eligible = normalized_weights.gt(0.0)
+    coverage = float(numeric.loc[eligible].notna().mean()) if eligible.any() else 0.0
+    available = numeric.notna() & eligible
     if not available.any():
         return EmpiricalEstimate(None, None, 0, coverage)
     value_array = numeric.loc[available].to_numpy(dtype=float)
-    timestamps = pd.to_datetime(times.loc[available], utc=True)
-    age_days = np.maximum(0.0, (pd.Timestamp(as_of) - timestamps).dt.total_seconds().to_numpy() / 86400)
-    weights = np.exp(-np.log(2.0) * age_days / 150.0)
+    if normalized_weights is None:
+        timestamps = pd.to_datetime(times.loc[available], utc=True)
+        age_days = np.maximum(
+            0.0,
+            (pd.Timestamp(as_of) - timestamps).dt.total_seconds().to_numpy() / 86400,
+        )
+        weights = np.exp(-np.log(2.0) * age_days / 150.0)
+    else:
+        weights = normalized_weights.loc[available].to_numpy(dtype=float)
     weight_sum = float(weights.sum())
     mean = float(np.dot(weights, value_array) / weight_sum)
     variance = float(np.dot(weights, (value_array - mean) ** 2) / weight_sum)
     return EmpiricalEstimate(mean, variance**0.5, len(value_array), coverage)
+
+
+def _matching_provenance_values(
+    rows: pd.DataFrame,
+    stat_id: str,
+    expected_provenance: str,
+) -> pd.Series:
+    if stat_id not in rows:
+        return pd.Series(np.nan, index=rows.index, dtype=float)
+    numeric = pd.to_numeric(rows[stat_id], errors="coerce")
+    provenance_column = f"{stat_id}_provenance"
+    if provenance_column not in rows:
+        return pd.Series(np.nan, index=rows.index, dtype=float)
+    return numeric.where(rows[provenance_column].eq(expected_provenance))
+
+
+def _last_possible_game_flags(rows: pd.DataFrame) -> pd.Series:
+    """Mark BO1 game 1, BO2 game 2, BO3 game 3, and BO5 game 5."""
+    result = pd.Series(pd.NA, index=rows.index, dtype="boolean")
+    required = {0: 1, 1: 3, 2: 5, 3: 2}
+    needed = {"match_id", "series_id", "series_type", "start_time"}
+    if rows.empty or not needed.issubset(rows.columns):
+        return result
+    games = rows[list(needed)].drop_duplicates("match_id").copy()
+    games["series_type"] = pd.to_numeric(games["series_type"], errors="coerce")
+    known = games["series_type"].isin(required)
+    if not known.any():
+        return result
+    games = games.loc[known].copy()
+    games["series_key"] = games["series_id"].astype("string")
+    single = games["series_type"].eq(0) | games["series_id"].isna()
+    games.loc[single, "series_key"] = "match:" + games.loc[single, "match_id"].astype("string")
+    games = games.sort_values(["series_key", "start_time", "match_id"])
+    games["game_number"] = games.groupby("series_key", sort=False).cumcount() + 1
+    games["last_possible_game"] = games["game_number"].eq(games["series_type"].astype(int).map(required))
+    by_match = games.set_index("match_id")["last_possible_game"]
+    mapped = rows["match_id"].map(by_match)
+    result.loc[mapped.notna()] = mapped.loc[mapped.notna()].astype(bool)
+    return result
+
+
+def _suffix_activation_values(rows: pd.DataFrame, condition: str) -> pd.Series:
+    if condition == "player_team_loses_game" and "team_win" in rows:
+        values = rows["team_win"].astype("boolean")
+        return (~values).astype("Float64")
+    if condition == "duration_under_25_minutes" and "duration" in rows:
+        duration = pd.to_numeric(rows["duration"], errors="coerce")
+        return duration.lt(1500).where(duration.notna()).astype("Float64")
+    if condition == "displayed_match_time_ends_in_8" and "duration" in rows:
+        duration = pd.to_numeric(rows["duration"], errors="coerce")
+        integer_duration = duration.round().astype("Int64")
+        return integer_duration.mod(10).eq(8).where(duration.notna()).astype("Float64")
+    if condition == "last_possible_game_of_series" and "last_possible_game" in rows:
+        return rows["last_possible_game"].astype("boolean").astype("Float64")
+    return pd.Series(np.nan, index=rows.index, dtype=float)
 
 
 class FantasyRecommender:
@@ -53,8 +127,15 @@ class FantasyRecommender:
         if not self.observations.empty:
             self.observations["start_time"] = pd.to_datetime(self.observations["start_time"], utc=True)
             self.observations = self.observations.loc[
-                self.observations["start_time"] <= pd.Timestamp(self.as_of)
+                (self.observations["start_time"] <= pd.Timestamp(self.as_of))
+                & self.observations["start_time"].dt.year.eq(self.as_of.year)
             ].copy()
+            if "evidence_weight" in self.observations:
+                self.observations["evidence_weight"] = pd.to_numeric(
+                    self.observations["evidence_weight"], errors="coerce"
+                ).fillna(0.0)
+                self.observations = self.observations.loc[self.observations["evidence_weight"].gt(0.0)].copy()
+            self.observations["last_possible_game"] = _last_possible_game_flags(self.observations)
         self.player_roles = {
             player.account_id: role
             for team in manifest.teams
@@ -74,11 +155,12 @@ class FantasyRecommender:
     def coverage(self) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         for stat_id, stat_rule in self.rules["fantasy"]["stats"].items():
-            coverage = (
-                float(self.observations[stat_id].notna().mean())
-                if stat_id in self.observations and len(self.observations)
-                else 0.0
+            values = _matching_provenance_values(
+                self.observations,
+                stat_id,
+                stat_rule["provenance"],
             )
+            coverage = float(values.notna().mean()) if len(values) else 0.0
             rows.append(
                 {
                     "stat_id": stat_id,
@@ -105,8 +187,14 @@ class FantasyRecommender:
             self._player_estimate_cache[cache_key] = result
             return result
         rule = self.rules["fantasy"]["stats"][stat_id]
-        scored = rows[stat_id].map(lambda value: score_stat(value, rule))
-        result = _weighted_estimate(scored, rows["start_time"], self.as_of)
+        values = _matching_provenance_values(rows, stat_id, rule["provenance"])
+        scored = values.map(lambda value: score_stat(value, rule))
+        result = _weighted_estimate(
+            scored,
+            rows["start_time"],
+            self.as_of,
+            evidence_weights=rows.get("evidence_weight"),
+        )
         self._player_estimate_cache[cache_key] = result
         return result
 
@@ -195,11 +283,14 @@ class FantasyRecommender:
         rankings: list[dict[str, Any]] = []
         for team in self.manifest.teams:
             emblems: list[dict[str, Any]] = []
+            used_stats: set[str] = set()
             total_expected = 0.0
             total_objective = 0.0
             for slot_index, color in enumerate(colors, start=1):
                 candidates = [self._team_stat(team, role, stat_id) for stat_id in self._eligible_stats(color)]
-                candidates = [row for row in candidates if row["coverage"] >= 0.5]
+                candidates = [
+                    row for row in candidates if row["coverage"] >= 0.5 and row["stat_id"] not in used_stats
+                ]
                 candidates.sort(key=lambda row: -self._profile_value(row, profile))
                 if not candidates:
                     emblems.append(
@@ -207,6 +298,7 @@ class FantasyRecommender:
                     )
                     continue
                 best = candidates[0]
+                used_stats.add(best["stat_id"])
                 total_expected += float(best["mean"])
                 total_objective += self._profile_value(best, profile)
                 emblems.append(
@@ -242,6 +334,10 @@ class FantasyRecommender:
                     "team_id": team.team_id,
                     "team": team.name,
                     "role": role,
+                    "players": [
+                        {"account_id": player.account_id, "player": player.name}
+                        for player in team.players[role]
+                    ],
                     "expected_raw_points": round(total_expected, 4),
                     "objective": round(total_objective, 4),
                     "emblems": emblems,
@@ -255,14 +351,151 @@ class FantasyRecommender:
             rankings = eligible + ineligible
         return rankings
 
-    def _coach_recommendations(self) -> list[dict[str, Any]]:
+    def stat_priority_guide(self, *, period: str) -> dict[str, Any]:
+        periods = {item["id"]: item for item in self.rules["fantasy"]["periods"]}
+        if period not in periods:
+            raise ValueError(f"unknown Fantasy period: {period}")
+        banner_slots = int(periods[period]["banner_slots"])
+        profile_z = {"stable": -0.85, "expected": 0.0, "upside": 1.65}
+        team_by_id = {team.team_id: team for team in self.manifest.teams}
+        role_guides: dict[str, Any] = {}
+
+        for role in ("core", "mid", "support"):
+            expected_rankings = self._role_rankings(
+                role,
+                StrategyProfile.EXPECTED_POINTS,
+                banner_slots,
+            )
+            cohort_size = max(1, ceil(len(expected_rankings) * 0.25))
+            cohort = expected_rankings[:cohort_size]
+            cohort_teams = [team_by_id[int(item["team_id"])] for item in cohort]
+            colors = list(dict.fromkeys(self.rules["fantasy"]["role_banners"][role][:banner_slots]))
+            color_guides: dict[str, Any] = {}
+
+            for color in colors:
+                summaries: list[dict[str, Any]] = []
+                for stat_id, rule in self.rules["fantasy"]["stats"].items():
+                    if rule["color"] != color:
+                        continue
+                    team_rows = [self._team_stat(team, role, stat_id) for team in cohort_teams]
+                    provenance = str(rule["provenance"])
+                    minimum_coverage = 0.5 if provenance in {"exact", "derived"} else 0.0
+                    usable = [
+                        row
+                        for row in team_rows
+                        if (
+                            float(row["coverage"]) >= minimum_coverage
+                            if minimum_coverage > 0.0
+                            else float(row["coverage"]) > 0.0
+                        )
+                    ]
+                    values: dict[str, float | None] = {}
+                    for name, z_value in profile_z.items():
+                        values[name] = (
+                            float(
+                                np.mean(
+                                    [
+                                        max(
+                                            0.0,
+                                            float(row["mean"]) + z_value * float(row["std"]),
+                                        )
+                                        for row in usable
+                                    ]
+                                )
+                            )
+                            if usable
+                            else None
+                        )
+                    average_coverage = (
+                        float(np.mean([float(row["coverage"]) for row in team_rows])) if team_rows else 0.0
+                    )
+                    summaries.append(
+                        {
+                            "stat_id": stat_id,
+                            "label": rule["label"],
+                            "provenance": provenance,
+                            "coverage": round(average_coverage, 6),
+                            "cohort_teams_with_data": len(usable),
+                            "cohort_team_count": len(cohort_teams),
+                            "default_eligible": (
+                                provenance in {"exact", "derived"}
+                                and len(usable) == len(cohort_teams)
+                                and average_coverage >= 0.5
+                            ),
+                            "values": {
+                                name: None if value is None else round(value, 4)
+                                for name, value in values.items()
+                            },
+                        }
+                    )
+
+                ranked_profiles: dict[str, list[dict[str, Any]]] = {}
+                for name in profile_z:
+                    eligible = [
+                        row
+                        for row in summaries
+                        if row["default_eligible"] and row["values"][name] is not None
+                    ]
+                    eligible.sort(key=lambda row: (-float(row["values"][name]), str(row["stat_id"])))
+                    best_value = float(eligible[0]["values"][name]) if eligible else 0.0
+                    ranked_profiles[name] = [
+                        {
+                            "rank": index,
+                            "stat_id": row["stat_id"],
+                            "label": row["label"],
+                            "score": row["values"][name],
+                            "relative_to_best": round(
+                                float(row["values"][name]) / best_value,
+                                4,
+                            )
+                            if best_value > 0.0
+                            else None,
+                            "coverage": row["coverage"],
+                            "provenance": row["provenance"],
+                        }
+                        for index, row in enumerate(eligible, start=1)
+                    ]
+
+                sensitivity = [
+                    row
+                    for row in summaries
+                    if not row["default_eligible"] and row["values"]["expected"] is not None
+                ]
+                sensitivity.sort(key=lambda row: (-float(row["values"]["expected"]), str(row["stat_id"])))
+                color_guides[color] = {
+                    "profiles": ranked_profiles,
+                    "sensitivity_only": sensitivity,
+                }
+
+            role_guides[role] = {
+                "cohort": [
+                    {
+                        "team_id": int(item["team_id"]),
+                        "team": item["team"],
+                        "players": item["players"],
+                    }
+                    for item in cohort
+                ],
+                "colors": color_guides,
+            }
+
+        return {
+            "period": period,
+            "as_of": self.as_of.isoformat().replace("+00:00", "Z"),
+            "cohort_rule": "top_25_percent_teams_by_expected_role_banner_score",
+            "profiles": {
+                "stable": "mean_minus_0.85_standard_deviations_clipped_at_zero",
+                "expected": "weighted_mean",
+                "upside": "mean_plus_1.65_standard_deviations",
+            },
+            "default_evidence": "exact_or_derived_with_at_least_50_percent_coverage_for_every_cohort_team",
+            "proxy_policy": "report_separately_as_sensitivity_only",
+            "roles": role_guides,
+        }
+
+    def _coach_recommendations(self, selections: dict[str, dict[str, Any] | None]) -> list[dict[str, Any]]:
         suffixes = self.rules["fantasy"]["coach"]["suffixes"]
         results: list[dict[str, Any]] = []
-        durations = (
-            pd.to_numeric(self.observations.get("duration"), errors="coerce")
-            if "duration" in self.observations
-            else pd.Series(dtype=float)
-        )
         for suffix in suffixes:
             if not suffix.get("verified", False):
                 results.append(
@@ -275,28 +508,47 @@ class FantasyRecommender:
                 )
                 continue
             condition = suffix["condition"]
-            activation: float | None = None
-            if condition == "team_lose":
-                activation = 0.5
-            elif condition == "duration_under_25" and len(durations):
-                activation = float((durations < 1500).mean())
-            if activation is None:
+            role_estimates: list[tuple[float, float]] = []
+            observations = 0
+            for selection in selections.values():
+                if not selection:
+                    continue
+                account_ids = [int(item["account_id"]) for item in selection.get("players", [])]
+                role_rows = self.observations.loc[self.observations["account_id"].isin(account_ids)]
+                values = _suffix_activation_values(role_rows, condition)
+                estimate = _weighted_estimate(
+                    values,
+                    role_rows["start_time"],
+                    self.as_of,
+                    evidence_weights=role_rows.get("evidence_weight"),
+                )
+                if estimate.mean is None:
+                    continue
+                role_weight = max(float(selection.get("expected_raw_points", 0.0)), 1.0)
+                role_estimates.append((role_weight, float(estimate.mean)))
+                observations += estimate.observations
+            if not role_estimates:
                 results.append(
                     {
                         "suffix": suffix["id"],
+                        "name": suffix.get("name", suffix["id"]),
                         "label": suffix["label"],
                         "status": "unavailable",
                         "expected_bonus_percent": None,
                     }
                 )
             else:
+                weight_sum = sum(weight for weight, _ in role_estimates)
+                activation = sum(weight * value for weight, value in role_estimates) / weight_sum
                 results.append(
                     {
                         "suffix": suffix["id"],
+                        "name": suffix.get("name", suffix["id"]),
                         "label": suffix["label"],
                         "status": "estimated",
                         "activation_probability": round(activation, 4),
                         "expected_bonus_percent": round(activation * float(suffix["bonus_percent"]), 4),
+                        "observations": observations,
                     }
                 )
         return sorted(
@@ -361,13 +613,15 @@ class FantasyRecommender:
                 "banner_slots": banner_slots,
                 "recommended": top_selection,
                 "role_rankings": {role: rows[:8] for role, rows in rankings.items()},
-                "coach_suffixes": self._coach_recommendations(),
+                "coach_suffixes": self._coach_recommendations(top_selection),
                 "coach_prefixes": [
                     {
                         "prefix": item["id"],
+                        "name": item.get("name", item["id"]),
                         "label": item["label"],
                         "bonus_percent": item["bonus_percent"],
-                        "status": "rule_only",
+                        "status": "unavailable",
+                        "reason": "缺少逐局 hero_id 与客户端英雄分类映射，不能可靠估计触发率。",
                     }
                     for item in self.rules["fantasy"]["coach"]["prefixes"]
                 ],

@@ -15,7 +15,7 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 uv sync --extra dev
 uv run ti rules snapshot --as-of 2026-08-12T23:00:00Z
 uv run ti rules validate
-uv run ti data sync --as-of 2026-08-12T23:00:00Z --year 2026 --team-detail-limit 20
+uv run ti data sync --as-of 2026-08-12T23:00:00Z --year 2026 --team-detail-limit 20 --request-limit 500
 uv run ti forecast group --as-of 2026-08-12T23:00:00Z --profile all
 uv run ti fantasy recommend --as-of 2026-08-12T23:00:00Z --period group --profile all
 uv run ti web
@@ -25,6 +25,10 @@ uv run ti web
 数据同步默认分页获取 `as_of` 所在 UTC 年份的 OpenDota 职业比赛目录，并关联游戏版本与
 OpenDota 赛事级别。Web 可按时间、版本和赛事级别过滤。同步还会补齐当前 16 队每队最近
 20 场逐场详情，并按 `match_id` 断点续传；可用 `--team-detail-limit 0` 只保留比赛摘要。
+
+付费 OpenDota key 只放在已被 Git 忽略的 `.env`，由 `uv run --env-file .env` 注入。客户端按
+`$5/月 = 50,000 次`设置带 key 请求尝试的本地硬上限，并对单次运行上限、重复成功请求和有限
+递增重试作统一保护；详见 [OpenDota API 使用计划与安全规范](docs/opendota-api-usage.md)。
 
 Fantasy 的正式历史范围按当前 TI 名单中的稳定玩家 ID 选择，并包含他们在旧战队参加的
 `premium/professional` 比赛。首次全量或后续增量同步使用：

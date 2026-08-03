@@ -12,7 +12,12 @@ from ti_predictor import __version__
 from ti_predictor.audit import audit_run
 from ti_predictor.backtesting import run_ti2025_backtest
 from ti_predictor.forecasting import generate_bracket, generate_fantasy, generate_group
-from ti_predictor.ingest.opendota import sync_fantasy_player_history, sync_opendota
+from ti_predictor.ingest.opendota import (
+    DEFAULT_OPENDOTA_RUN_REQUEST_LIMIT,
+    OpenDotaSafetyStop,
+    sync_fantasy_player_history,
+    sync_opendota,
+)
 from ti_predictor.ocr import inspect_screenshot
 from ti_predictor.paths import PATHS
 from ti_predictor.rules import create_rule_snapshot, parse_as_of, validate_snapshot
@@ -54,6 +59,11 @@ def _echo(payload) -> None:
 def _exit_for_status(status: str) -> None:
     if status == "blocked":
         raise typer.Exit(code=2)
+
+
+def _stop_for_opendota_safety(error: OpenDotaSafetyStop) -> None:
+    _echo({"status": "stopped", "reason": str(error)})
+    raise typer.Exit(code=2)
 
 
 @app.callback()
@@ -144,6 +154,14 @@ def data_sync(
         int | None,
         typer.Option("--max-matches", min=1, help="只下载最近 N 场联赛逐场详情，适合烟雾测试。"),
     ] = None,
+    request_limit: Annotated[
+        int,
+        typer.Option(
+            "--request-limit",
+            min=1,
+            help="本次进程最多发出的 OpenDota 请求尝试数；重试也计数。",
+        ),
+    ] = DEFAULT_OPENDOTA_RUN_REQUEST_LIMIT,
     refresh_details: Annotated[
         bool,
         typer.Option(
@@ -153,16 +171,20 @@ def data_sync(
     ] = False,
 ) -> None:
     cutoff = parse_as_of(as_of)
-    result = sync_opendota(
-        as_of=cutoff,
-        league_ids=league,
-        pro_year=(year or cutoff.year) if pro_catalog else None,
-        include_details=details,
-        include_team_history=team_history,
-        team_history_detail_limit=team_detail_limit,
-        max_matches=max_matches,
-        refresh_details=refresh_details,
-    )
+    try:
+        result = sync_opendota(
+            as_of=cutoff,
+            league_ids=league,
+            pro_year=(year or cutoff.year) if pro_catalog else None,
+            include_details=details,
+            include_team_history=team_history,
+            team_history_detail_limit=team_detail_limit,
+            max_matches=max_matches,
+            request_limit=request_limit,
+            refresh_details=refresh_details,
+        )
+    except OpenDotaSafetyStop as error:
+        _stop_for_opendota_safety(error)
     _echo(
         {
             "status": result.status,
@@ -172,6 +194,8 @@ def data_sync(
             "professional_matches": result.pro_match_count,
             "fantasy_performance_samples": result.fantasy_sample_count,
             "detailed_matches": result.detailed_match_count,
+            "request_attempts": result.request_attempts,
+            "monthly_keyed_request_attempts": result.monthly_keyed_request_attempts,
             "data_sha256": result.data_sha256,
             "paths": {
                 "matches": str(result.matches_path),
@@ -217,6 +241,14 @@ def data_fantasy_history(
         int,
         typer.Option("--daily-reserve", min=0, help="停止前保留的 OpenDota 当日请求额度。"),
     ] = 50,
+    request_limit: Annotated[
+        int,
+        typer.Option(
+            "--request-limit",
+            min=1,
+            help="本次进程最多发出的 OpenDota 请求尝试数；重试也计数。",
+        ),
+    ] = DEFAULT_OPENDOTA_RUN_REQUEST_LIMIT,
     refresh_details: Annotated[
         bool,
         typer.Option("--refresh-details", help="重新请求已经完整解析的详情。"),
@@ -227,17 +259,21 @@ def data_fantasy_history(
     def progress(payload: dict) -> None:
         typer.echo(json.dumps(payload, ensure_ascii=False, default=str), err=True)
 
-    result = sync_fantasy_player_history(
-        as_of=cutoff,
-        year=year,
-        league_tiers=set(tier) if tier else None,
-        history_days=history_days,
-        max_matches=max_matches,
-        checkpoint_every=checkpoint_every,
-        daily_request_reserve=daily_reserve,
-        refresh_details=refresh_details,
-        progress=progress,
-    )
+    try:
+        result = sync_fantasy_player_history(
+            as_of=cutoff,
+            year=year,
+            league_tiers=set(tier) if tier else None,
+            history_days=history_days,
+            max_matches=max_matches,
+            checkpoint_every=checkpoint_every,
+            daily_request_reserve=daily_reserve,
+            request_limit=request_limit,
+            refresh_details=refresh_details,
+            progress=progress,
+        )
+    except OpenDotaSafetyStop as error:
+        _stop_for_opendota_safety(error)
     _echo(
         {
             "status": result.status,
@@ -252,6 +288,8 @@ def data_fantasy_history(
             "failed_details": result.failed_details,
             "remaining_details": result.remaining_details,
             "rate_limit_remaining_day": result.rate_limit_remaining_day,
+            "request_attempts": result.request_attempts,
+            "monthly_keyed_request_attempts": result.monthly_keyed_request_attempts,
             "data_sha256": result.data_sha256,
             "paths": {
                 "scope": str(result.scope_path),
@@ -312,7 +350,10 @@ def forecast_bracket(
 @forecast_app.command("backtest")
 def forecast_backtest(
     as_of: Annotated[str, typer.Option("--as-of")],
-    league_id: Annotated[int, typer.Option("--league-id")] = 18324,
+    league_id: Annotated[
+        int | None,
+        typer.Option("--league-id", help="默认使用当前队伍强度策略中锁定的 TI 2025 联赛。"),
+    ] = None,
 ) -> None:
     result = run_ti2025_backtest(as_of=parse_as_of(as_of), league_id=league_id)
     _echo(

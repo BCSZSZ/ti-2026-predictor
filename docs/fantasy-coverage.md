@@ -15,7 +15,7 @@
 | watchers_taken | `ability_uses.ability_lamp_use` | proxy | no |
 | lotuses_gained | `item_uses` lotus-family keys | proxy | no |
 | roshan_kills | `roshans_killed` | exact | yes |
-| teamfight_participation | `teamfight_participation` | exact | yes |
+| teamfight_participation | `(kills + assists) / team_total_kills` | derived | yes |
 | first_blood | `firstblood_claimed` | exact | yes |
 | stuns | `stuns` | exact | yes |
 | tormentor_kills | `killed.npc_dota_miniboss` | proxy | no |
@@ -23,3 +23,12 @@
 
 Presence is not semantic validation. Proxy fields remain excluded even when OpenDota returns a
 non-null value; differential validation against a second source is still required.
+
+As of policy `2026-08-02-owner-policy-v1`, the project does not use OpenDota's precomputed
+`teamfight_participation` field. It derives the ratio from player kills and assists plus the
+Radiant/Dire team kill total. A team with zero kills has an undefined denominator and remains
+`null`; other missing inputs also remain `null`.
+
+Rows created under the earlier `exact` mapping are stale under this policy. Recommendation code
+requires each normalized value's provenance to match the current rule, so those rows fail closed
+until they are normalized again from the retained raw match details.

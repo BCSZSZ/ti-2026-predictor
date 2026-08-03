@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "policy_id": "team-strength-adr-0002-v2",
+  "decision_record": "docs/adr/0002-target-team-evidence-network-and-rule-based-audit.md",
+  "evidence_scope": {
+    "mode": "target_connected_component"
+  },
+  "patch_weights": {
+    "target": 1.0,
+    "immediate_prior": 0.15,
+    "earlier": 0.0
+  },
+  "tier_weights": {
+    "premium": 1.0,
+    "professional": 0.75
+  },
+  "time_half_life_days": 60.0,
+  "elo": {
+    "initial_rating": 1500.0,
+    "k_factor": 28.0,
+    "scale": 400.0
+  },
+  "glicko": {
+    "initial_rating": 1500.0,
+    "initial_deviation": 350.0,
+    "deviation_increase_per_30_days": 35.0
+  },
+  "ensemble": {
+    "elo_weight": 0.5,
+    "glicko_weight": 0.5
+  },
+  "calibration": {
+    "rolling_initial_fraction": 0.55,
+    "rolling_folds": 3,
+    "minimum_games_per_window": 20,
+    "probability_floor": 0.03,
+    "probability_ceiling": 0.97
+  },
+  "ti2025_holdout": {
+    "league_id": 18324,
+    "target_patch_family": "7.39",
+    "target_team_ids": [
+      36,
+      2163,
+      7119388,
+      7554697,
+      7732977,
+      8255888,
+      8261500,
+      8291895,
+      9247354,
+      9303484,
+      9351740,
+      9467224,
+      9572001,
+      9640842,
+      9651185,
+      9691969
+    ],
+    "expected_games": 144,
+    "minimum_same_patch_games_per_team": 14
+  }
+}

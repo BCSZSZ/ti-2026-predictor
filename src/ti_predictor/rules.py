@@ -380,7 +380,7 @@ def compare_observed(observed: dict[str, Any], rules: dict[str, Any]) -> list[Au
     observed_scoring = observed.get("fantasy_scoring", {})
     for stat_id, client_key in CLIENT_SCORING_KEYS.items():
         rule = rules["fantasy"]["stats"][stat_id]
-        expected = round(float(rule["factor"]) * 100)
+        expected = round(float(rule["factor"]))
         value = observed_scoring.get(client_key)
         if value != expected:
             issues.append(

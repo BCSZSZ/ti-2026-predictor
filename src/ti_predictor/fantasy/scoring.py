@@ -80,6 +80,8 @@ def score_game(
     stats: dict[str, float | None],
     emblems: list[Emblem],
     rules: dict[str, Any],
+    *,
+    coach_bonus_percents: Iterable[float] = (),
 ) -> float | None:
     multipliers = emblem_multipliers(emblems, rules)
     total = 0.0
@@ -93,6 +95,8 @@ def score_game(
         if value is None:
             return None
         total += value * multiplier
+    for bonus_percent in coach_bonus_percents:
+        total *= 1.0 + float(bonus_percent) / 100.0
     return total
 
 
@@ -119,4 +123,4 @@ def aggregate_period(series_game_scores: Iterable[Iterable[float | None]]) -> fl
 
 
 def coach_multiplier(prefix_bonus_percent: float, suffix_bonus_percent: float) -> float:
-    return 1.0 + (float(prefix_bonus_percent) + float(suffix_bonus_percent)) / 100.0
+    return (1.0 + float(prefix_bonus_percent) / 100.0) * (1.0 + float(suffix_bonus_percent) / 100.0)

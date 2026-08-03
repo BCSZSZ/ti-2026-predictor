@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 from datetime import UTC, datetime
 
 import httpx
@@ -9,6 +10,12 @@ import pytest
 from ti_predictor.ingest.opendota import (
     OpenDotaClient,
     OpenDotaDailyBudgetExhausted,
+    OpenDotaMonthlyBudgetExhausted,
+    OpenDotaRequestError,
+    OpenDotaRequestLoopDetected,
+    OpenDotaRunBudgetExhausted,
+    OpenDotaUsageLedgerError,
+    _sample_match_ids_with_current_provenance,
     extract_fantasy_stats,
     sync_fantasy_player_history,
     sync_opendota,
@@ -20,6 +27,7 @@ def _detail() -> dict:
         "account_id": 152962063,
         "player_slot": 0,
         "kills": 10,
+        "assists": 5,
         "deaths": 2,
         "last_hits": 300,
         "denies": 12,
@@ -29,7 +37,7 @@ def _detail() -> dict:
         "camps_stacked": 3,
         "rune_pickups": 6,
         "roshans_killed": 1,
-        "teamfight_participation": 0.75,
+        "teamfight_participation": 0.01,
         "firstblood_claimed": 0,
         "stuns": 3.5,
         "courier_kills": 0,
@@ -46,17 +54,44 @@ def _detail() -> dict:
         "radiant_team_id": 2163,
         "dire_team_id": 7119388,
         "radiant_win": True,
+        "radiant_score": 20,
+        "dire_score": 8,
         "duration": 2100,
         "players": [player],
     }
 
 
 def test_stat_extraction_keeps_unavailable_values_null() -> None:
-    stats = extract_fantasy_stats(_detail()["players"][0])
+    stats = extract_fantasy_stats(_detail()["players"][0], team_total_kills=20)
     assert stats["creep_score"] == 312
+    assert stats["teamfight_participation"] == pytest.approx(0.75)
     assert stats["smokes_used"] == 1
     assert stats["lotuses_gained"] is None
     assert stats["tormentor_kills"] is None
+
+
+def test_teamfight_participation_uses_owner_formula_and_handles_zero_team_kills() -> None:
+    player = {"kills": 3, "assists": 9, "teamfight_participation": 0.01}
+    assert extract_fantasy_stats(player, team_total_kills=20)["teamfight_participation"] == pytest.approx(0.6)
+    assert extract_fantasy_stats(player, team_total_kills=0)["teamfight_participation"] is None
+    assert extract_fantasy_stats(player)["teamfight_participation"] is None
+
+
+def test_cached_samples_are_stale_when_stat_provenance_changes() -> None:
+    samples = pd.DataFrame(
+        {
+            "match_id": [1, 1, 2],
+            "kills_provenance": ["exact", "exact", "exact"],
+            "teamfight_participation_provenance": ["exact", "derived", "derived"],
+        }
+    )
+
+    current = _sample_match_ids_with_current_provenance(
+        samples,
+        {"kills": "exact", "teamfight_participation": "derived"},
+    )
+
+    assert current == {2}
 
 
 def test_client_uses_mock_transport_without_live_network() -> None:
@@ -131,6 +166,197 @@ def test_client_stops_before_daily_request_reserve() -> None:
     http_client.close()
 
 
+def test_client_stops_at_per_run_request_limit() -> None:
+    requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(200, json={"resource": request.url.path})
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = OpenDotaClient(
+        client=http_client,
+        min_interval_seconds=0,
+        run_request_limit=1,
+    )
+
+    client.get_json("first")
+    with pytest.raises(OpenDotaRunBudgetExhausted):
+        client.get_json("second")
+
+    assert requests == 1
+    assert client.request_attempts == 1
+    http_client.close()
+
+
+def test_monthly_budget_ceiling_cannot_be_raised_by_configuration() -> None:
+    http_client = httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=[])))
+    with pytest.raises(ValueError, match="cannot exceed"):
+        OpenDotaClient(
+            api_key="dummy-key",
+            client=http_client,
+            monthly_request_limit=50_001,
+        )
+    http_client.close()
+
+
+def test_client_rejects_key_in_per_request_query() -> None:
+    http_client = httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=[])))
+    client = OpenDotaClient(client=http_client)
+    with pytest.raises(ValueError, match="on the client"):
+        client.get_json("proMatches", query={"api_key": "must-not-be-passed-here"})
+    assert client.request_attempts == 0
+    http_client.close()
+
+
+def test_client_stops_repeated_successful_request_before_second_call() -> None:
+    requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(200, json=[])
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = OpenDotaClient(client=http_client, min_interval_seconds=0)
+
+    client.player_matches(152962063, date_days=30)
+    with pytest.raises(OpenDotaRequestLoopDetected):
+        client.player_matches(152962063, date_days=30)
+
+    assert requests == 1
+    assert client.request_attempts == 1
+    http_client.close()
+
+
+def test_client_retries_transient_errors_with_increasing_backoff() -> None:
+    requests = 0
+    sleeps: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        if requests < 4:
+            return httpx.Response(503, json={"error": "temporary"})
+        return httpx.Response(200, json=[])
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = OpenDotaClient(
+        client=http_client,
+        min_interval_seconds=0,
+        sleeper=sleeps.append,
+    )
+
+    payload, _ = client.pro_matches()
+
+    assert payload == []
+    assert requests == 4
+    assert client.request_attempts == 4
+    assert sleeps == [1.0, 2.0, 4.0]
+    http_client.close()
+
+
+def test_monthly_keyed_request_limit_persists_without_storing_key(tmp_path) -> None:
+    requests = 0
+    api_key = "test-secret-key-that-must-not-be-written"
+    ledger_path = tmp_path / "opendota_api_usage.json"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(200, json=[])
+
+    first_http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    first = OpenDotaClient(
+        api_key=api_key,
+        client=first_http_client,
+        min_interval_seconds=0,
+        monthly_request_limit=1,
+        usage_ledger_path=ledger_path,
+    )
+    first.pro_matches()
+    first_http_client.close()
+
+    second_http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    second = OpenDotaClient(
+        api_key=api_key,
+        client=second_http_client,
+        min_interval_seconds=0,
+        monthly_request_limit=1,
+        usage_ledger_path=ledger_path,
+    )
+    with pytest.raises(OpenDotaMonthlyBudgetExhausted):
+        second.get_json("leagues")
+
+    assert requests == 1
+    assert api_key not in ledger_path.read_text(encoding="utf-8")
+    assert not ledger_path.with_suffix(".json.lock").exists()
+    second_http_client.close()
+
+
+def test_client_fails_closed_when_paid_usage_ledger_is_corrupt(tmp_path) -> None:
+    requests = 0
+    ledger_path = tmp_path / "opendota_api_usage.json"
+    ledger_path.write_text("not-json", encoding="utf-8")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(200, json=[])
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = OpenDotaClient(
+        api_key="dummy-key",
+        client=http_client,
+        min_interval_seconds=0,
+        usage_ledger_path=ledger_path,
+    )
+
+    with pytest.raises(OpenDotaUsageLedgerError):
+        client.pro_matches()
+
+    assert requests == 0
+    http_client.close()
+
+
+def test_client_redacts_key_from_http_and_network_errors(tmp_path) -> None:
+    api_key = "never-show-this-key"
+    ledger_path = tmp_path / "opendota_api_usage.json"
+
+    def unauthorized_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, json={"error": "unauthorized"})
+
+    unauthorized_http_client = httpx.Client(transport=httpx.MockTransport(unauthorized_handler))
+    unauthorized = OpenDotaClient(
+        api_key=api_key,
+        client=unauthorized_http_client,
+        min_interval_seconds=0,
+        usage_ledger_path=ledger_path,
+    )
+    with pytest.raises(OpenDotaRequestError) as http_error:
+        unauthorized.get_json("matches/123")
+    assert api_key not in "".join(traceback.format_exception(http_error.value))
+    unauthorized_http_client.close()
+
+    def network_handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError(f"could not reach {request.url}", request=request)
+
+    network_http_client = httpx.Client(transport=httpx.MockTransport(network_handler))
+    network = OpenDotaClient(
+        api_key=api_key,
+        client=network_http_client,
+        min_interval_seconds=0,
+        max_attempts=2,
+        sleeper=lambda _: None,
+        usage_ledger_path=ledger_path,
+    )
+    with pytest.raises(OpenDotaRequestError) as network_error:
+        network.get_json("matches/456")
+    assert api_key not in "".join(traceback.format_exception(network_error.value))
+    network_http_client.close()
+
+
 def test_sync_writes_raw_parquet_and_duckdb(project_paths) -> None:
     detail = _detail()
     fetched = datetime(2026, 8, 1, tzinfo=UTC)
@@ -159,6 +385,11 @@ def test_sync_writes_raw_parquet_and_duckdb(project_paths) -> None:
     assert result.fantasy_samples_path.name == "fantasy_performance_samples.parquet"
     assert result.matches_path.is_file()
     assert project_paths.database.is_file()
+    samples = pd.read_parquet(result.fantasy_samples_path)
+    assert samples.loc[0, "teamfight_participation"] == pytest.approx(0.75)
+    assert samples.loc[0, "teamfight_participation_provenance"] == "derived"
+    assert samples.loc[0, "assists"] == 5
+    assert samples.loc[0, "team_total_kills"] == 20
     assert len(list((project_paths.raw / "opendota").rglob("metadata.json"))) == 2
     repeated = sync_opendota(
         as_of=datetime(2026, 8, 12, tzinfo=UTC),

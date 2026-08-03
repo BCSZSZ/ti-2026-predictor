@@ -11,7 +11,7 @@
 1. HTTP 200 只代表 OpenDota 找到了比赛，不代表 replay 已解析。详情样本必须检查 `od_data.has_parsed == true` 且 `version` 非空；否则只有 Steam API/GC 基础数据，不具备大多数 Fantasy 字段。
 2. 原始 JSON 必须不可变保存；规范化层另行保存 `has_api`、`has_gcdata`、`has_parsed`、`has_archive`、解析 `version`、字段覆盖率和缺失原因。
 3. 每场必须检查 10 个合法玩家槽位、稳定 `account_id`、队伍 ID、开始时间、版本、赛事 ID/级别与系列赛信息。失败的比赛进入缺口清单，不能以零补齐。
-4. OpenDota 能稳定提供基础赛果和常规终局数据；14/18 个当前 Fantasy 统计依赖 replay 解析。魔石、烟雾、瞭望台、莲花和魔方等内部事件映射仍不等于 Valve Fantasy 结算真值，必须继续标为 `proxy` 或单独验证。
+4. OpenDota 能稳定提供基础赛果和常规终局数据；按 2026-08-02 的项目规则，13/18 个当前 Fantasy 统计依赖 replay 解析。团战参与改由基础 K/A 和团队击杀数派生；魔石、烟雾、瞭望台、莲花和魔方等内部事件映射仍不等于 Valve Fantasy 结算真值，必须继续标为 `proxy` 或单独验证。
 5. 对当前目录中 `premium/professional` 且涉及 TI 16 队的 2026 比赛做全量详情采样在请求量和磁盘量上可行；真正的不确定性是历史 replay 是否已经被 OpenDota 解析，而不是 JSON 下载本身。
 
 因此，当前 257 场更准确的评价是：**255 场合格的 replay 详情样本 + 2 场基础详情样本**，不是 257 场都具备完全相同的信息质量。
@@ -73,13 +73,15 @@ replay 解析层还可提供：
 | 瞭望台占领 | `ability_uses.ability_lamp_use` | 是 | `proxy` |
 | 莲花拾取 | `item_uses.famango/great_famango/...` | 是 | `proxy`：使用事件未证明等于获得 |
 | Roshan 击杀 | `roshans_killed` / `roshan_kills` | 是 | `exact`，需锁定别名 |
-| 团战参与 | `teamfight_participation` | 是 | `exact`（OpenDota 终局属性语义） |
+| 团战参与 | `(kills + assists) / radiant_score或dire_score` | 否 | `derived`；不采用 OpenDota 的预计算字段 |
 | 第一滴血 | `firstblood_claimed` | 是 | `exact` |
 | 眩晕秒数 | `stuns` | 是 | `exact` |
 | 魔方击杀 | `killed.npc_dota_miniboss` | 是 | `proxy`：内部单位名与 Valve Fantasy 语义待核对 |
 | 信使击杀 | `courier_kills` | 是 | `exact`（由解析击杀对象计算） |
 
-也就是说，只有前 4 项不依赖 replay；其余 14 项都必须把 `has_parsed` 作为前置条件。OpenDota parser 当前把解析版本写为 `22`，见 [`CreateParsedDataBlob.java`](https://github.com/odota/parser/blob/a0ded4a2857ba94df4d5865301998a6df67dcb89/src/main/java/opendota/CreateParsedDataBlob.java#L14-L17)。历史样本可能携带不同版本，不能在不记录版本的情况下直接混合。
+也就是说，K/D、补刀、GPM 与项目派生的团战参与共 5 项不依赖 replay；其余 13 项都必须把 `has_parsed` 作为前置条件。OpenDota parser 当前把解析版本写为 `22`，见 [`CreateParsedDataBlob.java`](https://github.com/odota/parser/blob/a0ded4a2857ba94df4d5865301998a6df67dcb89/src/main/java/opendota/CreateParsedDataBlob.java#L14-L17)。历史样本可能携带不同版本，不能在不记录版本的情况下直接混合。
+
+2026-08-02 的项目负责人规则把团战参与明确规定为 `(player kills + player assists) / team total kills`。本地差分抽查 200 场、2,000 个选手记录时，OpenDota 预计算字段有 274 条与该公式不一致，因此规范化层必须重新派生，不能把旧字段仅改名后继续使用。
 
 ### “缺少键”不总是“缺失值”
 

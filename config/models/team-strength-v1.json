@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "policy_id": "team-strength-adr-0001-v1",
+  "decision_record": "docs/adr/0001-preregister-game-evidence-weighting.md",
+  "patch_weights": {
+    "target": 1.0,
+    "immediate_prior": 0.15,
+    "earlier": 0.0
+  },
+  "tier_weights": {
+    "premium": 1.0,
+    "professional": 0.75
+  },
+  "time_half_life_days": 60.0,
+  "elo": {
+    "initial_rating": 1500.0,
+    "k_factor": 28.0,
+    "scale": 400.0
+  },
+  "glicko": {
+    "initial_rating": 1500.0,
+    "initial_deviation": 350.0,
+    "deviation_increase_per_30_days": 35.0
+  },
+  "ensemble": {
+    "elo_weight": 0.5,
+    "glicko_weight": 0.5
+  },
+  "calibration": {
+    "rolling_initial_fraction": 0.55,
+    "rolling_folds": 3,
+    "minimum_games_per_window": 20,
+    "probability_floor": 0.03,
+    "probability_ceiling": 0.97
+  },
+  "ti2025_holdout": {
+    "league_id": 18324,
+    "target_patch_family": "7.39",
+    "expected_games": 144,
+    "expected_same_patch_training_games": 751,
+    "minimum_same_patch_games_per_team": 14
+  }
+}

@@ -7,6 +7,7 @@ from typing import Any
 import yaml
 
 from ti_predictor.hashing import sha256_file
+from ti_predictor.models.policy import TeamStrengthPolicy
 from ti_predictor.paths import PATHS
 from ti_predictor.schemas import RosterInterval, TournamentManifest
 
@@ -20,6 +21,28 @@ def load_tournament_manifest(path: Path | None = None) -> TournamentManifest:
 def load_rules(path: Path | None = None) -> dict[str, Any]:
     rules_path = path or PATHS.rules
     return json.loads(rules_path.read_text(encoding="utf-8"))
+
+
+def team_strength_policy_path(
+    manifest: TournamentManifest,
+    *,
+    config_root: Path | None = None,
+) -> Path:
+    root = (config_root or PATHS.config).resolve()
+    path = (root / manifest.team_strength_policy).resolve()
+    if path != root and root not in path.parents:
+        raise ValueError("team_strength_policy must stay within the config directory")
+    return path
+
+
+def load_team_strength_policy(
+    manifest: TournamentManifest | None = None,
+    *,
+    config_root: Path | None = None,
+) -> TeamStrengthPolicy:
+    selected = manifest or load_tournament_manifest()
+    path = team_strength_policy_path(selected, config_root=config_root)
+    return TeamStrengthPolicy.model_validate_json(path.read_text(encoding="utf-8"))
 
 
 def manifest_hash(path: Path | None = None) -> str:

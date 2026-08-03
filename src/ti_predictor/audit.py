@@ -5,10 +5,17 @@ from typing import Any
 
 import pandas as pd
 
-from ti_predictor.config import load_rules, manifest_hash, rules_hash
+from ti_predictor.config import (
+    load_rules,
+    load_tournament_manifest,
+    manifest_hash,
+    rules_hash,
+    team_strength_policy_path,
+)
 from ti_predictor.hashing import sha256_file
 from ti_predictor.paths import PATHS, ProjectPaths
 from ti_predictor.rules import latest_rule_snapshot, validate_rules
+from ti_predictor.runs import source_version
 from ti_predictor.schemas import AuditIssue, ForecastRun, RuleSnapshot
 from ti_predictor.storage import DataStore, read_parquet_if_exists
 
@@ -33,6 +40,7 @@ def audit_run(run_id: str, paths: ProjectPaths = PATHS, *, write: bool = True) -
         "rule_sha256": (run.rule_sha256, rules_hash(paths.rules), "blocking"),
         "config_sha256": (run.config_sha256, manifest_hash(paths.tournament), "blocking"),
         "data_sha256": (run.data_sha256, DataStore(paths).data_hash(), "warning"),
+        "source_version": (run.git_commit, source_version(paths), "blocking"),
     }
     for name, (recorded, current, severity) in comparisons.items():
         if recorded != current:
@@ -44,6 +52,34 @@ def audit_run(run_id: str, paths: ProjectPaths = PATHS, *, write: bool = True) -
                     context={"recorded": recorded, "current": current},
                 )
             )
+
+    model_parameters = run.model.get("parameters", {})
+    strength_parameters = model_parameters.get("team_strength", model_parameters)
+    recorded_policy_sha256 = strength_parameters.get("policy_sha256")
+    if run.model.get("name", "").startswith("patch_tier_time_weighted"):
+        if not recorded_policy_sha256:
+            issues.append(
+                AuditIssue(
+                    code="run-model-policy-missing",
+                    severity="blocking",
+                    message="Weighted model run does not record its policy SHA-256",
+                )
+            )
+        else:
+            manifest = load_tournament_manifest(paths.tournament)
+            current_policy_sha256 = sha256_file(team_strength_policy_path(manifest, config_root=paths.config))
+            if recorded_policy_sha256 != current_policy_sha256:
+                issues.append(
+                    AuditIssue(
+                        code="run-model-policy-changed",
+                        severity="blocking",
+                        message="Current team-strength policy differs from the run manifest",
+                        context={
+                            "recorded": recorded_policy_sha256,
+                            "current": current_policy_sha256,
+                        },
+                    )
+                )
 
     if run.rule_snapshot_id is None or run.rule_snapshot_sha256 is None:
         issues.append(
@@ -107,6 +143,15 @@ def audit_run(run_id: str, paths: ProjectPaths = PATHS, *, write: bool = True) -
     if model_path.is_file():
         model_payload = json.loads(model_path.read_text(encoding="utf-8"))
         for payload in model_payload.get("report", {}).get("issues", []):
+            issue = AuditIssue.model_validate(payload)
+            if not any(
+                existing.code == issue.code and existing.message == issue.message for existing in issues
+            ):
+                issues.append(issue)
+    backtest_path = folder / "backtest.json"
+    if backtest_path.is_file():
+        backtest_payload = json.loads(backtest_path.read_text(encoding="utf-8"))
+        for payload in backtest_payload.get("issues", []):
             issue = AuditIssue.model_validate(payload)
             if not any(
                 existing.code == issue.code and existing.message == issue.message for existing in issues

@@ -7,8 +7,16 @@ from typing import Any
 import pandas as pd
 
 from ti_predictor.backtesting import evaluate_league_holdout
-from ti_predictor.config import load_rules, load_tournament_manifest
+from ti_predictor.config import (
+    load_rules,
+    load_team_strength_policy,
+    load_tournament_manifest,
+    team_strength_policy_path,
+)
 from ti_predictor.fantasy.recommend import FantasyRecommender
+from ti_predictor.hashing import sha256_file
+from ti_predictor.models.evidence import build_evidence_set
+from ti_predictor.models.policy import EvidenceScopePolicy
 from ti_predictor.models.ratings import ModelReport, TeamStrengthModel, fit_team_strengths
 from ti_predictor.paths import PATHS, ProjectPaths
 from ti_predictor.rules import rule_snapshot_issues
@@ -45,12 +53,44 @@ def _profiles(profile: str | StrategyProfile) -> list[StrategyProfile]:
 
 
 def _load_strength_model(paths: ProjectPaths, as_of) -> tuple[TeamStrengthModel, ModelReport]:
+    manifest = load_tournament_manifest(paths.tournament)
+    policy = load_team_strength_policy(manifest, config_root=paths.config)
     matches = read_parquet_if_exists(paths.processed / "matches.parquet")
+    patches = read_parquet_if_exists(paths.processed / "patches.parquet")
     if matches.empty:
         matches = pd.DataFrame(
-            columns=["match_id", "start_time", "radiant_team_id", "dire_team_id", "radiant_win"]
+            columns=[
+                "match_id",
+                "league_id",
+                "start_time",
+                "radiant_team_id",
+                "dire_team_id",
+                "radiant_win",
+                "patch_name",
+                "league_tier",
+            ]
         )
-    return fit_team_strengths(matches, as_of=as_of)
+    holdout = matches.loc[
+        matches.get("league_id", pd.Series(dtype=float)).eq(policy.ti2025_holdout.league_id)
+    ].copy()
+    calibration_as_of = None
+    if not holdout.empty:
+        holdout["start_time"] = pd.to_datetime(holdout["start_time"], utc=True, errors="coerce")
+        holdout_start = holdout["start_time"].dropna().min()
+        if pd.notna(holdout_start):
+            calibration_as_of = holdout_start.to_pydatetime() - pd.Timedelta(microseconds=1)
+    model, report = fit_team_strengths(
+        matches,
+        patches,
+        as_of=as_of,
+        policy=policy,
+        target_team_ids={team.team_id for team in manifest.teams},
+        calibration_as_of=calibration_as_of,
+        calibration_target_patch_family=policy.ti2025_holdout.target_patch_family,
+    )
+    policy_path = team_strength_policy_path(manifest, config_root=paths.config)
+    report.evidence_audit["policy_sha256"] = sha256_file(policy_path)
+    return model, report
 
 
 def _status(recommendations: list[Recommendation], model_report: ModelReport) -> str:
@@ -76,12 +116,19 @@ def _finalize(
     extra: dict[str, Any],
     paths: ProjectPaths,
 ) -> GenerationResult:
+    model_parameters = {
+        "policy_id": report.policy_id,
+        "policy_sha256": report.evidence_audit.get("policy_sha256"),
+        "target_patch_family": report.target_patch_family,
+        "previous_patch_family": report.previous_patch_family,
+    }
+    run_parameters = {**parameters, "team_strength": model_parameters}
     run_id, hashes = make_run_id(
         kind=kind,
         as_of=as_of,
         seed=seed,
         profiles=selected_profiles,
-        parameters=parameters,
+        parameters=run_parameters,
         paths=paths,
     )
     writer = ArtifactWriter(run_id, paths)
@@ -105,7 +152,7 @@ def _finalize(
         data_sha256=hashes["data"],
         config_sha256=hashes["config"],
         git_commit=hashes["source"],
-        model={"name": report.model_name, "parameters": parameters},
+        model={"name": report.model_name, "parameters": run_parameters},
         profiles=selected_profiles,
         outputs=[recommendations_path.name, "model.json", "details.json"],
         warnings=sorted(set(warnings)),
@@ -131,8 +178,18 @@ def generate_group(
     holdout_details: dict[str, Any] = {}
     try:
         matches = read_parquet_if_exists(paths.processed / "matches.parquet")
-        _, _, holdout_details, holdout_issues = evaluate_league_holdout(matches, league_id=18324)
-        report.issues.extend(issue for issue in holdout_issues if issue.severity == "blocking")
+        patches = read_parquet_if_exists(paths.processed / "patches.parquet")
+        policy = load_team_strength_policy(manifest, config_root=paths.config)
+        _, holdout_model_report, holdout_details, holdout_issues = evaluate_league_holdout(
+            matches,
+            patches,
+            policy=policy,
+            league_id=policy.ti2025_holdout.league_id,
+        )
+        holdout_blocking = [
+            issue for issue in [*holdout_issues, *holdout_model_report.issues] if issue.severity == "blocking"
+        ]
+        report.issues.extend(holdout_blocking)
     except ValueError as error:
         report.issues.append(
             AuditIssue(
@@ -286,21 +343,111 @@ def generate_fantasy(
     rules = load_rules(paths.rules)
     observations = read_parquet_if_exists(paths.processed / "fantasy_performance_samples.parquet")
     matches = read_parquet_if_exists(paths.processed / "matches.parquet")
-    if not observations.empty and not matches.empty and "duration" in matches:
-        observations = observations.merge(matches[["match_id", "duration"]], on="match_id", how="left")
+    patches = read_parquet_if_exists(paths.processed / "patches.parquet")
+    if not observations.empty and not matches.empty:
+        metadata_columns = [
+            column
+            for column in (
+                "match_id",
+                "series_type",
+                "radiant_team_id",
+                "dire_team_id",
+                "radiant_win",
+            )
+            if column in matches
+        ]
+        if "duration" not in observations and "duration" in matches:
+            metadata_columns.append("duration")
+        match_metadata = matches[metadata_columns].drop_duplicates("match_id", keep="last")
+        observations = observations.merge(match_metadata, on="match_id", how="left")
+        if {"team_id", "radiant_team_id", "dire_team_id", "radiant_win"}.issubset(observations.columns):
+            observations["team_win"] = pd.Series(
+                pd.NA,
+                index=observations.index,
+                dtype="boolean",
+            )
+            radiant = observations["team_id"].eq(observations["radiant_team_id"])
+            dire = observations["team_id"].eq(observations["dire_team_id"])
+            radiant_win = observations["radiant_win"].astype("boolean")
+            observations.loc[radiant, "team_win"] = radiant_win.loc[radiant]
+            observations.loc[dire, "team_win"] = ~radiant_win.loc[dire]
     model, report = _load_strength_model(paths, cutoff)
+    policy = load_team_strength_policy(manifest, config_root=paths.config)
+    fantasy_evidence_audit: dict[str, Any] = {}
+    if not observations.empty:
+        # Production generation fails closed when the patch/tier evidence set cannot be built.
+        # Direct recommender tests may still omit this column and exercise the legacy estimator.
+        observations["evidence_weight"] = 0.0
+    if not observations.empty and not matches.empty and not patches.empty:
+        fantasy_evidence_policy = policy.model_copy(
+            update={
+                "policy_id": f"{policy.policy_id}-fantasy-player-history",
+                "evidence_scope": EvidenceScopePolicy(mode="global"),
+            }
+        )
+        fantasy_evidence = build_evidence_set(
+            matches,
+            patches,
+            as_of=cutoff,
+            policy=fantasy_evidence_policy,
+            target_patch_family=model.target_patch_family,
+        )
+        evidence_columns = fantasy_evidence.matches[
+            ["match_id", "evidence_weight", "patch_family", "normalized_league_tier"]
+        ].drop_duplicates("match_id", keep="last")
+        observations = observations.drop(columns=["evidence_weight"]).merge(
+            evidence_columns,
+            on="match_id",
+            how="left",
+        )
+        observations["evidence_weight"] = pd.to_numeric(
+            observations["evidence_weight"], errors="coerce"
+        ).fillna(0.0)
+        fantasy_evidence_audit = fantasy_evidence.audit
+        target_player_ids = {
+            player.account_id
+            for team in manifest.teams
+            for players in team.players.values()
+            for player in players
+        }
+        weighted_target_rows = observations.loc[
+            observations["evidence_weight"].gt(0.0) & observations["account_id"].isin(target_player_ids)
+        ]
+        fantasy_evidence_audit.update(
+            {
+                "target_player_game_rows": int(len(weighted_target_rows)),
+                "target_players_present": int(weighted_target_rows["account_id"].nunique()),
+                "games_with_target_player": int(weighted_target_rows["match_id"].nunique()),
+                "effective_target_player_row_weight": float(weighted_target_rows["evidence_weight"].sum()),
+            }
+        )
     report.issues.extend(rule_snapshot_issues(cutoff, paths))
     recommender = FantasyRecommender(observations, manifest, rules, model, as_of=cutoff)
+    stat_priority_guide = recommender.stat_priority_guide(period=period)
     recommendations = [recommender.recommend(period=period, profile=item) for item in selected_profiles]
     return _finalize(
         kind="fantasy",
         as_of=cutoff,
         seed=seed,
         selected_profiles=selected_profiles,
-        parameters={"period": period, "empirical_half_life_days": 150, "shrinkage_prior_n": 8},
+        parameters={
+            "period": period,
+            "fantasy_evidence_policy_id": (f"{policy.policy_id}-fantasy-player-history"),
+            "fantasy_evidence_scope": "all_positive_weight_games_for_target_player_ids",
+            "patch_weights": policy.patch_weights.model_dump(mode="json"),
+            "tier_weights": policy.tier_weights,
+            "time_half_life_days": policy.time_half_life_days,
+            "shrinkage_prior_n": 8,
+            "stat_priority_cohort": "top_25_percent_expected_role_banners",
+            "stat_priority_profiles": {"stable_z": -0.85, "expected_z": 0.0, "upside_z": 1.65},
+        },
         recommendations=recommendations,
         model=model,
         report=report,
-        extra={"coverage": recommender.coverage()},
+        extra={
+            "coverage": recommender.coverage(),
+            "fantasy_evidence_audit": fantasy_evidence_audit,
+            "stat_priority_guide": stat_priority_guide,
+        },
         paths=paths,
     )

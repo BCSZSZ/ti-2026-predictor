@@ -1,6 +1,10 @@
 # TI 2026 Group Fantasy 当前最佳可用结论
 
 > **历史运行，已被替代。** 本文使用旧的 Fantasy 时间口径；当前版本/级别/60 天权重运行及按颜色优先级请见 [`ti2026-fantasy-data-driven-guide-2026-08-02.md`](ti2026-fantasy-data-driven-guide-2026-08-02.md)。保留本文仅用于审计，不应继续把其中的 BoomBoys Mid 固定阵容当作当前均值结论。
+>
+> **来源更新（2026-08-06）：** 本运行也早于五项 replay 原生计数的确认与回填；其
+> Madstone、Smoke、Watcher、Lotus、Tormentor 相关排除或 proxy 结论只代表当时数据状态。
+> 见 [`ti2026-fantasy-proxy-stat-validation.md`](../research/ti2026-fantasy-proxy-stat-validation.md)。
 
 ## 运行口径
 

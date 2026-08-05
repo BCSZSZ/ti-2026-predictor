@@ -1,6 +1,11 @@
 # Fantasy League 2026 Reddit 指南审计与策略基线
 
 > 本文中的“当前项目选择”是研究当时旧 Fantasy 运行的对照快照。版本/级别/60 天加权后的当前阵容与数据优先级见 [`ti2026-fantasy-data-driven-guide-2026-08-02.md`](../reports/ti2026-fantasy-data-driven-guide-2026-08-02.md)；这里不回写历史比较，以保留研究审计链。
+>
+> **来源更新（2026-08-06）：** 指南中的 Madstone、Smoke、Watcher、Lotus、Tormentor
+> 数据线索已通过客户端 schema 和完整 replay 独立验证。五项存在 exact 原生计数，但
+> 本文对照的旧项目运行尚未回填；见
+> [`ti2026-fantasy-proxy-stat-validation.md`](ti2026-fantasy-proxy-stat-validation.md)。
 
 ## 研究状态
 

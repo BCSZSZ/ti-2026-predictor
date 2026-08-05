@@ -1,5 +1,10 @@
 # OpenDota 比赛详情采样标准调查
 
+> **后续状态（2026-08-06）：** 本文保留 2026-08-01 时的 OpenDota 详情审计。五项特殊
+> Fantasy 统计的语义来源现已解决为 replay 原生 DataTeam 计数；本文列出的 OpenDota
+> maps 仍只是 proxy，不能升级或回填 exact。最新证据见
+> [`ti2026-fantasy-proxy-stat-validation.md`](ti2026-fantasy-proxy-stat-validation.md)。
+
 调查日期：2026-08-01  
 研究范围：OpenDota `GET /matches/{match_id}` 是否可作为 TI 2026 胜负模型与 Fantasy 表现样本的统一详情来源。  
 主来源版本：[`odota/core@2d67379`](https://github.com/odota/core/tree/2d67379fbba90b2fd015c6f0f4080d394a5741e9)、[`odota/parser@a0ded4a`](https://github.com/odota/parser/tree/a0ded4a2857ba94df4d5865301998a6df67dcb89)。

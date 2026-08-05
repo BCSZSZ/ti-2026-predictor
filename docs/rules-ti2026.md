@@ -43,6 +43,11 @@ The visible final leaderboard rewards and prediction point tables are transcribe
 
 - The client internal name for late first blood says six minutes while localization says ten minutes.
 - Multiple Fantasy percentile tables coexist in current client resources.
-- Derived OpenDota counters for Madstone, lotus, watcher, smoke and Tormentor require differential validation.
+- Madstone, Smoke, Watcher, Lotus and Tormentor semantics are resolved to Valve's native per-player
+  replay counters. The current OpenDota-map adapter still exposes only diagnostic proxies, so
+  existing normalized rows remain non-publishable until replay backfill and re-normalization.
+- Missing replays and unvalidated client builds remain `null`; known old Watcher-zero replay builds
+  must not be interpreted as exact zero.
 
-Until validated, these are surfaced as warnings and excluded from a publishable claim that depends on them.
+The source decision and validation evidence are recorded in
+[`ti2026-fantasy-proxy-stat-validation.md`](research/ti2026-fantasy-proxy-stat-validation.md).

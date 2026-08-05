@@ -48,6 +48,13 @@ time window as exposed by OpenDota; replay-level player details remain a separat
 Without `OPENDOTA_API_KEY`, the client respects the anonymous minute window and pauses between
 pagination batches; a full-year first sync therefore takes several minutes.
 
+The native replay sources for Madstone, Smoke, Watcher, Lotus and Tormentor have been resolved, but
+the current CLI does not yet download or normalize those counters. Until the replay-backfill phase
+lands, a normal `fantasy-history` or `fantasy recommend` run continues to exclude the old OpenDota
+event-map proxies. Do not interpret “source resolved” as “backfill complete”. Implementation order,
+runtime boundaries and release gates are frozen in the
+[Group 40-Roll implementation plan](plans/group-roll-playbook-v1-implementation.md).
+
 Both data commands stop before exceeding their per-run `--request-limit` (default 5,000), and keyed
 attempts are reserved in `data/cache/opendota_api_usage.json` before the network call. A repeated
 successful path/query in one process stops immediately. Transient network/5xx responses receive at

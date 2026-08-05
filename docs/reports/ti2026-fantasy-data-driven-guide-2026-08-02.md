@@ -1,5 +1,11 @@
 # TI 2026 Group Fantasy 数据驱动制作指南
 
+> **历史运行，五项特殊统计结论已失效。** 2026-08-06 已确认 Madstone、Smoke、Watcher、
+> Lotus、Tormentor 的 replay 原生 exact 来源。本文仍使用旧 OpenDota proxy，因此保留作
+> 审计，不能作为这五项的当前人工手册或优先级依据。须在 replay 回填并重新运行后发布
+> 新版；来源结论见
+> [`ti2026-fantasy-proxy-stat-validation.md`](../research/ti2026-fantasy-proxy-stat-validation.md)。
+
 ## 结论状态
 
 - `as_of`：`2026-08-02T13:32:19Z`

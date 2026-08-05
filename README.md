@@ -40,6 +40,11 @@ uv run ti data fantasy-history --as-of 2026-08-01T15:00:00Z --year 2026
 该命令逐个请求、遵守 OpenDota 响应中的限额、每批落盘并可断点续传；它不会请求 `.dem`
 或自动提交 replay 解析任务。
 
+Madstone、Smoke、Watcher、Lotus 与 Tormentor 已确认存在 Valve replay 原生逐人计数，
+但当前生产命令尚未完成 replay 回填。因此现有规范化行仍按旧 OpenDota proxy 契约排除
+这五项，不能因为来源已经找到就视为历史数据已经修复。Group 40-Roll 的实施顺序与发布
+门槛见 [正式实施计划](docs/plans/group-roll-playbook-v1-implementation.md)。
+
 `fantasy_performance_samples.parquet` 中一行表示“一名玩家在一局比赛中的表现”，只是
 Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策略才是 Fantasy 推荐结果。
 
@@ -66,5 +71,6 @@ OCR 结果只生成待确认草稿，不控制 Steam，也不会自动提交游�
 
 - 瑞士轮完整配对细则尚未发布，因此小组结果包含三种合法容量情景的敏感度警告。
 - 主赛事实际八队与种子未写入前，14 节点网格会生成但保持 `blocked`。
-- Fantasy 默认只用 `exact/derived` 字段；魔石、烟雾、瞭望台、莲花和魔方代理字段不参与默认最优解。
+- Fantasy 默认只用 `exact/derived` 字段；五项 replay 原生来源虽已解决，但在正式回填前，
+  当前 OpenDota proxy 仍不参与默认最优解。
 - OCR 是可选第二阶段，只输出需要人工确认的草稿。

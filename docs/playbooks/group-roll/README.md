@@ -9,7 +9,14 @@
   10% Common 失败。两版候选均未按结果回写。
 - [v2 held-out 只读交叉审计](../../reports/group-roll-playbook-v2-p4-read-only-cross-audit-2026-08-07.md)：
   108/108 在 44 分 48.6 秒内完成，与 standalone/P5 索引交集均为 0。Rate 没有重大例外；
-  Primary 有一个同时劣于刷新的方向性例外。两版仍为 `draft`，且没有按结果回写。
+  Primary 有一个同时劣于刷新的方向性例外。P5 的 path-pinned 确定性 run 保持全部数值结论，
+  并连续复现相同 artifact hash。两版仍为 `draft`，且没有按结果回写。
+- [v2 最终证据包](evidence-package-v2.json)：固定 P2/P3/P4、两份手册、规则/数据/Scenario、
+  path-pinned 复跑、运行时间、发布标签和全部已知限制。
+- [v2 P5 项目审计](../../reports/group-roll-playbook-v2-p5-project-audit-2026-08-07.md)：记录
+  确定性缺陷与最小修复、两次完整 P4 复跑、全项目回归、JAR 包装身份 warning 和清理判断。
+- [v2 易懂总结](../../reports/group-roll-playbook-v2-summary-2026-08-07.md)：面向实际查阅，说明
+  应优先看什么、两版怎么选、真实提升与仍不能承诺的部分。
 
 - [生成率无关版 v2 候选](playbook-rate-agnostic-v2.md)：保留三个跨模型支持原则，收窄
   v1 RA06，并把 RA10/RA12 移出发布序列；standalone 状态为 `draft`。

@@ -72,23 +72,25 @@ rebuild. OpenDota event-map values are diagnostic-only and never fill a native `
 
 Use `fantasy_replay_status.parquet` and `fantasy_watcher_support.parquet` as release gates before a
 recommendation. The implementation order and acceptance contract are in the
-[Group 40-Roll implementation plan](plans/group-roll-playbook-v1-implementation.md); measured
+[Group 40-Roll v2 implementation plan](plans/group-roll-playbook-v2-implementation.md); measured
 coverage and performance are in the
 [P1 implementation report](reports/p1-native-replay-stats-implementation-2026-08-06.md).
 
 The frozen Group manual validation is a separate cached-snapshot command:
 
 ```powershell
-uv run ti fantasy group-playbook-evidence --as-of 2026-08-06T08:15:00Z
+uv run ti fantasy group-playbook-evidence --as-of 2026-08-06T17:27:00Z --playbook-version v2
 ```
 
 It first reproduces the P3 source hash, then evaluates both independently frozen manuals over the
 nine non-probability-weighted starting-state strata. It does not invoke the Reference Roll solver.
-The current v1 result is `warning`: both editions remain `draft`; consult the
+The current v2 result is `warning`: both editions remain `draft`. Primary has no standalone 10%
+Common loss failure but does not pass every rule/risk gate; Rate has 23 such failures. Consult the
 [manual index](playbooks/group-roll/README.md) and
-[P4 report](reports/p4-independent-human-playbooks-2026-08-06.md) before operational use.
+[v2 standalone report](reports/group-roll-playbook-v2-p3-standalone-validation-2026-08-07.md)
+before operational use. Omit `--playbook-version v2` only when intentionally reproducing v1.
 
-The bounded P5 Reference Roll solver has its own cached-snapshot evidence command:
+The bounded P5 Reference Roll solver has its own historical v1 cached-snapshot evidence command:
 
 ```powershell
 uv run ti fantasy group-solver-evidence --as-of 2026-08-06T08:15:00Z
@@ -100,18 +102,21 @@ diagnostics but only 7/216 full-session units; its status is
 `failed-escalation-review-required`. Do not use it as a reliable or globally optimal recommendation,
 and do not enable the dormant Full configuration planner from this failure. See the
 [P5 report](reports/p5-branch-capped-solver-2026-08-06.md).
+There is no new v2 full-session P5 run; v2 uses the historical failure only as explicitly labelled
+diagnostic evidence.
 
 The P6 read-only audit is a separate command and never rewrites either manual:
 
 ```powershell
-uv run ti fantasy group-cross-audit --as-of 2026-08-06T08:15:00Z
+uv run ti fantasy group-cross-audit --as-of 2026-08-06T17:27:00Z --cross-audit-version v2
 ```
 
-It reconstructs P4/P5 validation indexes, draws a P6 Scenario subset explicitly disjoint from
-both, and compares the frozen manual, solver and conditional exact oracle. The v1 run completed
-9/108 rows before its 30-minute projection stop; both release labels remain `draft`. The artifact
-is a counterexample audit, not a replacement for P4 full-session validation. See the
-[P6 report](reports/p6-read-only-playbook-cross-audit-2026-08-06.md).
+It reconstructs standalone/P5 validation indexes, draws an audit Scenario subset explicitly
+disjoint from both, and compares the frozen manual, bounded solver and conditional exact oracle.
+The path-pinned v2 run completes 108/108 in about 45 minutes. Rate has no material exception in this
+conditional matrix; Primary has one directionally wrong Common case. Both labels remain `draft`
+because the audit can never promote a failed standalone candidate. See the
+[v2 cross-audit report](reports/group-roll-playbook-v2-p4-read-only-cross-audit-2026-08-07.md).
 
 The P7 local advisor has a separate reproducible evidence command:
 
@@ -138,6 +143,8 @@ The P5 button remains secondary and retains
 last-Roll run took 8.60 seconds, while prior long-horizon P5 sessions had a roughly 749-second
 median and are blocked from the responsive UI. See the
 [P7 report](reports/p7-local-interactive-group-roll-advisor-2026-08-06.md).
+This experimental advisor remains frozen to v1 identities. Use the v2 Markdown manuals directly;
+do not assume the page silently applies v2 rules.
 
 The OpenDota `data sync` and `data fantasy-history` commands stop before exceeding their per-run
 `--request-limit` (default 5,000), and keyed

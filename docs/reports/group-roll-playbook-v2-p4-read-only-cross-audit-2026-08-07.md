@@ -131,3 +131,20 @@ solver 分歧和 unresolved 仅作为诊断。它们不等同于 exact oracle，
 Web、客户端控制、Main 支持和人工 handler 均未改动。v1 路径继续作为不可变历史兼容入口，v2
 是显式版本化路径；两者不是可清理的重复 production 实现。因此本阶段没有可安全删除的旧代码。
 P4 至此完成，P5 只做项目最终审计、证据包闭合和单独的易懂总结，不再修改手册结论。
+
+## P5 确定性收口附记
+
+P5 在重跑 standalone 后发现：旧 v2 来源发现逻辑遇到多个“语义与文件均相同”的 P3 artifact
+时，会按目录名选择最后一个，并把这个偶然物理路径写入 cross-audit evidence。108 行数值不受
+影响，但同快照、配置和 seed 的最终文件 hash 会漂移。P5 以最小修复在 v2 policy 中冻结确切
+P3/P5 artifact 路径，并同时验证路径范围、文件名和语义哈希；v1 默认行为没有改变。
+
+- 修复提交：`1f48f8a`；修复后 policy file / semantic SHA-256：`c591d90d…` / `5aee998b…`
+- 最终 path-pinned run：`fantasy-26e4f9240b19a518`
+- 最终 evidence semantic / file SHA-256：`d0f90db6…` / `0f01ffb2…`
+- 最终 source manifest SHA-256：`abb3e90f…`
+- 第一次 / 第二次总墙钟：2,679.16s / 2,726.74s
+
+第二次运行返回同一 run ID、semantic hash 和 file hash，ArtifactWriter 未发现任何字节差异。
+最终 108 行、summary 和 gate 与本报告上方原 P4 run 逐字段完全一致；因此原 run 继续是有效的
+阶段历史，但 v2 最终证据包以 path-pinned run 为准。没有把这次工程确定性修复用于修改手册。

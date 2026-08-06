@@ -19,8 +19,8 @@ uv run ti data sync --as-of 2026-08-12T23:00:00Z --year 2026 --team-detail-limit
 uv run ti forecast group --as-of 2026-08-12T23:00:00Z --profile all
 uv run ti fantasy recommend --as-of 2026-08-12T23:00:00Z --period group --profile all
 uv run ti fantasy group-evidence --as-of 2026-08-12T23:00:00Z --bootstrap
-uv run ti fantasy group-playbook-evidence --as-of 2026-08-06T08:15:00Z
-uv run ti fantasy group-cross-audit --as-of 2026-08-06T08:15:00Z
+uv run ti fantasy group-playbook-evidence --as-of 2026-08-06T17:27:00Z --playbook-version v2
+uv run ti fantasy group-cross-audit --as-of 2026-08-06T17:27:00Z --cross-audit-version v2
 uv run ti fantasy group-advisor-evidence --as-of 2026-08-06T08:15:00Z
 uv run ti web
 ```
@@ -63,25 +63,23 @@ Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策
 
 `fantasy group-evidence` 是 P3 的 Group 专用证据入口：它用完整 Series 块、8,192 个公共情景
 和 400 次 Series 分组重采样生成可复现的 Stat 表及终局估值哈希；它不是人工手册或重随求解器。
-P4 的两版人工手册、完整 Stat/Quality/Trait 表和当前发布状态见
-[Group Roll 手册索引](docs/playbooks/group-roll/README.md)。两版 v1 都已完成独立 40-Roll
-验证，但目前均为 `draft`：主模型版通过 10% Common 损失线却未通过全部规则消融，生成率
-无关版另有 5 个 Common 失败。`group-playbook-evidence` 复现这项验证，不调用 P5 solver。
-P5 限枝参考求解器也已实装并按冻结的一小时门禁运行；首次完成 7/216 个完整配对单元，
-clean 复现因运行时截断只完成 4/216，但共有行与 18 个 oracle 逐值一致。
-Common unresolved 为 100%，且这 7 条上不劣于 one-step greedy 的门禁失败，因此状态为
-`failed-escalation-review-required`，不会自动启用更复杂的全 planner。命令
-`fantasy group-solver-evidence` 只用于实验性审计，详见
-[P5 报告](docs/reports/p5-branch-capped-solver-2026-08-06.md)。
-P6 只读交叉审计明确排除 P4/P5 验证索引，但广分支 horizon=3 使 30 分钟目标内只完成
-9/108 行。已完成行没有 10% 重大例外，但有 2 个 5% strict 警告；两版手册仍是
-`draft`。详见 [P6 报告](docs/reports/p6-read-only-playbook-cross-audit-2026-08-06.md)。
+两版 v2 人工手册、完整 Stat/Quality/Trait 表、最终证据包和当前发布状态见
+[Group Roll 手册索引](docs/playbooks/group-roll/README.md)。v2 standalone 在约 25 分钟内完成，
+完整 held-out 只读交叉审计在约 45 分钟内完成 108/108；二者合计约 70 分钟，不需要再追加
+15 小时分析。两版仍为 `draft`：Primary 没有 standalone 10% Common 失败，但有五条核心规则、
+两个风险修正失败，并在只读审计新增一个方向性反例；Rate 有 23 个 standalone 10% Common
+失败。最终结论见
+[易懂总结](docs/reports/group-roll-playbook-v2-summary-2026-08-07.md)。
+
+v2 没有新跑 full-session P5 solver。历史 v1 P5 仍是
+`failed-escalation-review-required`，只作为失败的诊断证据保留，不会自动启用更复杂的 full
+planner。v1 手册、P5/P6 产物和默认 CLI 路径继续作为不可变兼容证据保留。
 P7 已增加本地 `Group Roll 顾问（实验）` 页面：手工录入九格、三个共享选项和剩余 Roll，
 优先显示冻结人工手册，再显示不含未来 offer 价值的一步诊断与最终队伍匹配。每次实际操作后
 必须人工确认实现结果和新选项；会话可保存并从初始状态确定性重放。首次上下文、完整快速层和
 缓存重复的正式耗时分别为 18.92s、1.25s、0.028s；真实浏览器为 22.60s、2.16s、0.06s。
 P5 长视野历史中位数约 749s，因此交互入口只在最后 1 次 Roll 开放（正式实测 8.60s），
-且仍显示失败门禁。详见
+且仍显示失败门禁。该实验页面仍冻结在 v1 证据身份；它没有被 P5 静默切换为 v2。详见
 [P7 报告](docs/reports/p7-local-interactive-group-roll-advisor-2026-08-06.md)。
 完整操作顺序、主赛事种子导入和状态含义见 [docs/runbook.md](docs/runbook.md)。模型的时间
 切分、覆盖门槛和三种目标见 [docs/modeling.md](docs/modeling.md)。

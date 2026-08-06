@@ -21,6 +21,7 @@ def project_paths(tmp_path: Path) -> ProjectPaths:
         "team-strength-v2.json",
         "fantasy-group-scenarios-v1.json",
         "fantasy-group-playbook-validation-v1.json",
+        "fantasy-group-branch-capped-solver-v1.json",
     ):
         shutil.copy2(
             source_root / "config/models" / policy_name,

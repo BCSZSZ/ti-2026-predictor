@@ -11,6 +11,9 @@
 - P4 已把 Group 40 Roll 单独落实为两版人工手册和七张 Stat 表，见
   [`playbooks/group-roll/README.md`](playbooks/group-roll/README.md)。两版 v1 均为 `draft`；本文
   后续的旧口诀不能覆盖 P4 的精确分档、条件 Trait 配方或发布门槛。
+- P5 限枝 solver 已完成失败门禁审查，见
+  [`reports/p5-branch-capped-solver-2026-08-06.md`](reports/p5-branch-capped-solver-2026-08-06.md)。
+  它保留为实验性反例/本地 advisor 内核，不能覆盖人工手册，也不能称为可靠或全局最优。
 
 ## 1. 参考作业做了什么
 

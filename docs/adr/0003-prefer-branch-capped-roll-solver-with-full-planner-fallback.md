@@ -78,3 +78,19 @@ Failure of any quality condition opens an escalation review; it does not activat
 Exceeding the simplified solver's provisional 60-minute ceiling is a performance failure to
 optimize or rescope, not evidence for enabling the more expensive full planner. A later activation
 still requires a new explicit decision accepting the added complexity.
+
+## P5 empirical outcome
+
+The 2026-08-06 P5 implementation falsified the provisional production-rate hypothesis without
+changing this decision's fallback rule. The frozen 60-minute run completed all 18 fixed-offer
+short-horizon diagnostics but only 7 of 216 paired full-session units. Their median solver-plus-two-
+baseline unit took 492.95 seconds, projecting the complete plan to about 29.58 hours even though the
+projected full-horizon-equivalent path count remained below 2.4 million. Every observed Common
+situation had an unresolved session, and the seven-session branch-capped point estimate was worse
+than one-step greedy in mean.
+
+The result is `failed-escalation-review-required`, documented in
+`docs/reports/p5-branch-capped-solver-2026-08-06.md`. It does not activate the Full configuration
+planner. The exact configuration tables and bounded solver remain available for experimental sparse
+counterexample checks and the local advisor, but no output may be labelled reliable or globally
+optimal under v1.

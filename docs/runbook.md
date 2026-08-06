@@ -88,6 +88,19 @@ The current v1 result is `warning`: both editions remain `draft`; consult the
 [manual index](playbooks/group-roll/README.md) and
 [P4 report](reports/p4-independent-human-playbooks-2026-08-06.md) before operational use.
 
+The bounded P5 Reference Roll solver has its own cached-snapshot evidence command:
+
+```powershell
+uv run ti fantasy group-solver-evidence --as-of 2026-08-06T08:15:00Z
+```
+
+It requires the immutable P4 artifact, rebuilds and verifies the P3/Rule context, then runs the
+frozen one-hour effectiveness protocol. The v1 run completed all 18 fixed-offer short-horizon
+diagnostics but only 7/216 full-session units; its status is
+`failed-escalation-review-required`. Do not use it as a reliable or globally optimal recommendation,
+and do not enable the dormant Full configuration planner from this failure. See the
+[P5 report](reports/p5-branch-capped-solver-2026-08-06.md).
+
 The OpenDota `data sync` and `data fantasy-history` commands stop before exceeding their per-run
 `--request-limit` (default 5,000), and keyed
 attempts are reserved in `data/cache/opendota_api_usage.json` before the network call. A repeated

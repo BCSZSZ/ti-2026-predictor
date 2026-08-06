@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "policy_id": "fantasy-group-read-only-cross-audit-v1",
+  "period": "group",
+  "as_of": "2026-08-06T08:15:00Z",
+  "seed": 2026080606,
+  "source_playbook_evidence_sha256": "a0361a228629c46663fe844387af7f71eea37113838b3036dc6181dd227ad857",
+  "source_playbook_validation_policy_sha256": "19b505159bb7c42b93d952359932e26dd0434ff4ae9283738432784afe685865",
+  "source_solver_evidence_sha256": "eb6a399d19653377ec20757e17c195cd3bac32e66b2dad2bddd411abb82e80d7",
+  "source_solver_policy_sha256": "9466049f426e10c03926152c9cf60ecd9a4b96c155c19389456f2a5b73e5d3d9",
+  "source_scenario_sha256": "872533c3a40cb8a23bb90158234fca40294b940631805ae192d0813ec699e6a2",
+  "playbook_sha256": {
+    "rate-agnostic": "cf6d2e5c08e20497e095d1c29da56166515d1d16f16805147e5de4cad7a6a030",
+    "primary-model": "f710f7d26759e65310abefb36ebec1e2f6d704ab8e09867a46c17387f24b5898"
+  },
+  "held_out_scenarios": {
+    "count": 128,
+    "sampling": "fixed_without_replacement_from_source_indexes",
+    "exclude_p4_validation_indexes": true,
+    "exclude_p5_validation_indexes": true
+  },
+  "conditional_states": {
+    "coverage_case_count": 9,
+    "remaining_rolls": [1, 2, 3],
+    "current_offer": "frozen_offer_of_each_p4_coverage_case",
+    "replacement_offer_schedule": "subsequent_p4_coverage_offers_cyclic",
+    "future_offer_randomness_integrated": false
+  },
+  "editions": [
+    {
+      "edition": "rate-agnostic",
+      "risk_preference": "default-knee",
+      "mean_retention_epsilon": 0.01,
+      "models": [
+        "client-weight-primary-v1",
+        "flattened-weights-v1",
+        "sharpened-weights-v1"
+      ]
+    },
+    {
+      "edition": "primary-model",
+      "risk_preference": "default-knee",
+      "mean_retention_epsilon": 0.02,
+      "models": ["client-weight-primary-v1"]
+    }
+  ],
+  "published_rule_count": 12,
+  "cvar_alpha": 0.1,
+  "confidence": {
+    "level": 0.95,
+    "method": "independent_weighted_outcome_bootstrap",
+    "replicates": 2000,
+    "sample_size": 128,
+    "compute_only_for_p4_common_activations": true
+  },
+  "significance": {
+    "common_session_frequency": 0.1,
+    "baseline_material_loss": 0.1,
+    "strict_material_loss": 0.05,
+    "directionally_wrong": "manual_action_strictly_dominated_by_refresh_in_both_mean_and_cvar10"
+  },
+  "release": {
+    "allowed_labels": [
+      "baseline-reliable",
+      "strict-reliable",
+      "draft",
+      "inapplicable"
+    ],
+    "solver_disagreement_alone_changes_manual": false,
+    "manual_revision_allowed": false,
+    "ui_is_release_gate": false
+  },
+  "runtime_target_seconds": 1800,
+  "runtime_hard_ceiling_seconds": 3600
+}

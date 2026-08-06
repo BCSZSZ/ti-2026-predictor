@@ -1,6 +1,6 @@
 # TI 2026 Group 40-Roll playbook v2 implementation
 
-Status: P0-P2 complete; P3 standalone validation is next
+Status: P0-P3 complete; P4 held-out read-only cross-audit is next
 
 - Plan freeze date: 2026-08-07
 - Starting `main`: `5d701c9e56bfb73a3436b85273f404946ed628bc`
@@ -184,6 +184,13 @@ patch a rule after confirmation results are known.
 
 An edition that misses any release condition remains `draft`; its failed evidence is still a valid
 and mergeable stage result.
+
+Result: complete under the explicit failed-gate branch. The frozen candidates completed 34,560
+full sessions in 25m32s. Rate-agnostic had 23 baseline-10-percent Common failures and only four
+rules supported across all release models. Primary-model retained zero baseline failures and
+supported seven rules, but five core ablations and both active risk overlays failed. Both remain
+`draft`; no rule was changed. See
+[`group-roll-playbook-v2-p3-standalone-validation-2026-08-07.md`](../reports/group-roll-playbook-v2-p3-standalone-validation-2026-08-07.md).
 
 ## P4 — Complete read-only cross-audit and release labels
 

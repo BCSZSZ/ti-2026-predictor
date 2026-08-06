@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "policy_id": "fantasy-group-interactive-advisor-v1",
+  "period": "group",
+  "as_of": "2026-08-06T08:15:00Z",
+  "seed": 2026080607,
+  "source_p3_evidence_sha256": "f42517fa5c0c596f2b15397ad2206136d48b0ff7fef578e131b4a919aa7fd9b8",
+  "source_p4_evidence_sha256": "a0361a228629c46663fe844387af7f71eea37113838b3036dc6181dd227ad857",
+  "source_p5_evidence_sha256": "eb6a399d19653377ec20757e17c195cd3bac32e66b2dad2bddd411abb82e80d7",
+  "source_p6_evidence_sha256": "b500065b609bba0cdc99aead49ad16fdd8d90bc27803ce5977bee2b1acba580d",
+  "playbook_sha256": {
+    "rate-agnostic": "cf6d2e5c08e20497e095d1c29da56166515d1d16f16805147e5de4cad7a6a030",
+    "primary-model": "f710f7d26759e65310abefb36ebec1e2f6d704ab8e09867a46c17387f24b5898"
+  },
+  "scenario": {
+    "sha256": "6b25f08e0a48cb2da3a936eec5a00de6695f5272db43481b28ea758a7ad4e6dc",
+    "count": 128,
+    "scope": "p6_held_out_for_responsive_diagnostic_estimates"
+  },
+  "input": {
+    "roles_in_order": ["core", "mid", "support"],
+    "emblems_per_role": 3,
+    "shared_offer_size": 3,
+    "remaining_rolls_min": 1,
+    "remaining_rolls_max": 40,
+    "operation_selection": "positive_weight_ids_with_generated_descriptions",
+    "observed_results_must_be_manually_confirmed": true
+  },
+  "quick_analysis": {
+    "rate_agnostic_action_interval": true,
+    "one_step_exact_mutation_and_group_performance": true,
+    "future_offer_value_included": false,
+    "future_roll_reachability_included": false,
+    "models": [
+      "client-weight-primary-v1",
+      "flattened-weights-v1",
+      "sharpened-weights-v1"
+    ],
+    "mean_retention_epsilons": [0.0, 0.01, 0.02, 0.05],
+    "cvar_alpha": 0.1,
+    "show_model_sensitivity": true,
+    "show_current_best_team_matching": true
+  },
+  "optional_solver": {
+    "enabled_on_explicit_user_action_only": true,
+    "solver_policy_id": "fantasy-group-branch-capped-solver-v1",
+    "display_effectiveness_status": "failed-escalation-review-required",
+    "display_unresolved_and_executed_fallback": true,
+    "claim_global_optimality": false
+  },
+  "session": {
+    "locked_baseline_fields": [
+      "as_of",
+      "data_snapshot_sha256",
+      "rule_snapshot_sha256",
+      "scenario_sha256",
+      "playbook_sha256",
+      "transition_models",
+      "seeds"
+    ],
+    "observed_state_replanning": true,
+    "in_session_rate_learning": false,
+    "saved_replay_schema_version": 1
+  },
+  "boundaries": {
+    "listen_address": "127.0.0.1",
+    "dota_client_control": false,
+    "automatic_filling": false,
+    "unconfirmed_ocr_action": false,
+    "main_execution": "fail_closed"
+  },
+  "performance_targets_seconds": {
+    "context_load": 30.0,
+    "quick_analysis": 10.0,
+    "cached_repeat": 1.0,
+    "optional_solver": 60.0
+  },
+  "functional_gate": [
+    "local_only_bind",
+    "complete_manual_input_validation",
+    "apply_observed_outcome",
+    "refresh_observed_offer",
+    "observed_state_replanning",
+    "deterministic_saved_session_replay",
+    "unsupported_main_fails_closed",
+    "streamlit_page_has_no_runtime_exception"
+  ]
+}

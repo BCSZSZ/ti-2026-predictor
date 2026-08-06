@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "package_id": "ti2026-group-roll-playbook-candidate-freeze-v2",
+  "stage": "p2-independent-candidate-freeze",
+  "period": "group",
+  "as_of": "2026-08-06T17:27:00Z",
+  "manual_route_independent_of_solver": true,
+  "solver_sources_used_for_derivation": [],
+  "candidate_status": {
+    "rate-agnostic": "candidate-frozen-unvalidated",
+    "primary-model": "candidate-frozen-unvalidated"
+  },
+  "identities": {
+    "source_git_commit": "ea8abceed4df5e96803c762d31c2e36e2b07d0fc",
+    "rule_snapshot_id": "20260806T172612Z-702ddf2a6953",
+    "rule_snapshot_sha256": "702ddf2a6953f383895efdfa3e45460c770e7c3c37e71d6a2b1d68e547a3235f",
+    "data_snapshot_sha256": "49e373b2c03a4598d51f3de3eb5b85f80f001a097dd26acaa41137862b58f88b",
+    "series_pool_sha256": "9a86b14e913e6e53fe4a53f7bd7325386b372521fe18c7924004cfbccfa33c16",
+    "p3_source_scenario_sha256": "22fd9f2f400cff0a4b08926824f181b8e05287e46de12d1139c5fda6bdeff7c3",
+    "p3_evidence_sha256": "de84baa3081ac5d81e55ec9110766d96c26071a907b7a74824bff8e8faf7a42f",
+    "v1_p4_manual_route_evidence_sha256": "a0361a228629c46663fe844387af7f71eea37113838b3036dc6181dd227ad857"
+  },
+  "derivation_boundary": {
+    "allowed": [
+      "current governed P1-P3 arithmetic",
+      "current client-visible rule semantics",
+      "v1 P4 manual-route aggregate and per-rule ablation evidence"
+    ],
+    "excluded": [
+      "P5 Reference Roll solver action traces",
+      "P6 conditional-oracle actions",
+      "coverage-case rule branches",
+      "post-confirmation rule edits"
+    ]
+  },
+  "playbooks": {
+    "rate-agnostic": {
+      "path": "config/playbooks/group-rate-agnostic-v2.json",
+      "semantic_sha256": "2e4936c773722ba8979349cef4eb381d9699a10aeb6db1c11ccb33783c1b4e9a",
+      "file_sha256": "f12f4089997d308c0f63aae38e34313c15e7be4f8da56822adbacdcbef00b115"
+    },
+    "primary-model": {
+      "path": "config/playbooks/group-primary-model-v2.json",
+      "semantic_sha256": "8a548206fae6072ef83c3979189049d00c9ab63074718a4a85ada7ab3b47cb0a",
+      "file_sha256": "1308ac117f682dda7cdbb1e732667cb6e2395d180af43b977eaf49120b347c16"
+    }
+  },
+  "source_artifact": {
+    "phase": "p3-current-baseline",
+    "run_id": "fantasy-bcffa25a645c8438",
+    "path": "artifacts/fantasy-bcffa25a645c8438/group-fantasy-evidence.json",
+    "file_sha256": "67917884967a7e43f8925af0c24f2fd52f7be9f4cb370faeb31b0cca25fc8aa6"
+  },
+  "tracked_files": [
+    {
+      "path": "config/rules/ti2026.json",
+      "sha256": "5c0236554e225eea8a494fb705fe08ec0dd3c9b67320602c4220ff7d356fd09d"
+    },
+    {
+      "path": "config/models/fantasy-group-scenarios-v1.json",
+      "sha256": "e28876f6573afcdd261c044c215ece5fbbf6bc9ff0cf02324defcf445b961065"
+    },
+    {
+      "path": "src/ti_predictor/fantasy/playbook.py",
+      "sha256": "9ab4c643ff2e4e08ef2464e1ba849180785b39e96534cca4fedfa4d10883c0d8"
+    },
+    {
+      "path": "config/playbooks/group-rate-agnostic-v2.json",
+      "sha256": "f12f4089997d308c0f63aae38e34313c15e7be4f8da56822adbacdcbef00b115"
+    },
+    {
+      "path": "config/playbooks/group-primary-model-v2.json",
+      "sha256": "1308ac117f682dda7cdbb1e732667cb6e2395d180af43b977eaf49120b347c16"
+    },
+    {
+      "path": "docs/playbooks/group-roll/stat-quality-trait-evidence-v2.md",
+      "sha256": "e4bec28eac3de8a41321c3edc09f1f9af7204b4879a80d28f8ec025b922cf19c"
+    },
+    {
+      "path": "docs/playbooks/group-roll/playbook-rate-agnostic-v2.md",
+      "sha256": "a87164635e3e69c2d76fdb4e69bca19552788d368639afd95b43739c0b62464d"
+    },
+    {
+      "path": "docs/playbooks/group-roll/playbook-primary-model-v2.md",
+      "sha256": "e16188d28dfde5cbcf47b2ad2ed1239f5c437e88b8c641b8a3ebc4760e8d42a9"
+    }
+  ],
+  "limitations": [
+    "Both v2 playbooks are frozen candidates, not validated releases",
+    "P3 standalone confirmation and P4 held-out cross-audit have not started",
+    "Main Roll policy and automatic Dota interaction remain unsupported"
+  ]
+}

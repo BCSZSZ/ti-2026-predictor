@@ -236,6 +236,11 @@ def build_stat_priorities(
                 float(row["eligible_row_provenance_coverage"]),
                 float(row["complete_block_provenance_coverage"]),
             )
+            provenance = str(row["provenance"])
+            if provenance not in {"exact", "derived"}:
+                raise ValueError("Playbook Stats require exact or accepted derived provenance")
+            if coverage != 1.0:
+                raise ValueError("Playbook Stats require complete provenance coverage")
             result.append(
                 StatPriority(
                     role=role,
@@ -247,7 +252,7 @@ def build_stat_priorities(
                     all_team_mean=float(row["all_team_mean"]),
                     grade=grade,
                     boundary=boundary.get(key, False),
-                    provenance=str(row["provenance"]),
+                    provenance=provenance,
                     coverage=coverage,
                 )
             )
@@ -537,6 +542,9 @@ class PlaybookPolicy:
     def _handle_targeted_green_priority_repair(self, rule, state, actions, metrics, risk):
         yield from self._targeted_green_by_grade(state, actions, {"priority-repair"}, boundary=None)
 
+    def _handle_targeted_green_stable_priority_repair(self, rule, state, actions, metrics, risk):
+        yield from self._targeted_green_by_grade(state, actions, {"priority-repair"}, boundary=False)
+
     def _handle_mid_singleton_priority_repair(self, rule, state, actions, metrics, risk):
         for action in self._filter_mutation(actions, ROLL_STAT):
             if action.banner_role != "mid":
@@ -558,8 +566,16 @@ class PlaybookPolicy:
     def _handle_precise_t1_quality(self, rule, state, actions, metrics, risk):
         yield from self._quality_targets_at_most(state, actions, 1, targeted_only=True)
 
+    def _handle_precise_t1_quality_before_late(self, rule, state, actions, metrics, risk):
+        if state.remaining_rolls >= 11:
+            yield from self._quality_targets_at_most(state, actions, 1, targeted_only=True)
+
     def _handle_broad_all_t1_quality(self, rule, state, actions, metrics, risk):
         yield from self._quality_targets_at_most(state, actions, 1, broad_only=True)
+
+    def _handle_broad_all_t1_quality_early(self, rule, state, actions, metrics, risk):
+        if state.remaining_rolls >= 26:
+            yield from self._quality_targets_at_most(state, actions, 1, broad_only=True)
 
     def _handle_precise_dead_blue_trait(self, rule, state, actions, metrics, risk):
         for action in self._filter_mutation(actions, ROLL_TRAIT):
@@ -585,9 +601,22 @@ class PlaybookPolicy:
             ):
                 yield action
 
+    def _handle_precise_dead_blue_trait_before_late(self, rule, state, actions, metrics, risk):
+        if state.remaining_rolls >= 11:
+            yield from self._handle_precise_dead_blue_trait(rule, state, actions, metrics, risk)
+
     def _handle_late_nonnegative_support(self, rule, state, actions, metrics, risk):
         if state.remaining_rolls <= 10:
             yield from (action for action in actions if metrics[action].minimum_delta >= -1e-9)
+
+    def _handle_nonnegative_stat_before_late(self, rule, state, actions, metrics, risk):
+        yield from self._nonnegative_mutation_before_late(state, actions, metrics, ROLL_STAT)
+
+    def _handle_nonnegative_quality_before_late(self, rule, state, actions, metrics, risk):
+        yield from self._nonnegative_mutation_before_late(state, actions, metrics, ROLL_QUALITY)
+
+    def _handle_nonnegative_trait_before_late(self, rule, state, actions, metrics, risk):
+        yield from self._nonnegative_mutation_before_late(state, actions, metrics, ROLL_TRAIT)
 
     def _handle_targeted_green_conditional_early(self, rule, state, actions, metrics, risk):
         if state.remaining_rolls >= 11:
@@ -659,6 +688,15 @@ class PlaybookPolicy:
             if len(indices) == 1 and gain is not None and gain > threshold:
                 yield action
 
+    def _handle_singleton_positive_stat_threshold(self, rule, state, actions, metrics, risk):
+        if state.remaining_rolls < 11:
+            return
+        for action in self._filter_mutation(actions, ROLL_STAT):
+            banner = self._banner(state, action.banner_role)
+            indices = self._target_indices(banner, self._operation(action))
+            if len(indices) == 1 and self._meets_expected_gain_floor(action, metrics, risk):
+                yield action
+
     def _handle_duplicate_positive_stat_mean(self, rule, state, actions, metrics, risk):
         if state.remaining_rolls < 11:
             return
@@ -668,6 +706,19 @@ class PlaybookPolicy:
             if len(indices) == 2 and "hard-protect" not in self._grades(banner, indices):
                 if (metrics[action].expected_delta or 0.0) > 0.0:
                     yield action
+
+    def _handle_duplicate_positive_stat_threshold(self, rule, state, actions, metrics, risk):
+        if state.remaining_rolls < 11:
+            return
+        for action in self._filter_mutation(actions, ROLL_STAT):
+            banner = self._banner(state, action.banner_role)
+            indices = self._target_indices(banner, self._operation(action))
+            if (
+                len(indices) == 2
+                and "hard-protect" not in self._grades(banner, indices)
+                and self._meets_expected_gain_floor(action, metrics, risk)
+            ):
+                yield action
 
     def _handle_precise_quality_positive_mean(self, rule, state, actions, metrics, risk):
         maximum = int(rule.parameters.get("maximum_quality_tier", 2))
@@ -685,6 +736,19 @@ class PlaybookPolicy:
                 if (metrics[action].expected_delta or 0.0) > 0.0:
                     yield action
 
+    def _handle_broad_quality_positive_threshold(self, rule, state, actions, metrics, risk):
+        if state.remaining_rolls < 11:
+            return
+        for action in self._filter_mutation(actions, ROLL_QUALITY):
+            banner = self._banner(state, action.banner_role)
+            operation = self._operation(action)
+            if (
+                TARGET_ALL_COLOR in operation.targets
+                and not self._active_triple_fractal(banner)
+                and self._meets_expected_gain_floor(action, metrics, risk)
+            ):
+                yield action
+
     def _handle_precise_blue_trait_positive_mean(self, rule, state, actions, metrics, risk):
         for action in self._filter_mutation(actions, ROLL_TRAIT):
             banner = self._banner(state, action.banner_role)
@@ -692,6 +756,19 @@ class PlaybookPolicy:
             if set(operation.targets) & {TARGET_ONE_COLOR, TARGET_FIRST_COLOR, TARGET_LAST_COLOR}:
                 if not self._is_approved_recipe(banner) and (metrics[action].expected_delta or 0.0) > 0.0:
                     yield action
+
+    def _handle_precise_blue_trait_positive_threshold(self, rule, state, actions, metrics, risk):
+        if state.remaining_rolls < 11:
+            return
+        for action in self._filter_mutation(actions, ROLL_TRAIT):
+            banner = self._banner(state, action.banner_role)
+            operation = self._operation(action)
+            if (
+                set(operation.targets) & {TARGET_ONE_COLOR, TARGET_FIRST_COLOR, TARGET_LAST_COLOR}
+                and not self._is_approved_recipe(banner)
+                and self._meets_expected_gain_floor(action, metrics, risk)
+            ):
+                yield action
 
     def _handle_singleton_trait_positive_mean(self, rule, state, actions, metrics, risk):
         if state.remaining_rolls < 11:
@@ -702,6 +779,46 @@ class PlaybookPolicy:
             if len(indices) == 1 and not self._is_approved_recipe(banner):
                 if (metrics[action].expected_delta or 0.0) > 0.0:
                     yield action
+
+    def _handle_singleton_trait_positive_threshold(self, rule, state, actions, metrics, risk):
+        if state.remaining_rolls < 11:
+            return
+        for action in self._filter_mutation(actions, ROLL_TRAIT):
+            banner = self._banner(state, action.banner_role)
+            indices = self._target_indices(banner, self._operation(action))
+            if (
+                len(indices) == 1
+                and not self._is_approved_recipe(banner)
+                and self._meets_expected_gain_floor(action, metrics, risk)
+            ):
+                yield action
+
+    def _handle_targeted_green_stable_positive_threshold(self, rule, state, actions, metrics, risk):
+        if state.remaining_rolls < 11:
+            return
+        candidates = self._targeted_green_by_grade(
+            state,
+            actions,
+            {"priority-repair"},
+            boundary=False,
+        )
+        yield from (action for action in candidates if self._meets_expected_gain_floor(action, metrics, risk))
+
+    def _handle_one_away_blue_trait_positive_threshold(self, rule, state, actions, metrics, risk):
+        if state.remaining_rolls < 11:
+            return
+        for action in self._filter_mutation(actions, ROLL_TRAIT):
+            operation = self._operation(action)
+            if not set(operation.targets) & {TARGET_ONE_COLOR, TARGET_FIRST_COLOR, TARGET_LAST_COLOR}:
+                continue
+            banner = self._banner(state, action.banner_role)
+            indices = self._target_indices(banner, operation)
+            if self._one_away_from_recipe(banner, indices) and self._meets_expected_gain_floor(
+                action,
+                metrics,
+                risk,
+            ):
+                yield action
 
     def _handle_targeted_green_conditional_mean(self, rule, state, actions, metrics, risk):
         if state.remaining_rolls < 11:
@@ -733,6 +850,25 @@ class PlaybookPolicy:
             if TARGET_ALL_COLOR in operation.targets and not self._is_approved_recipe(banner):
                 if (metrics[action].expected_delta or 0.0) > 0.0:
                     yield action
+
+    def _handle_broad_trait_positive_threshold(self, rule, state, actions, metrics, risk):
+        if state.remaining_rolls < 26:
+            return
+        for action in self._filter_mutation(actions, ROLL_TRAIT):
+            banner = self._banner(state, action.banner_role)
+            operation = self._operation(action)
+            if (
+                TARGET_ALL_COLOR in operation.targets
+                and not self._is_approved_recipe(banner)
+                and self._meets_expected_gain_floor(action, metrics, risk)
+            ):
+                yield action
+
+    def _handle_balanced_two_up_one_down_threshold(self, rule, state, actions, metrics, risk):
+        if state.remaining_rolls < 26 or not self._allow_balanced_trade(risk):
+            return
+        candidates = self._balanced_trade_candidates(state, actions, maximum_tier=2, metrics=metrics)
+        yield from (action for action in candidates if self._meets_expected_gain_floor(action, metrics, risk))
 
     def _handle_conditional_stat_boundary_mean_first(self, rule, state, actions, metrics, risk):
         if state.remaining_rolls < 26 or risk != "mean-first":
@@ -793,6 +929,20 @@ class PlaybookPolicy:
 
     def _allow_balanced_trade(self, risk: str) -> bool:
         return bool(self.definition.risk_overlays[risk].get("allow_balanced_trade", False))
+
+    def _meets_expected_gain_floor(self, action, metrics, risk) -> bool:
+        gain = metrics[action].expected_relative_gain
+        threshold = float(self.definition.risk_overlays[risk].get("minimum_expected_delta", 0.0))
+        return gain is not None and gain > threshold
+
+    def _nonnegative_mutation_before_late(self, state, actions, metrics, mutation):
+        if state.remaining_rolls < 11:
+            return
+        yield from (
+            action
+            for action in self._filter_mutation(actions, mutation)
+            if metrics[action].minimum_delta >= -1e-9
+        )
 
     def _balanced_trade_candidates(self, state, actions, *, maximum_tier, metrics):
         for action in actions:

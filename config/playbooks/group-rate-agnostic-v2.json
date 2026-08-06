@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "playbook_id": "group-rate-agnostic-v2",
+  "edition": "rate-agnostic",
+  "status": "candidate-frozen",
+  "period": "group",
+  "roll_count": 40,
+  "as_of": "2026-08-06T17:27:00Z",
+  "origin": "independent-stat-quality-trait-derivation-before-reference-solver",
+  "source_evidence_sha256": "de84baa3081ac5d81e55ec9110766d96c26071a907b7a74824bff8e8faf7a42f",
+  "validation_models": [
+    "client-weight-primary-v1",
+    "flattened-weights-v1",
+    "sharpened-weights-v1"
+  ],
+  "phases": [
+    {"id": "early", "remaining_min": 26, "remaining_max": 40},
+    {"id": "middle", "remaining_min": 11, "remaining_max": 25},
+    {"id": "late", "remaining_min": 1, "remaining_max": 10}
+  ],
+  "stat_grade_thresholds": {
+    "hard_protect_runner_up_below": 0.44,
+    "keep_at_least": 0.846,
+    "conditional_reroll_at_least": 0.44
+  },
+  "published_rule_count": 12,
+  "candidate_rule_counts": [8, 12, 16],
+  "risk_overlays": {
+    "mean-first": {"allow_balanced_trade": true, "allow_boundary_reroll": true},
+    "default-knee": {"allow_balanced_trade": false, "allow_boundary_reroll": false},
+    "downside-first": {"allow_balanced_trade": false, "allow_boundary_reroll": false}
+  },
+  "rules": [
+    {
+      "rule_id": "R2A01",
+      "handler": "increase_one_quality",
+      "title": "先拿不会降级的随机 +1",
+      "visible_conditions": ["出现 +1 一格品质", "至少一面战旗不是全 T5"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A02",
+      "handler": "mid_singleton_priority_repair",
+      "title": "修复 Mid 的单格 C 档统计项",
+      "visible_conditions": ["Mid 对应颜色统计项为 priority-repair", "该颜色在 Mid 只有一格"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A03",
+      "handler": "late_nonnegative_support",
+      "title": "最后十次只拿全支持不降的动作",
+      "visible_conditions": ["剩余 1–10 次", "所有合法结果都不低于当前代理值"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A04",
+      "handler": "targeted_green_stable_priority_repair",
+      "title": "只精确修复稳定的绿色 C 档",
+      "visible_conditions": ["绿色统计项为非边界 priority-repair", "选项只动该绿色格"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A05",
+      "handler": "precise_t1_quality_before_late",
+      "title": "前中期精确重随 T1 品质",
+      "visible_conditions": ["剩余至少 11 次", "目标格为 T1", "选项不影响更高品质格"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A06",
+      "handler": "broad_all_t1_quality_early",
+      "title": "仅前期整色重随全 T1 品质",
+      "visible_conditions": ["剩余 26–40 次", "受影响格全部 T1", "没有更高品质会被洗掉"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A07",
+      "handler": "precise_dead_blue_trait_before_late",
+      "title": "前中期精确清理失效蓝色 Trait",
+      "visible_conditions": ["剩余至少 11 次", "目标 Trait 当前不触发且不是完整套装", "目标格贡献不低于相邻格的 20%"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A08",
+      "handler": "targeted_green_conditional_early",
+      "title": "前中期精确改善稳定绿色 B 档",
+      "visible_conditions": ["剩余至少 11 次", "绿色统计项为非边界 conditional-reroll", "选项只动该绿色格"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A09",
+      "handler": "one_away_blue_trait_recipe",
+      "title": "只差一格时精确追蓝色 Trait 套装",
+      "visible_conditions": ["剩余至少 11 次", "离认可套装只差这一格", "选项精确命中蓝色缺口"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A10",
+      "handler": "nonnegative_stat_before_late",
+      "title": "前中期只接全支持不降的 Stat 重随",
+      "visible_conditions": ["剩余至少 11 次", "选项重随 Stat", "所有合法结果都不降"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A11",
+      "handler": "nonnegative_quality_before_late",
+      "title": "前中期只接全支持不降的品质重随",
+      "visible_conditions": ["剩余至少 11 次", "选项重随品质", "所有合法结果都不降"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A12",
+      "handler": "nonnegative_trait_before_late",
+      "title": "前中期只接全支持不降的 Trait 重随",
+      "visible_conditions": ["剩余至少 11 次", "选项重随 Trait", "所有合法结果都不降"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A13",
+      "handler": "targeted_green_boundary_early",
+      "title": "均值优先才在前期动绿色边界 B 档",
+      "visible_conditions": ["剩余 26–40 次", "绿色统计项为边界 conditional-reroll", "风险偏好为 mean-first"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A14",
+      "handler": "precise_t2_quality_early",
+      "title": "复杂度挑战：前中期精确重随 T2",
+      "visible_conditions": ["剩余至少 11 次", "目标格为 T2", "不破坏完整 Fractal 结构"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A15",
+      "handler": "broad_trait_floor_early",
+      "title": "复杂度挑战：前期整色清理失效 Trait",
+      "visible_conditions": ["剩余 26–40 次", "受影响 Trait 均不触发", "不破坏认可套装"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "R2A16",
+      "handler": "balanced_two_up_one_down_middle",
+      "title": "均值优先挑战：中期低品质二升一降",
+      "visible_conditions": ["剩余 11–25 次且为 mean-first", "三格都不高于 T2", "任一格贡献不超过总贡献 45%"],
+      "parameters": {}
+    }
+  ],
+  "fallback": {
+    "action": "refresh",
+    "instruction": "没有任何规则支持应用当前选项时，花 1 次 Roll 刷新三个共享选项。"
+  }
+}

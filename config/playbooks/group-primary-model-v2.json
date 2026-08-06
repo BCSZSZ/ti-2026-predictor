@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "playbook_id": "group-primary-model-v2",
+  "edition": "primary-model",
+  "status": "candidate-frozen",
+  "period": "group",
+  "roll_count": 40,
+  "as_of": "2026-08-06T17:27:00Z",
+  "origin": "independent-stat-quality-trait-derivation-before-reference-solver",
+  "source_evidence_sha256": "de84baa3081ac5d81e55ec9110766d96c26071a907b7a74824bff8e8faf7a42f",
+  "transition_model": "client-weight-primary-v1",
+  "sensitivity_models": ["flattened-weights-v1", "sharpened-weights-v1"],
+  "phases": [
+    {"id": "early", "remaining_min": 26, "remaining_max": 40},
+    {"id": "middle", "remaining_min": 11, "remaining_max": 25},
+    {"id": "late", "remaining_min": 1, "remaining_max": 10}
+  ],
+  "stat_grade_thresholds": {
+    "hard_protect_runner_up_below": 0.44,
+    "keep_at_least": 0.846,
+    "conditional_reroll_at_least": 0.44
+  },
+  "published_rule_count": 12,
+  "candidate_rule_counts": [8, 12, 16],
+  "risk_overlays": {
+    "mean-first": {"minimum_expected_delta": 0.0, "allow_balanced_trade": true},
+    "default-knee": {"minimum_expected_delta": 0.02, "allow_balanced_trade": true},
+    "downside-first": {"minimum_expected_delta": 0.05, "allow_balanced_trade": false}
+  },
+  "rules": [
+    {
+      "rule_id": "P2M01",
+      "handler": "precise_quality_positive_mean",
+      "title": "精确重随 T1/T2 品质",
+      "visible_conditions": ["目标格为 T1 或 T2", "不破坏完整 Fractal 品质结构"],
+      "parameters": {"maximum_quality_tier": 2}
+    },
+    {
+      "rule_id": "P2M02",
+      "handler": "late_positive_mean",
+      "title": "最后十次只做达到风险门槛的动作",
+      "visible_conditions": ["剩余 1–10 次", "主模型相对改善达到风险档门槛", "不破坏 keep 或认可套装"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "P2M03",
+      "handler": "increase_one_quality",
+      "title": "拿不会降级的随机 +1",
+      "visible_conditions": ["出现 +1 一格品质", "至少一面战旗不是全 T5"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "P2M04",
+      "handler": "targeted_green_stable_positive_threshold",
+      "title": "精确修复稳定绿色 C 档且过门槛",
+      "visible_conditions": ["剩余至少 11 次且为非边界绿色 C 档", "选项只动该格", "主模型相对改善达到风险档门槛"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "P2M05",
+      "handler": "one_away_blue_trait_positive_threshold",
+      "title": "只差一格且过门槛时追 Trait 套装",
+      "visible_conditions": ["剩余至少 11 次且只差蓝色一格", "选项精确命中缺口", "主模型相对改善达到风险档门槛"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "P2M06",
+      "handler": "singleton_positive_stat_threshold",
+      "title": "单格 Stat 必须达到风险档改善门槛",
+      "visible_conditions": ["剩余至少 11 次", "该选项只影响一格 Stat", "主模型相对改善达到风险档门槛"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "P2M07",
+      "handler": "duplicate_positive_stat_threshold",
+      "title": "两格 Stat 必须达到风险档改善门槛",
+      "visible_conditions": ["剩余至少 11 次且影响两格 Stat", "没有 hard-protect 格", "主模型相对改善达到风险档门槛"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "P2M08",
+      "handler": "broad_quality_positive_threshold",
+      "title": "整色品质必须达到风险档改善门槛",
+      "visible_conditions": ["剩余至少 11 次且整色重随品质", "不破坏完整 Fractal", "主模型相对改善达到风险档门槛"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "P2M09",
+      "handler": "precise_blue_trait_positive_threshold",
+      "title": "精确 Trait 必须达到风险档改善门槛",
+      "visible_conditions": ["剩余至少 11 次且精确影响蓝色格", "不破坏认可套装", "主模型相对改善达到风险档门槛"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "P2M10",
+      "handler": "singleton_trait_positive_threshold",
+      "title": "单格 Trait 必须达到风险档改善门槛",
+      "visible_conditions": ["剩余至少 11 次且只影响一格 Trait", "不破坏认可套装", "主模型相对改善达到风险档门槛"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "P2M11",
+      "handler": "broad_trait_positive_threshold",
+      "title": "前期整色 Trait 必须达到风险档门槛",
+      "visible_conditions": ["剩余 26–40 次且整色重随 Trait", "不破坏认可套装", "主模型相对改善达到风险档门槛"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "P2M12",
+      "handler": "balanced_two_up_one_down_threshold",
+      "title": "前期低品质二升一降必须达到门槛",
+      "visible_conditions": ["剩余 26–40 次且三格不高于 T2", "任一格贡献不超过总贡献 45%", "主模型相对改善达到风险档门槛"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "P2M13",
+      "handler": "targeted_green_conditional_mean",
+      "title": "复杂度挑战：精确改善绿色 B 档",
+      "visible_conditions": ["剩余至少 11 次", "绿色统计项为 conditional-reroll", "主模型平均改善为正"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "P2M14",
+      "handler": "conditional_stat_boundary_mean_first",
+      "title": "均值优先挑战：前期追 Stat 边界项",
+      "visible_conditions": ["剩余 26–40 次", "当前 Stat 是 bootstrap 边界项", "风险偏好为 mean-first"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "P2M15",
+      "handler": "broad_trait_positive_mean_early",
+      "title": "复杂度挑战：前期接受小幅正期望 Trait",
+      "visible_conditions": ["剩余 26–40 次", "没有认可套装会被破坏", "主模型平均改善为正"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "P2M16",
+      "handler": "balanced_two_up_one_down_middle",
+      "title": "均值优先挑战：中期低品质二升一降",
+      "visible_conditions": ["剩余 11–25 次且为 mean-first", "三格都不高于 T2", "主模型平均改善为正"],
+      "parameters": {}
+    }
+  ],
+  "fallback": {
+    "action": "refresh",
+    "instruction": "没有任何规则支持应用当前选项时，花 1 次 Roll 刷新三个共享选项。"
+  }
+}

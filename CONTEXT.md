@@ -98,6 +98,17 @@ _Avoid_: Current-team history, public match history, all professional Games
 A proposed set of three role cards plus Emblem and Coach choices for one settlement Period.
 _Avoid_: Fantasy performance sample, official lineup
 
+**Common Fantasy scenario / Fantasy 公共情景**:
+One fixed Group outcome and aligned set of sampled full-Series performance blocks for every eligible
+Team and Fantasy role. Candidate Banners reuse its stable scenario ID so paired differences contain
+no avoidable resampling noise.
+_Avoid_: Independent candidate simulation, Roll transition outcome, observed match
+
+**Series resampling block / Series 重采样块**:
+All played Games from one eligible Series for the required current-role player or player pair,
+retained as one indivisible historical unit with stable IDs and one governed sampling weight.
+_Avoid_: Independently sampled Game, randomly re-paired players, Team-average row
+
 **Period / 结算期**:
 A stage for which one Fantasy lineup is locked and scored; in 2026 the Periods are Group and Main.
 _Avoid_: Series, tournament day

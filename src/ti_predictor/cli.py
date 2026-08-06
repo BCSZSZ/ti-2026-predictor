@@ -11,7 +11,12 @@ import typer
 from ti_predictor import __version__
 from ti_predictor.audit import audit_run
 from ti_predictor.backtesting import run_ti2025_backtest
-from ti_predictor.forecasting import generate_bracket, generate_fantasy, generate_group
+from ti_predictor.forecasting import (
+    generate_bracket,
+    generate_fantasy,
+    generate_group,
+    generate_group_fantasy_evidence,
+)
 from ti_predictor.ingest.opendota import (
     DEFAULT_OPENDOTA_RUN_REQUEST_LIMIT,
     OpenDotaSafetyStop,
@@ -463,6 +468,37 @@ def fantasy_recommend(
             "status": result.run.status,
             "run_path": str(result.run_path),
             "profiles": [item.profile.value for item in result.recommendations],
+        }
+    )
+    _exit_for_status(result.run.status)
+
+
+@fantasy_app.command("group-evidence")
+def fantasy_group_evidence(
+    as_of: Annotated[str, typer.Option("--as-of", help="P3 证据可用截止时间，必须带时区。")],
+    seed: Annotated[int, typer.Option("--seed", min=0)] = 20260813,
+    bootstrap: Annotated[
+        bool,
+        typer.Option(
+            "--bootstrap/--no-bootstrap",
+            help="执行冻结的完整 Series 分组重采样；正式 P3/P4 证据必须开启。",
+        ),
+    ] = True,
+) -> None:
+    result = generate_group_fantasy_evidence(
+        as_of=parse_as_of(as_of),
+        seed=seed,
+        include_bootstrap=bootstrap,
+    )
+    _echo(
+        {
+            "run_id": result.run.run_id,
+            "status": result.run.status,
+            "run_path": str(result.run_path),
+            "evidence_path": str(result.evidence_path),
+            "evidence_package_sha256": result.evidence["evidence_package_sha256"],
+            "scenario_sha256": result.evidence["scenario_set"]["scenario_sha256"],
+            "runtime_seconds": result.runtime_seconds,
         }
     )
     _exit_for_status(result.run.status)

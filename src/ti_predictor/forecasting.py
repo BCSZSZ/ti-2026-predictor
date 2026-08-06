@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 import pandas as pd
@@ -14,7 +15,19 @@ from ti_predictor.config import (
     team_strength_policy_path,
 )
 from ti_predictor.fantasy.recommend import FantasyRecommender
-from ti_predictor.hashing import sha256_file
+from ti_predictor.fantasy.roll import BannerState, EmblemState
+from ti_predictor.fantasy.scenarios import (
+    build_common_scenario_set,
+    build_series_block_pools,
+    load_group_scenario_policy,
+)
+from ti_predictor.fantasy.valuation import (
+    RiskConfiguration,
+    TerminalValueCache,
+    build_stat_forecast_package,
+    cluster_bootstrap_stat_intervals,
+)
+from ti_predictor.hashing import sha256_file, sha256_json
 from ti_predictor.models.evidence import build_evidence_set
 from ti_predictor.models.policy import EvidenceScopePolicy
 from ti_predictor.models.ratings import ModelReport, TeamStrengthModel, fit_team_strengths
@@ -32,6 +45,15 @@ class GenerationResult:
     run: ForecastRun
     run_path: Path
     recommendations: list[Recommendation]
+
+
+@dataclass
+class FantasyEvidenceResult:
+    run: ForecastRun
+    run_path: Path
+    evidence_path: Path
+    evidence: dict[str, Any]
+    runtime_seconds: dict[str, float]
 
 
 def _profiles(profile: str | StrategyProfile) -> list[StrategyProfile]:
@@ -52,11 +74,27 @@ def _profiles(profile: str | StrategyProfile) -> list[StrategyProfile]:
     return [aliases[profile]]
 
 
+def _available_by_as_of(frame: pd.DataFrame, as_of) -> pd.DataFrame:
+    """Exclude captures that were not locally available at the declared cutoff."""
+
+    cutoff = pd.Timestamp(as_utc(as_of))
+    result = frame.copy()
+    available = pd.Series(True, index=result.index, dtype=bool)
+    for column in ("as_of", "fetched_at"):
+        if column not in result:
+            continue
+        values = pd.to_datetime(result[column], utc=True, errors="coerce")
+        available &= values.notna() & values.le(cutoff)
+    return result.loc[available].copy()
+
+
 def _load_strength_model(paths: ProjectPaths, as_of) -> tuple[TeamStrengthModel, ModelReport]:
     manifest = load_tournament_manifest(paths.tournament)
     policy = load_team_strength_policy(manifest, config_root=paths.config)
     matches = read_parquet_if_exists(paths.processed / "matches.parquet")
     patches = read_parquet_if_exists(paths.processed / "patches.parquet")
+    matches = _available_by_as_of(matches, as_of)
+    patches = _available_by_as_of(patches, as_of)
     if matches.empty:
         matches = pd.DataFrame(
             columns=[
@@ -450,4 +488,282 @@ def generate_fantasy(
             "stat_priority_guide": stat_priority_guide,
         },
         paths=paths,
+    )
+
+
+def generate_group_fantasy_evidence(
+    *,
+    as_of,
+    seed: int = 20260813,
+    include_bootstrap: bool = True,
+    paths: ProjectPaths = PATHS,
+) -> FantasyEvidenceResult:
+    """Create the governed P3 Group Scenario and Stat-evidence package."""
+
+    started = perf_counter()
+    cutoff = as_utc(as_of)
+    if cutoff is None:
+        raise ValueError("as_of is required")
+    manifest = load_tournament_manifest(paths.tournament)
+    rules = load_rules(paths.rules)
+    scenario_policy_path = paths.config / "models" / "fantasy-group-scenarios-v1.json"
+    scenario_policy = load_group_scenario_policy(scenario_policy_path)
+    matches_path = paths.processed / "matches.parquet"
+    observations_path = paths.processed / "fantasy_performance_samples.parquet"
+    patches_path = paths.processed / "patches.parquet"
+    for required_path in (matches_path, observations_path, patches_path):
+        if not required_path.is_file():
+            raise FileNotFoundError(f"P3 requires the processed snapshot file: {required_path}")
+    matches = _available_by_as_of(read_parquet_if_exists(matches_path), cutoff)
+    observations = _available_by_as_of(read_parquet_if_exists(observations_path), cutoff)
+    patches = _available_by_as_of(read_parquet_if_exists(patches_path), cutoff)
+
+    model, model_report = _load_strength_model(paths, cutoff)
+    strength_policy = load_team_strength_policy(manifest, config_root=paths.config)
+    fantasy_evidence_policy = strength_policy.model_copy(
+        update={
+            "policy_id": f"{strength_policy.policy_id}-fantasy-player-history",
+            "evidence_scope": EvidenceScopePolicy(mode="global"),
+        }
+    )
+    evidence = build_evidence_set(
+        matches,
+        patches,
+        as_of=cutoff,
+        policy=fantasy_evidence_policy,
+        target_patch_family=model.target_patch_family,
+    )
+    blocking_evidence = [issue for issue in evidence.issues if issue.severity == "blocking"]
+    if blocking_evidence:
+        raise ValueError(
+            "P3 Fantasy evidence is blocked: " + "; ".join(issue.message for issue in blocking_evidence)
+        )
+
+    data_snapshot_sha256 = sha256_json(
+        {
+            "as_of": cutoff.isoformat().replace("+00:00", "Z"),
+            "matches_sha256": sha256_file(matches_path),
+            "observations_sha256": sha256_file(observations_path),
+            "patches_sha256": sha256_file(patches_path),
+            "rules_sha256": sha256_file(paths.rules),
+            "manifest_sha256": sha256_file(paths.tournament),
+            "scenario_policy_sha256": sha256_file(scenario_policy_path),
+            "selected_match_ids_sha256": evidence.audit["selected_match_ids_sha256"],
+            "target_patch_family": evidence.target_patch_family,
+        }
+    )
+    pool_result = build_series_block_pools(
+        observations,
+        matches,
+        evidence.matches,
+        manifest,
+        rules,
+        scenario_policy,
+        as_of=cutoff,
+    )
+    pools_finished = perf_counter()
+    group_simulation = GroupSimulator(model, manifest).simulate(
+        samples=scenario_policy.scenario_count,
+        seed=seed,
+        scenario=scenario_policy.group_outcome_model,
+    )
+    scenario_set = build_common_scenario_set(
+        pool_result,
+        group_team_ids=group_simulation.team_ids,
+        group_outcomes=group_simulation.outcomes,
+        policy=scenario_policy,
+        data_snapshot_sha256=data_snapshot_sha256,
+        as_of=cutoff,
+        seed=seed,
+    )
+    scenarios_finished = perf_counter()
+    stat_forecasts = build_stat_forecast_package(
+        pool_result,
+        scenario_set,
+        rules,
+        cvar_alpha=scenario_policy.risk.cvar_alpha,
+    )
+    stats_finished = perf_counter()
+    stats_by_color = {
+        color: [
+            stat_id for stat_id, stat_rule in rules["fantasy"]["stats"].items() if stat_rule["color"] == color
+        ]
+        for color in ("red", "blue", "green")
+    }
+    reference_banners: dict[str, BannerState] = {}
+    for role in ("core", "mid", "support"):
+        colors = rules["fantasy"]["role_banners"][role][:3]
+        reference_banners[role] = BannerState(
+            role=role,
+            emblems=tuple(
+                EmblemState(
+                    stat_id=stats_by_color[color][0],
+                    quality_tier=slot + 1,
+                    trait_id=("fractal", "benevolent", "vampiric")[slot],
+                )
+                for slot, color in enumerate(colors)
+            ),
+        )
+    risk = RiskConfiguration(
+        mean_retention_epsilon=scenario_policy.risk.verified_mean_retention_epsilons[0],
+        cvar_alpha=scenario_policy.risk.cvar_alpha,
+    )
+    terminal_cache = TerminalValueCache()
+    reference_matrices = {
+        role: terminal_cache.banner(
+            pool_result,
+            scenario_set,
+            reference_banners[role],
+            rules,
+        )
+        for role in ("core", "mid", "support")
+    }
+    reference_banner_matches = {
+        role: terminal_cache.matched_banner(reference_matrices[role], risk)
+        for role in ("core", "mid", "support")
+    }
+    reference_group_match = terminal_cache.matched_group(reference_matrices, risk)
+    terminal_smoke = {
+        "purpose": "arithmetic_only_nonoptimized_reference_banners",
+        "coach_status": scenario_policy.production_coach_status,
+        "risk": {
+            "mean_retention_epsilon": risk.mean_retention_epsilon,
+            "cvar_alpha": risk.cvar_alpha,
+        },
+        "banners": {
+            role: {
+                "emblems": [
+                    {
+                        "stat_id": emblem.stat_id,
+                        "quality_tier": emblem.quality_tier,
+                        "trait_id": emblem.trait_id,
+                    }
+                    for emblem in reference_banners[role].emblems
+                ],
+                "matrix_sha256": reference_matrices[role].semantic_hash,
+                "single_banner_team_id": reference_banner_matches[role].selected_team_ids[0],
+                "single_banner_value_sha256": reference_banner_matches[role].semantic_hash,
+            }
+            for role in ("core", "mid", "support")
+        },
+        "joint_selected_team_ids": list(reference_group_match.selected_team_ids),
+        "joint_summary": reference_group_match.summary,
+        "joint_value_sha256": reference_group_match.semantic_hash,
+    }
+    terminal_smoke["terminal_smoke_sha256"] = sha256_json(terminal_smoke)
+    terminal_finished = perf_counter()
+    bootstrap = (
+        cluster_bootstrap_stat_intervals(
+            pool_result,
+            scenario_set,
+            stat_forecasts,
+            rules,
+            scenario_policy,
+            seed=seed + 300_007,
+        )
+        if include_bootstrap
+        else None
+    )
+    finished = perf_counter()
+
+    warnings = [
+        "具体 2026 Swiss 配对执行尚无本地可哈希 Valve 原文；Group 机会数使用已冻结的容量保持近似。",
+        "Group v1 在给定 Team 结果后独立抽取三个角色的表现块，未建模跨角色历史相关性。",
+        "没有完整且情景对齐的 Coach 前缀加后缀候选；P3 生产估值明确排除 Coach。",
+    ]
+    warnings.extend(issue.message for issue in evidence.issues if issue.severity == "warning")
+    model_report.issues.extend(rule_snapshot_issues(cutoff, paths))
+    warnings.extend(issue.message for issue in model_report.issues if issue.severity == "warning")
+    if not include_bootstrap:
+        warnings.append("完整 Series 分组重采样被关闭；该烟雾运行不能作为 P3/P4 正式证据。")
+    status = (
+        "blocked"
+        if not include_bootstrap or any(issue.severity == "blocking" for issue in model_report.issues)
+        else "warning"
+    )
+    runtime_seconds = {
+        "series_block_build": pools_finished - started,
+        "common_scenario_build": scenarios_finished - pools_finished,
+        "stat_forecasts": stats_finished - scenarios_finished,
+        "terminal_smoke": terminal_finished - stats_finished,
+        "cluster_bootstrap": finished - terminal_finished,
+        "total": finished - started,
+    }
+    evidence_payload = {
+        "schema_version": 1,
+        "artifact_type": "group_fantasy_stat_evidence",
+        "status": status,
+        "as_of": cutoff.isoformat().replace("+00:00", "Z"),
+        "seed": seed,
+        "data_snapshot_sha256": data_snapshot_sha256,
+        "scenario_policy": scenario_policy.model_dump(mode="json"),
+        "scenario_policy_sha256": sha256_file(scenario_policy_path),
+        "fantasy_evidence_audit": evidence.audit,
+        "series_block_audit": pool_result.audit,
+        "scenario_set": {
+            "scenario_count": len(scenario_set.scenario_ids),
+            "team_ids": list(scenario_set.team_ids),
+            "group_outcome_model": group_simulation.scenario,
+            "pool_set_sha256": pool_result.semantic_hash,
+            "scenario_sha256": scenario_set.semantic_hash,
+        },
+        "stat_forecasts": stat_forecasts,
+        "terminal_smoke": terminal_smoke,
+        "cluster_bootstrap": bootstrap,
+        "coach": {
+            "status": scenario_policy.production_coach_status,
+            "reason": "no_complete_validated_prefix_plus_suffix_future_scenario",
+        },
+        "warnings": sorted(set(warnings)),
+    }
+    evidence_payload["evidence_package_sha256"] = sha256_json(evidence_payload)
+
+    parameters = {
+        "phase": "p3_group_fantasy_evidence",
+        "scenario_policy_id": scenario_policy.policy_id,
+        "scenario_policy_sha256": sha256_file(scenario_policy_path),
+        "scenario_count": scenario_policy.scenario_count,
+        "bootstrap": include_bootstrap,
+        "team_strength": {
+            "policy_id": model_report.policy_id,
+            "policy_sha256": model_report.evidence_audit.get("policy_sha256"),
+            "target_patch_family": model_report.target_patch_family,
+        },
+    }
+    run_id, hashes = make_run_id(
+        kind="fantasy",
+        as_of=cutoff,
+        seed=seed,
+        profiles=[],
+        parameters=parameters,
+        paths=paths,
+    )
+    writer = ArtifactWriter(run_id, paths)
+    evidence_path = writer.write_json("group-fantasy-evidence.json", evidence_payload)
+    writer.write_json("model.json", {"model": model.as_dict(), "report": model_report.as_dict()})
+    run = ForecastRun(
+        run_id=run_id,
+        kind="fantasy",
+        as_of=cutoff,
+        created_at=cutoff,
+        status=status,
+        seed=seed,
+        rule_sha256=hashes["rule"],
+        rule_snapshot_id=(None if hashes["rule_snapshot_id"] == "missing" else hashes["rule_snapshot_id"]),
+        rule_snapshot_sha256=(None if hashes["rule_snapshot"] == "missing" else hashes["rule_snapshot"]),
+        data_sha256=hashes["data"],
+        config_sha256=hashes["config"],
+        git_commit=hashes["source"],
+        model={"name": "fantasy_group_scenarios_v1", "parameters": parameters},
+        profiles=[],
+        outputs=[evidence_path.name, "model.json"],
+        warnings=sorted(set(warnings)),
+    )
+    run_path = writer.write_run(run)
+    return FantasyEvidenceResult(
+        run=run,
+        run_path=run_path,
+        evidence_path=evidence_path,
+        evidence=evidence_payload,
+        runtime_seconds=runtime_seconds,
     )

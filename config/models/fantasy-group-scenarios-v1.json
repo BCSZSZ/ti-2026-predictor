@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "policy_id": "fantasy-group-scenarios-v1",
+  "period": "group",
+  "scenario_count": 8192,
+  "group_outcome_model": "balanced_pairing",
+  "group_category_series_counts": {
+    "four_zero": 4,
+    "four_one": 5,
+    "elimination_winner": 6,
+    "elimination_loser": 6,
+    "one_four": 5,
+    "zero_four": 4
+  },
+  "historical_series_types": [1, 3],
+  "historical_series_formats": ["bo3", "bo2"],
+  "minimum_games_per_series": 2,
+  "maximum_games_per_series": 3,
+  "minimum_series_blocks": 10,
+  "require_all_rule_stats": true,
+  "allowed_provenance": ["exact", "derived"],
+  "provenance_policy": "must_match_current_stat_rule",
+  "series_sampling": "weighted_with_replacement",
+  "series_weight": "mean_game_evidence_weight",
+  "role_sampling": "independent_by_team_given_group_outcome",
+  "coach_policy": "validated_scenario_aligned_candidates_only",
+  "production_coach_status": "unavailable_excluded",
+  "bootstrap": {
+    "replicates": 400,
+    "scenarios_per_replicate": 512,
+    "confidence_level": 0.95,
+    "unit": "full_series_block"
+  },
+  "risk": {
+    "cvar_alpha": 0.1,
+    "verified_mean_retention_epsilons": [0.0],
+    "reserved_mean_retention_epsilons": [0.01, 0.02, 0.05]
+  }
+}

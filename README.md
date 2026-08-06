@@ -18,6 +18,7 @@ uv run ti rules validate
 uv run ti data sync --as-of 2026-08-12T23:00:00Z --year 2026 --team-detail-limit 20 --request-limit 500
 uv run ti forecast group --as-of 2026-08-12T23:00:00Z --profile all
 uv run ti fantasy recommend --as-of 2026-08-12T23:00:00Z --period group --profile all
+uv run ti fantasy group-evidence --as-of 2026-08-12T23:00:00Z --bootstrap
 uv run ti web
 ```
 
@@ -57,6 +58,8 @@ getter 默认零回填。数据表、状态和历史回填结果见
 `fantasy_performance_samples.parquet` 中一行表示“一名玩家在一局比赛中的表现”，只是
 Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策略才是 Fantasy 推荐结果。
 
+`fantasy group-evidence` 是 P3 的 Group 专用证据入口：它用完整 Series 块、8,192 个公共情景
+和 400 次 Series 分组重采样生成可复现的 Stat 表及终局估值哈希；它不是人工手册或重随求解器。
 完整操作顺序、主赛事种子导入和状态含义见 [docs/runbook.md](docs/runbook.md)。模型的时间
 切分、覆盖门槛和三种目标见 [docs/modeling.md](docs/modeling.md)。
 
@@ -78,7 +81,8 @@ OCR 结果只生成待确认草稿，不控制 Steam，也不会自动提交游�
 
 ## 当前边界
 
-- 瑞士轮完整配对细则尚未发布，因此小组结果包含三种合法容量情景的敏感度警告。
+- 2026 瑞士轮的精确执行尚未进入本地可哈希的一手规则快照，因此小组结果保留容量情景的
+  模型近似警告。
 - 主赛事实际八队与种子未写入前，14 节点网格会生成但保持 `blocked`。
 - Fantasy 默认只用覆盖充分的 `exact/derived` 字段；五项原生 replay 统计只有通过逐场状态、
   字段存在性和 Watcher build 门槛后才参与，OpenDota proxy 永不参与默认最优解。

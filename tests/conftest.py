@@ -15,7 +15,11 @@ def project_paths(tmp_path: Path) -> ProjectPaths:
     (tmp_path / "config/rules").mkdir(parents=True)
     (tmp_path / "config/models").mkdir(parents=True)
     shutil.copy2(source_root / "config/rules/ti2026.json", tmp_path / "config/rules/ti2026.json")
-    for policy_name in ("team-strength-v1.json", "team-strength-v2.json"):
+    for policy_name in (
+        "team-strength-v1.json",
+        "team-strength-v2.json",
+        "fantasy-group-scenarios-v1.json",
+    ):
         shutil.copy2(
             source_root / "config/models" / policy_name,
             tmp_path / "config/models" / policy_name,

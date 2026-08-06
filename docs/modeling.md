@@ -49,10 +49,10 @@ recommendations are blocked.
 
 ## Group projection
 
-Until Valve publishes full Swiss pairing rules, the simulator draws joint random-utility
-rankings under strength-seeded, balanced and high-variance scenarios. Every draw preserves the
-exact `1/2/5/5/2/1` capacity and assigns every team once. Results include scenario sensitivity;
-this approximation is always visible as a warning.
+Until the exact 2026 Swiss execution is captured in a local, hashed primary-source snapshot, the
+simulator draws joint random-utility rankings under strength-seeded, balanced and high-variance
+scenarios. Every draw preserves the exact client-visible `1/2/5/5/2/1` capacity and assigns every
+team once. Results include scenario sensitivity; this approximation is always visible as a warning.
 
 ## Main Event
 
@@ -88,3 +88,37 @@ in scope.
 The top-10% and top-100 objectives are explicitly low-confidence proxies until Valve's server
 percentile behavior is confirmed. The top-100 choice must retain at least 85% of the expected
 score baseline.
+
+### P3 Group Stat scenarios
+
+The Group Roll evidence route is `fantasy-group-scenarios-v1`, executed with an explicit UTC
+`as_of` by `ti fantasy group-evidence`. It does not use the legacy `2.08` Series multiplier or the
+top-25%-Team cohort. Instead it builds one immutable history pool for every current
+`Team × role`, using stable player IDs and complete BO2/BO3 Series blocks:
+
+- every played Game remains inside its Series;
+- Core position 1/3 and Support position 4/5 remain paired throughout a block;
+- every formal Stat must be non-null and have the provenance required by the current rule;
+- BO1 is incomplete for top-two scoring, while BO5 has excess Group opportunities, so both are
+  excluded and audited;
+- the Series sampling weight is the mean governed patch/tier/age Game weight.
+
+BO3-only history failed the preregistered ten-block coverage gate (OG Core `3`, Nigma Core `5`).
+Adding complete two-Game BO2 blocks raises the minimum to `10` without inventing or splitting a
+Game; lowering the gate was rejected.
+
+The default `8,192` common scenarios pair one capacity-preserving Group result with sampled blocks
+for all 16 Teams and three roles. Result category maps to `4/5/6/6/5/4` Series opportunities. The
+mapping and independent role-block sampling are model assumptions, not recovered Valve
+probabilities.
+
+Stat and complete-Banner scoring stays at Game level until all three Emblems, exact Quality and
+positioned Trait effects are combined. Only then does it take top two Games and best Series. Team
+matching retains one whole Team vector. Three-role risk matching uses the Scenario-wise sum and
+joint lower-tail CVaR10; it never adds separately optimized role CVaRs. Production Coach effects
+remain explicitly excluded until a complete validated, scenario-aligned prefix-plus-suffix
+candidate exists.
+
+Uncertainty uses 400 weighted full-Series clustered bootstrap replicates with 512 predictive
+scenarios each. It reports a 95% interval for the best-equals-100 Stat index; boundary status is
+separate from the point estimate and does not silently change a grade.

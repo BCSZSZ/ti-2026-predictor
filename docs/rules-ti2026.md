@@ -60,6 +60,20 @@ The visible final leaderboard rewards and prediction point tables are transcribe
   probabilities. Group is executable; Main fields are reserved but rejected until its policy is
   separately implemented and verified.
 
+### Group Fantasy Scenario contract
+
+- P3 maps the six client-visible Group result categories to `4/5/6/6/5/4` Series opportunities.
+  The existing `1/2/5/5/2/1` capacities remain exact client evidence; the opportunity mapping and
+  capacity-preserving `balanced_pairing` draws are explicit model assumptions until exact 2026
+  Swiss execution is locally captured and hashed.
+- Historical performance resamples complete BO2/BO3 Series only. BO3-only history fails the
+  ten-block minimum for two Core pairs; BO2 restores coverage without inventing a third Game.
+  BO1 and BO5 are excluded and counted.
+- Every candidate reuses the same common Scenario IDs. Complete Banner Game score is formed before
+  top-two Games and best-Series aggregation; a different Team may not be selected for each Emblem.
+- Production Coach effects are unavailable/excluded until a complete validated prefix-plus-suffix
+  future Scenario exists. This is not equivalent to asserting that a zero-bonus Coach is selected.
+
 ## Known uncertainties
 
 - The client internal name for late first blood says six minutes while localization says ten minutes.

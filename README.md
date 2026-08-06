@@ -38,12 +38,21 @@ uv run ti data fantasy-history --as-of 2026-08-01T15:00:00Z --year 2026
 ```
 
 该命令逐个请求、遵守 OpenDota 响应中的限额、每批落盘并可断点续传；它不会请求 `.dem`
-或自动提交 replay 解析任务。
+或自动提交 replay 解析任务。五项 replay 原生统计需要 Java 21+，并使用独立的可恢复步骤：
 
-Madstone、Smoke、Watcher、Lotus 与 Tormentor 已确认存在 Valve replay 原生逐人计数，
-但当前生产命令尚未完成 replay 回填。因此现有规范化行仍按旧 OpenDota proxy 契约排除
-这五项，不能因为来源已经找到就视为历史数据已经修复。Group 40-Roll 的实施顺序与发布
-门槛见 [正式实施计划](docs/plans/group-roll-playbook-v1-implementation.md)。
+```powershell
+Push-Location src/ti_replay_parser
+.\mvnw.cmd -q '-DskipTests' package
+Pop-Location
+uv run ti data replay-fantasy --as-of 2026-08-01T15:00:00Z --year 2026 --workers 4
+```
+
+它下载并保存不可变的 Valve replay，解析 Madstone、Smoke、Watcher、Lotus 与 Tormentor
+逐人原生计数，并把旧 OpenDota event-map 值隔离到诊断表。命令默认复用已验证检查点；
+缺失 replay、缺失字段，以及未获准 build 的 Watcher 保持 `null/unavailable`，绝不以 proxy 或
+getter 默认零回填。数据表、状态和历史回填结果见
+[Fantasy 覆盖契约](docs/fantasy-coverage.md)与
+[P1 实装报告](docs/reports/p1-native-replay-stats-implementation-2026-08-06.md)。
 
 `fantasy_performance_samples.parquet` 中一行表示“一名玩家在一局比赛中的表现”，只是
 Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策略才是 Fantasy 推荐结果。
@@ -71,6 +80,6 @@ OCR 结果只生成待确认草稿，不控制 Steam，也不会自动提交游�
 
 - 瑞士轮完整配对细则尚未发布，因此小组结果包含三种合法容量情景的敏感度警告。
 - 主赛事实际八队与种子未写入前，14 节点网格会生成但保持 `blocked`。
-- Fantasy 默认只用 `exact/derived` 字段；五项 replay 原生来源虽已解决，但在正式回填前，
-  当前 OpenDota proxy 仍不参与默认最优解。
+- Fantasy 默认只用覆盖充分的 `exact/derived` 字段；五项原生 replay 统计只有通过逐场状态、
+  字段存在性和 Watcher build 门槛后才参与，OpenDota proxy 永不参与默认最优解。
 - OCR 是可选第二阶段，只输出需要人工确认的草稿。

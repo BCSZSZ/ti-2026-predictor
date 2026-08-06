@@ -4,7 +4,7 @@ import json
 import math
 import os
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
@@ -16,6 +16,7 @@ import pandas as pd
 
 from ti_predictor.config import load_rules, load_tournament_manifest, roster_intervals
 from ti_predictor.identity import RosterIndex
+from ti_predictor.ingest.replay import NATIVE_FANTASY_FIELDS, overlay_native_fantasy_stats
 from ti_predictor.match_catalog import (
     PatchPoint,
     build_patch_timeline,
@@ -67,6 +68,12 @@ FANTASY_SAMPLE_BASE_COLUMNS = (
     "duration",
     "assists",
     "team_total_kills",
+    "native_replay_sha256",
+    "native_stats_source_sha256",
+    "native_parser_version",
+    "native_schema_fingerprint",
+    "native_build_number",
+    "native_game_version",
 )
 
 DEFAULT_OPENDOTA_RUN_REQUEST_LIMIT = 5_000
@@ -544,26 +551,6 @@ def _number(value: Any) -> float | None:
         return None
 
 
-def _mapping_value(player: dict[str, Any], mapping: str, key: str) -> float | None:
-    values = player.get(mapping)
-    if not isinstance(values, dict) or key not in values:
-        return None
-    return _number(values.get(key))
-
-
-def _mapping_sum(player: dict[str, Any], mapping: str, keys: Iterable[str]) -> float | None:
-    values = player.get(mapping)
-    if not isinstance(values, dict):
-        return None
-    seen = False
-    total = 0.0
-    for key in keys:
-        if key in values and _number(values[key]) is not None:
-            seen = True
-            total += float(values[key])
-    return total if seen else None
-
-
 def _team_total_kills(payload: dict[str, Any], player_slot: int) -> float | None:
     score_key = "dire_score" if player_slot >= 128 else "radiant_score"
     score = _number(payload.get(score_key))
@@ -609,30 +596,19 @@ def extract_fantasy_stats(
         "deaths": _number(player.get("deaths")),
         "creep_score": creep_score,
         "gpm": _number(player.get("gold_per_min")),
-        "madstone_collected": _mapping_sum(player, "item_uses", ("madstone_bundle", "item_madstone_bundle")),
+        "madstone_collected": None,
         "tower_kills": _number(player.get("towers_killed")),
         "wards_placed": _number(player.get("obs_placed")),
         "camps_stacked": _number(player.get("camps_stacked")),
         "runes_grabbed": _number(player.get("rune_pickups")),
-        "smokes_used": _mapping_sum(player, "item_uses", ("smoke_of_deceit", "item_smoke_of_deceit")),
-        "watchers_taken": _mapping_value(player, "ability_uses", "ability_lamp_use"),
-        "lotuses_gained": _mapping_sum(
-            player,
-            "item_uses",
-            (
-                "famango",
-                "great_famango",
-                "greater_famango",
-                "item_famango",
-                "item_great_famango",
-                "item_greater_famango",
-            ),
-        ),
+        "smokes_used": None,
+        "watchers_taken": None,
+        "lotuses_gained": None,
         "roshan_kills": _number(player.get("roshans_killed")),
         "teamfight_participation": _teamfight_participation(player, team_total_kills),
         "first_blood": _number(player.get("firstblood_claimed")),
         "stuns": _number(player.get("stuns")),
-        "tormentor_kills": _mapping_value(player, "killed", "npc_dota_miniboss"),
+        "tormentor_kills": None,
         "courier_kills": _number(player.get("courier_kills")),
     }
 
@@ -701,6 +677,10 @@ def _fantasy_performance_rows(
         roster = roster_index.resolve(int(account_id), start_time)
         team_total_kills = _team_total_kills(payload, player_slot)
         stats = extract_fantasy_stats(player, team_total_kills=team_total_kills)
+        observation_provenance = {
+            stat_id: "unavailable" if stat_id in NATIVE_FANTASY_FIELDS else provenance[stat_id]
+            for stat_id in FANTASY_STAT_IDS
+        }
         observation = FantasyPerformanceSample(
             match_id=int(payload["match_id"]),
             series_id=payload.get("series_id"),
@@ -709,7 +689,7 @@ def _fantasy_performance_rows(
             role=roster.role if roster else None,
             start_time=start_time,
             stats=stats,
-            provenance={key: provenance[key] for key in FANTASY_STAT_IDS},
+            provenance=observation_provenance,
             source_sha256=source_hash,
             as_of=as_of,
         )
@@ -757,7 +737,12 @@ def _sample_match_ids_with_current_provenance(
         column = f"{stat_id}_provenance"
         if column not in samples:
             return set()
-        current &= samples[column].eq(expected_provenance)
+        matches_expected = samples[column].eq(expected_provenance)
+        if stat_id in NATIVE_FANTASY_FIELDS:
+            if stat_id not in samples:
+                return set()
+            matches_expected |= samples[column].eq("unavailable") & samples[stat_id].isna()
+        current &= matches_expected
     valid_ids = samples["match_id"].notna()
     per_match = current.loc[valid_ids].groupby(samples.loc[valid_ids, "match_id"]).all()
     return {int(match_id) for match_id, is_current in per_match.items() if is_current}
@@ -1128,6 +1113,7 @@ def sync_fantasy_player_history(
             if sample_buffer:
                 existing_samples = _merge_frames(existing_samples, sample_buffer, ["match_id", "account_id"])
                 sample_buffer.clear()
+                existing_samples = overlay_native_fantasy_stats(existing_samples, paths=paths)
                 _write_parquet_atomic(existing_samples, fantasy_samples_path)
             if status_buffer:
                 statuses = _merge_frames(statuses, status_buffer, ["match_id"])
@@ -1290,8 +1276,8 @@ def sync_fantasy_player_history(
 
     if not matches_path.is_file():
         _write_parquet_atomic(matches, matches_path)
-    if not fantasy_samples_path.is_file():
-        _write_parquet_atomic(existing_samples, fantasy_samples_path)
+    existing_samples = overlay_native_fantasy_stats(existing_samples, paths=paths)
+    _write_parquet_atomic(existing_samples, fantasy_samples_path)
     if not detail_status_path.is_file():
         empty_status = pd.DataFrame(
             columns=[
@@ -1752,6 +1738,7 @@ def sync_opendota(
 
     matches = _merge_rows(matches_path, match_rows, ["match_id"])
     fantasy_samples = _merge_rows(fantasy_samples_path, fantasy_sample_rows, ["match_id", "account_id"])
+    fantasy_samples = overlay_native_fantasy_stats(fantasy_samples, paths=paths)
     if matches.empty and not len(matches.columns):
         matches = pd.DataFrame(columns=list(MatchSnapshot.model_fields))
     if fantasy_samples.empty and not len(fantasy_samples.columns):

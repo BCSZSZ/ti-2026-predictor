@@ -48,14 +48,36 @@ time window as exposed by OpenDota; replay-level player details remain a separat
 Without `OPENDOTA_API_KEY`, the client respects the anonymous minute window and pauses between
 pagination batches; a full-year first sync therefore takes several minutes.
 
-The native replay sources for Madstone, Smoke, Watcher, Lotus and Tormentor have been resolved, but
-the current CLI does not yet download or normalize those counters. Until the replay-backfill phase
-lands, a normal `fantasy-history` or `fantasy recommend` run continues to exclude the old OpenDota
-event-map proxies. Do not interpret “source resolved” as “backfill complete”. Implementation order,
-runtime boundaries and release gates are frozen in the
-[Group 40-Roll implementation plan](plans/group-roll-playbook-v1-implementation.md).
+Madstone, Smoke, Watcher, Lotus and Tormentor require Java 21+ and a separate native-replay pass after
+`fantasy-history`. Build the pinned parser once, then run the resumable backfill with the same
+explicit cutoff:
 
-Both data commands stop before exceeding their per-run `--request-limit` (default 5,000), and keyed
+```powershell
+Push-Location src/ti_replay_parser
+.\mvnw.cmd -q '-DskipTests' package
+Pop-Location
+uv run ti data replay-fantasy --as-of 2026-08-12T23:00:00Z --year 2026 --workers 4
+```
+
+The command defaults to one atomic Parquet checkpoint per completed match and refreshes DuckDB when
+the command exits normally. `--max-matches` bounds a batch,
+repeatable `--match-id` targets known fixtures, and `--refresh` intentionally creates a new immutable
+capture instead of reusing the latest verified URL/hash. Do not run two replay backfills against the
+same processed directory concurrently. After a fully accounted run, the status table records every
+scoped match as `exact`, `missing`, `download_failed`, `decompress_failed`, `parse_failed`,
+`join_failed` or `build_untrusted`; bounded batches additionally report the not-yet-attempted count.
+Rerunning retries non-final failures and reuses complete rows only when both parser version and JAR
+SHA-256 match. A JAR change during one sync fails closed; restart the command after an intentional
+rebuild. OpenDota event-map values are diagnostic-only and never fill a native `null`.
+
+Use `fantasy_replay_status.parquet` and `fantasy_watcher_support.parquet` as release gates before a
+recommendation. The implementation order and acceptance contract are in the
+[Group 40-Roll implementation plan](plans/group-roll-playbook-v1-implementation.md); measured
+coverage and performance are in the
+[P1 implementation report](reports/p1-native-replay-stats-implementation-2026-08-06.md).
+
+The OpenDota `data sync` and `data fantasy-history` commands stop before exceeding their per-run
+`--request-limit` (default 5,000), and keyed
 attempts are reserved in `data/cache/opendota_api_usage.json` before the network call. A repeated
 successful path/query in one process stops immediately. Transient network/5xx responses receive at
 most four total attempts with 1/2/4-second backoff; `429` honors `Retry-After`.

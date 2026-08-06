@@ -18,6 +18,7 @@ from ti_predictor.ingest.opendota import (
     sync_fantasy_player_history,
     sync_opendota,
 )
+from ti_predictor.ingest.replay import ReplayParser, sync_replay_fantasy_history
 from ti_predictor.ocr import inspect_screenshot
 from ti_predictor.paths import PATHS
 from ti_predictor.rules import create_rule_snapshot, parse_as_of, validate_snapshot
@@ -296,6 +297,85 @@ def data_fantasy_history(
                 "matches": str(result.matches_path),
                 "fantasy_performance_samples": str(result.fantasy_samples_path),
                 "detail_status": str(result.detail_status_path),
+            },
+            "issues": [item.model_dump(mode="json") for item in result.issues],
+        }
+    )
+    _exit_for_status(result.status)
+
+
+@data_app.command("replay-fantasy")
+def data_replay_fantasy(
+    as_of: Annotated[str, typer.Option("--as-of", help="只纳入该时点前已完成的比赛。")],
+    year: Annotated[
+        int | None,
+        typer.Option("--year", min=2013, help="目标 UTC 日历年；默认使用 as-of 所在年份。"),
+    ] = None,
+    match_id: Annotated[
+        list[int] | None,
+        typer.Option("--match-id", min=1, help="可重复指定，用于缓存 fixture 或定向复核。"),
+    ] = None,
+    workers: Annotated[int, typer.Option("--workers", min=1, max=8, help="并发 replay 下载/解析数。")] = 4,
+    max_matches: Annotated[
+        int | None,
+        typer.Option("--max-matches", min=1, help="本次最多处理多少个尚未完成的 replay。"),
+    ] = None,
+    checkpoint_every: Annotated[
+        int,
+        typer.Option("--checkpoint-every", min=1, help="每多少场完成后原子落盘；默认逐场。"),
+    ] = 1,
+    progress_every: Annotated[
+        int,
+        typer.Option("--progress-every", min=1, help="每多少场输出一次进度；失败始终输出。"),
+    ] = 10,
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="重新下载并解析已完成的 match；默认安全断点续传。"),
+    ] = False,
+    parser_jar: Annotated[
+        Path | None,
+        typer.Option("--parser-jar", exists=True, dir_okay=False, help="覆盖默认 Clarity parser JAR。"),
+    ] = None,
+) -> None:
+    cutoff = parse_as_of(as_of)
+
+    def progress(payload: dict) -> None:
+        if (
+            payload.get("status") != "exact"
+            or int(payload.get("processed", 0)) % progress_every == 0
+            or payload.get("processed") == payload.get("scheduled")
+        ):
+            typer.echo(json.dumps(payload, ensure_ascii=False, default=str), err=True)
+
+    result = sync_replay_fantasy_history(
+        as_of=cutoff,
+        year=year,
+        match_ids=match_id,
+        workers=workers,
+        max_matches=max_matches,
+        checkpoint_every=checkpoint_every,
+        refresh=refresh,
+        parser=ReplayParser(jar_path=parser_jar),
+        progress=progress,
+    )
+    _echo(
+        {
+            "status": result.status,
+            "target_matches": result.target_matches,
+            "attempted_matches": result.attempted_matches,
+            "reused_matches": result.reused_matches,
+            "remaining_matches": result.remaining_matches,
+            "exact_matches": result.exact_matches,
+            "build_untrusted_matches": result.build_untrusted_matches,
+            "failed_matches": result.failed_matches,
+            "watcher_trusted_cohorts": result.watcher_trusted_cohorts,
+            "data_sha256": result.data_sha256,
+            "paths": {
+                "native_stats": str(result.native_stats_path),
+                "replay_status": str(result.replay_status_path),
+                "proxy_diagnostics": str(result.proxy_diagnostics_path),
+                "watcher_support": str(result.watcher_support_path),
+                "fantasy_performance_samples": str(result.fantasy_samples_path),
             },
             "issues": [item.model_dump(mode="json") for item in result.issues],
         }

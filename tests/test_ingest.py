@@ -65,7 +65,9 @@ def test_stat_extraction_keeps_unavailable_values_null() -> None:
     stats = extract_fantasy_stats(_detail()["players"][0], team_total_kills=20)
     assert stats["creep_score"] == 312
     assert stats["teamfight_participation"] == pytest.approx(0.75)
-    assert stats["smokes_used"] == 1
+    assert stats["madstone_collected"] is None
+    assert stats["smokes_used"] is None
+    assert stats["watchers_taken"] is None
     assert stats["lotuses_gained"] is None
     assert stats["tormentor_kills"] is None
 
@@ -92,6 +94,20 @@ def test_cached_samples_are_stale_when_stat_provenance_changes() -> None:
     )
 
     assert current == {2}
+
+
+def test_native_unavailable_null_is_current_but_proxy_is_stale() -> None:
+    samples = pd.DataFrame(
+        {
+            "match_id": [1, 2, 3],
+            "smokes_used": [None, 1.0, None],
+            "smokes_used_provenance": ["unavailable", "proxy", "proxy"],
+        }
+    )
+
+    current = _sample_match_ids_with_current_provenance(samples, {"smokes_used": "exact"})
+
+    assert current == {1}
 
 
 def test_client_uses_mock_transport_without_live_network() -> None:

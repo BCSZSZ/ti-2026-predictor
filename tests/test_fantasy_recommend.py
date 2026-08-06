@@ -89,7 +89,7 @@ def test_weighted_estimate_uses_explicit_evidence_weights() -> None:
     assert estimate.coverage == 1.0
 
 
-def test_stat_priority_guide_separates_floor_and_upside_and_excludes_proxy(
+def test_stat_priority_guide_separates_floor_and_upside_and_includes_exact_native(
     project_paths,
     rules_payload,
     monkeypatch,
@@ -134,7 +134,7 @@ def test_stat_priority_guide_separates_floor_and_upside_and_excludes_proxy(
     core_red = guide["roles"]["core"]["colors"]["red"]
 
     assert len(guide["roles"]["core"]["cohort"]) == 4
-    assert core_red["profiles"]["stable"][0]["stat_id"] == "deaths"
-    assert core_red["profiles"]["upside"][0]["stat_id"] == "kills"
-    assert "madstone_collected" not in {row["stat_id"] for row in core_red["profiles"]["expected"]}
-    assert core_red["sensitivity_only"][0]["stat_id"] == "madstone_collected"
+    assert core_red["profiles"]["stable"][0]["stat_id"] == "madstone_collected"
+    assert core_red["profiles"]["upside"][0]["stat_id"] == "madstone_collected"
+    assert core_red["profiles"]["expected"][0]["stat_id"] == "madstone_collected"
+    assert not core_red["sensitivity_only"]

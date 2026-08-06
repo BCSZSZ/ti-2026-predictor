@@ -42,7 +42,7 @@
     }
   },
   "fantasy": {
-    "rule_policy_version": "2026-08-02-owner-policy-v2",
+    "rule_policy_version": "2026-08-06-native-replay-v3",
     "score_unit": "client_fantasy_points",
     "periods": [
       {"id": "group", "index": 0, "banner_slots": 3, "new_rolls": 40, "carried_slots": []},
@@ -73,19 +73,19 @@
       "deaths": {"label": "死亡", "color": "red", "mode": "inverse", "base": 1950.0, "factor": 195.0, "floor": 0.0, "source": "deaths", "provenance": "exact"},
       "creep_score": {"label": "正补与反补", "color": "red", "mode": "linear", "factor": 3.0, "source": "last_hits+denies", "provenance": "derived"},
       "gpm": {"label": "GPM", "color": "red", "mode": "linear", "factor": 2.0, "source": "gold_per_min", "provenance": "exact"},
-      "madstone_collected": {"label": "魔石拾取", "color": "red", "mode": "linear", "factor": 13.0, "source": "item_uses.madstone_bundle", "provenance": "proxy"},
+      "madstone_collected": {"label": "魔石拾取", "color": "red", "mode": "linear", "factor": 13.0, "source": "replay.CDOTA_DataTeam.m_iNeutralTokensFound", "provenance": "exact"},
       "tower_kills": {"label": "防御塔最后一击", "color": "red", "mode": "linear", "factor": 352.0, "source": "towers_killed", "provenance": "exact"},
       "wards_placed": {"label": "假眼放置", "color": "blue", "mode": "linear", "factor": 117.0, "source": "obs_placed", "provenance": "exact"},
       "camps_stacked": {"label": "堆叠野怪营地", "color": "blue", "mode": "linear", "factor": 234.0, "source": "camps_stacked", "provenance": "exact"},
       "runes_grabbed": {"label": "神符拾取", "color": "blue", "mode": "linear", "factor": 141.0, "source": "rune_pickups", "provenance": "exact"},
-      "smokes_used": {"label": "诡计之雾使用", "color": "blue", "mode": "linear", "factor": 293.0, "source": "item_uses.smoke_of_deceit", "provenance": "proxy"},
-      "watchers_taken": {"label": "瞭望台占领", "color": "blue", "mode": "linear", "factor": 147.0, "source": "ability_uses.ability_lamp_use", "provenance": "proxy"},
-      "lotuses_gained": {"label": "莲花拾取", "color": "blue", "mode": "linear", "factor": 176.0, "source": "item_uses.famango+great_famango+greater_famango", "provenance": "proxy"},
+      "smokes_used": {"label": "诡计之雾使用", "color": "blue", "mode": "linear", "factor": 293.0, "source": "replay.CDOTA_DataTeam.m_iSmokesUsed", "provenance": "exact"},
+      "watchers_taken": {"label": "瞭望台占领", "color": "blue", "mode": "linear", "factor": 147.0, "source": "replay.CDOTA_DataTeam.m_iWatchersTaken", "provenance": "exact"},
+      "lotuses_gained": {"label": "莲花拾取", "color": "blue", "mode": "linear", "factor": 176.0, "source": "replay.CDOTA_DataTeam.m_iLotusesTaken", "provenance": "exact"},
       "roshan_kills": {"label": "Roshan 击杀", "color": "green", "mode": "linear", "factor": 1172.0, "source": "roshans_killed", "provenance": "exact"},
       "teamfight_participation": {"label": "团战参与", "color": "green", "mode": "linear", "factor": 2124.0, "cap": 2124.0, "source": "(kills+assists)/team_total_kills", "provenance": "derived", "zero_team_kills": "unavailable", "policy": "owner_defined_until_client_formula_verified"},
       "first_blood": {"label": "第一滴血", "color": "green", "mode": "linear", "factor": 1934.0, "source": "firstblood_claimed", "provenance": "exact"},
       "stuns": {"label": "眩晕秒数", "color": "green", "mode": "linear", "factor": 10.0, "source": "stuns", "provenance": "exact"},
-      "tormentor_kills": {"label": "魔方击杀", "color": "green", "mode": "linear", "factor": 879.0, "source": "killed.npc_dota_miniboss", "provenance": "proxy"},
+      "tormentor_kills": {"label": "魔方击杀", "color": "green", "mode": "linear", "factor": 879.0, "source": "replay.CDOTA_DataTeam.m_iTormentorKills", "provenance": "exact"},
       "courier_kills": {"label": "信使击杀", "color": "green", "mode": "linear", "factor": 703.0, "source": "courier_kills", "provenance": "exact"}
     },
     "qualities": [

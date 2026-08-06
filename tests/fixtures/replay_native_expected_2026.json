@@ -1,0 +1,132 @@
+{
+  "parser_version": "p1-native-v1",
+  "stat_order": [
+    "madstone_collected",
+    "smokes_used",
+    "watchers_taken",
+    "lotuses_gained",
+    "tormentor_kills"
+  ],
+  "matches": [
+    {
+      "match_id": 8631262616,
+      "compressed_sha256": "65a3096c691b3ca03fab1aba185860017c7e41f13c072d8b9b3fa0ecd5da15a7",
+      "decompressed_sha256": "65322d28f4bb2720466426be330a899888701387d41068fa7df64efa13a64888",
+      "build_number": 10654,
+      "game_version": 6667,
+      "schema_fingerprint": "efa53abf850ec27bc08c896203b7329ad0c543f763ae09eb2de6bae434e5fd69",
+      "players": [
+        [0, 61, 0, 1, 2, 2],
+        [1, 60, 0, 1, 1, 1],
+        [2, 36, 0, 1, 1, 2],
+        [3, 0, 2, 4, 2, 0],
+        [4, 3, 5, 4, 4, 1],
+        [128, 61, 0, 1, 2, 0],
+        [129, 76, 0, 0, 0, 0],
+        [130, 11, 3, 2, 2, 0],
+        [131, 3, 4, 7, 2, 0],
+        [132, 24, 0, 2, 1, 0]
+      ]
+    },
+    {
+      "match_id": 8680265600,
+      "compressed_sha256": "7ff0b172d53faef5ae4070c94e2aff0468f92481dbfbebd6d1a2fa156f4915fe",
+      "decompressed_sha256": "918140f127430c5e34ae9832d8e0911ce026a3ef59634c8b74cfdc94f89c1fa8",
+      "build_number": 10695,
+      "game_version": 6699,
+      "schema_fingerprint": "70dc6c66c1ad79e483d7c1c7397c99829f49ebfc1142d525d25cce00733f233a",
+      "players": [
+        [0, 38, 0, 0, 4, 0],
+        [1, 1, 2, 6, 1, 0],
+        [2, 0, 0, 1, 1, 0],
+        [3, 0, 1, 3, 0, 0],
+        [4, 9, 0, 0, 1, 0],
+        [128, 3, 2, 0, 0, 0],
+        [129, 9, 0, 0, 2, 0],
+        [130, 1, 0, 0, 0, 0],
+        [131, 43, 0, 1, 0, 0],
+        [132, 0, 0, 1, 1, 0]
+      ]
+    },
+    {
+      "match_id": 8743439140,
+      "compressed_sha256": "2beb0fc24ac7e49300422fd98a5bc3165102677f6aac7474980fd271958cd197",
+      "decompressed_sha256": "ce77f6ee365da59f1a296d0ad2039e55ab01d29765a88c02fcdd0e92bd3eb16a",
+      "build_number": 10743,
+      "game_version": 6733,
+      "schema_fingerprint": "09d7888d0e15415051d0ac66cbda17c970a3d7e08da6eab84cb51e57616ed719",
+      "players": [
+        [0, 85, 0, 2, 1, 2],
+        [1, 47, 0, 1, 0, 2],
+        [2, 35, 0, 5, 5, 2],
+        [3, 0, 4, 5, 4, 1],
+        [4, 13, 3, 5, 3, 1],
+        [128, 9, 4, 3, 2, 0],
+        [129, 3, 2, 7, 3, 0],
+        [130, 28, 0, 1, 0, 0],
+        [131, 37, 1, 6, 2, 0],
+        [132, 103, 0, 2, 1, 0]
+      ]
+    },
+    {
+      "match_id": 8813352696,
+      "compressed_sha256": "4a6d6b7ecf61eec26304391712351735166e5f487578cecb7aa0da9757326832",
+      "decompressed_sha256": "db16ba50326b221578b61967e5c9d82dd2710fc65417278d14944d185455e5c0",
+      "build_number": 10757,
+      "game_version": 6790,
+      "schema_fingerprint": "9f0aa2069e03b887bda0545c91dc04d29295c5672262ad55c50c5a288ba203c2",
+      "players": [
+        [0, 10, 1, 1, 1, 0],
+        [1, 42, 0, 2, 1, 0],
+        [2, 40, 0, 4, 5, 0],
+        [3, 3, 2, 2, 2, 0],
+        [4, 3, 1, 4, 3, 0],
+        [128, 50, 0, 0, 1, 1],
+        [129, 15, 0, 1, 0, 0],
+        [130, 0, 2, 3, 2, 0],
+        [131, 3, 2, 2, 0, 0],
+        [132, 18, 0, 1, 1, 1]
+      ]
+    },
+    {
+      "match_id": 8904419709,
+      "compressed_sha256": "31be691d76bd1589e7089929b9dd94f1b03ca2154e8e69bff1865349add1a88b",
+      "decompressed_sha256": "5ea7d566bfb4e5784089529884794947e32dc25df3adeb2226fae1101df4aa6a",
+      "build_number": 10836,
+      "game_version": 6861,
+      "schema_fingerprint": "af53dbac9e09ca7613e773a1f50774663a44277457d16f8bc013d21cc319d80f",
+      "players": [
+        [0, 49, 0, 1, 1, 0],
+        [1, 29, 0, 2, 2, 0],
+        [2, 61, 0, 2, 3, 0],
+        [3, 3, 2, 4, 1, 0],
+        [4, 0, 5, 3, 0, 0],
+        [128, 54, 0, 2, 1, 0],
+        [129, 39, 1, 0, 3, 0],
+        [130, 46, 0, 0, 2, 0],
+        [131, 3, 3, 2, 1, 0],
+        [132, 6, 2, 4, 5, 0]
+      ]
+    },
+    {
+      "match_id": 8924770688,
+      "compressed_sha256": "751e4378b39c64afddac35f983aef9b7e68376671083602f82f7bd2cf4e61477",
+      "decompressed_sha256": "790929232a383822972ee4c2cd33a725372ae49f7c6b4310b8fd854313605e58",
+      "build_number": 10836,
+      "game_version": 6882,
+      "schema_fingerprint": "871658a472de9e0c3677d636b66d169ea4293034e0d0fb6e98051da2289427fa",
+      "players": [
+        [0, 91, 0, 2, 0, 0],
+        [1, 10, 0, 0, 1, 0],
+        [2, 73, 0, 0, 3, 0],
+        [3, 0, 2, 4, 1, 0],
+        [4, 6, 3, 1, 3, 0],
+        [128, 6, 3, 9, 5, 1],
+        [129, 40, 0, 0, 2, 2],
+        [130, 31, 0, 4, 2, 2],
+        [131, 3, 4, 7, 2, 1],
+        [132, 100, 0, 2, 7, 2]
+      ]
+    }
+  ]
+}

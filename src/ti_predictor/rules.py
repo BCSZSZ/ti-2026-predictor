@@ -81,6 +81,17 @@ CLIENT_SCORING_KEYS = {
     "courier_kills": "FANTASY_SCORING_COURIER_KILLS",
 }
 
+GEM_TYPE_COLORS = {
+    "FANTASY_GEM_TYPE_RUBY": "red",
+    "FANTASY_GEM_TYPE_SAPPHIRE": "blue",
+    "FANTASY_GEM_TYPE_EMERALD": "green",
+}
+FANTASY_ROLE_IDS = {
+    "FANTASY_ROLE_CORE": "core",
+    "FANTASY_ROLE_MID": "mid",
+    "FANTASY_ROLE_SUPPORT": "support",
+}
+
 
 def validate_rules(rules: dict[str, Any]) -> list[AuditIssue]:
     issues: list[AuditIssue] = []
@@ -117,6 +128,54 @@ def validate_rules(rules: dict[str, Any]) -> list[AuditIssue]:
                 f"Fantasy {period_id} slots or rerolls differ from the golden fixture",
                 got=period,
             )
+    roll = fantasy.get("roll", {})
+    offer = roll.get("offer", {})
+    if offer != {
+        "count": 3,
+        "unique": True,
+        "shared_across_banners": True,
+        "apply_replaces_all": True,
+        "refresh_replaces_all": True,
+    }:
+        block("fantasy-roll-offer", "Fantasy Roll offer contract differs from the accepted Group rule")
+    if roll.get("token_cost") != {"apply": 1, "refresh": 1}:
+        block("fantasy-roll-token-cost", "Fantasy apply and refresh must each consume one token")
+    if roll.get("application_scope") != "selected_banner_only":
+        block("fantasy-roll-application-scope", "a Roll option must affect only the selected Banner")
+    if roll.get("supported_periods") != ["group"]:
+        block("fantasy-roll-period", "P2 must support Group execution only")
+    contract = roll.get("client_contract", {})
+    positive_ids = contract.get("positive_operation_ids", [])
+    zero_ids = contract.get("zero_weight_template_ids", [])
+    if (
+        len(positive_ids) != 20
+        or len(set(positive_ids)) != 20
+        or len(zero_ids) != 8
+        or len(set(zero_ids)) != 8
+        or set(positive_ids) & set(zero_ids)
+        or contract.get("positive_weight_sum") != 168
+    ):
+        block("fantasy-roll-client-contract", "Fantasy Roll client operation contract is malformed")
+    models = roll.get("transition_models", [])
+    expected_models = {
+        "client-weight-primary-v1": 1.0,
+        "flattened-weights-v1": 0.5,
+        "sharpened-weights-v1": 2.0,
+    }
+    if {item.get("id"): item.get("exposed_weight_power") for item in models} != expected_models:
+        block("fantasy-roll-models", "Fantasy Roll transition models differ from the preregistration")
+    assumptions = roll.get("outcome_assumptions", {})
+    required_assumptions = {
+        "reroll_may_repeat_current": True,
+        "multi_target_draws": "independent",
+        "one_color_target": "all_matching_slots_in_support",
+        "increase_one_quality": "each_slot_increment_clamped",
+        "increase_two_decrease_one": "each_decreased_slot_other_two_increment_clamped",
+        "quality_bounds": [1, 5],
+        "unweighted_model_choices": "uniform",
+    }
+    if assumptions != required_assumptions:
+        block("fantasy-roll-assumptions", "Fantasy Roll outcome assumptions are incomplete")
     role_scoring = fantasy.get("role_scoring", {})
     if role_scoring.get("series") != "sum_top_two_games":
         block("fantasy-series-aggregation", "Fantasy series score must use the top two games")
@@ -126,6 +185,9 @@ def validate_rules(rules: dict[str, Any]) -> list[AuditIssue]:
     for stat_id, stat in stats.items():
         if stat.get("provenance") not in {"exact", "derived", "proxy", "unavailable"}:
             block("fantasy-provenance", "invalid Fantasy provenance label", stat=stat_id)
+    traits = fantasy.get("traits", [])
+    if [item.get("shape_id") for item in traits] != [1, 2, 3, 4, 5]:
+        block("fantasy-trait-shapes", "Fantasy Traits must map to the five client Shape IDs")
 
     for conflict in rules.get("conflicts", []):
         issues.append(
@@ -273,6 +335,7 @@ def inspect_client_sources(source_root: Path) -> dict[str, Any]:
     crafting_path = source_root / "scripts/fantasy_crafting.vdata"
     if crafting_path.exists():
         text = crafting_path.read_text(encoding="utf-8", errors="replace")
+        observed["fantasy_roll"] = _inspect_fantasy_crafting(text)
         quality_start = text.find("m_vecQualities")
         quality_text = text[quality_start : quality_start + 2500] if quality_start >= 0 else text
         observed["qualities"] = [
@@ -337,6 +400,192 @@ def _named_block(text: str, name: str) -> str:
     return ""
 
 
+def _balanced_value(text: str, opening: int, opening_char: str, closing_char: str) -> str:
+    depth = 0
+    quoted = False
+    escaped = False
+    for index in range(opening, len(text)):
+        char = text[index]
+        if quoted:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                quoted = False
+            continue
+        if char == '"':
+            quoted = True
+        elif char == opening_char:
+            depth += 1
+        elif char == closing_char:
+            depth -= 1
+            if depth == 0:
+                return text[opening : index + 1]
+    return ""
+
+
+def _assignment_list(text: str, key: str, *, start: int = 0) -> str:
+    match = re.search(rf"\b{re.escape(key)}\s*=", text[start:])
+    if match is None:
+        return ""
+    assignment = start + match.end()
+    opening = text.find("[", assignment)
+    if opening < 0:
+        return ""
+    return _balanced_value(text, opening, "[", "]")
+
+
+def _top_level_objects(list_text: str) -> list[str]:
+    objects: list[str] = []
+    index = 0
+    while index < len(list_text):
+        opening = list_text.find("{", index)
+        if opening < 0:
+            break
+        block = _balanced_value(list_text, opening, "{", "}")
+        if not block:
+            break
+        objects.append(block)
+        index = opening + len(block)
+    return objects
+
+
+def _scalar_value(text: str, key: str) -> str | None:
+    match = re.search(rf"\b{re.escape(key)}\s*=\s*(?:\"([^\"]+)\"|(-?\d+))", text)
+    if match is None:
+        return None
+    return match.group(1) if match.group(1) is not None else match.group(2)
+
+
+def _client_target_flags(value: str) -> list[str]:
+    return [item.strip() for item in value.split("|") if item.strip()]
+
+
+def _client_mutation_targets_supported(operation: str | None, targets: list[str]) -> bool:
+    target_set = set(targets)
+    if len(target_set) != len(targets):
+        return False
+    if operation in {
+        "k_eFantasyMutationOperation_IncreaseOneQuality",
+        "k_eFantasyMutationOperation_IncreaseTwoQualitiesDecreaseOne",
+    }:
+        return target_set == {"k_eFantasyMutationTarget_All"}
+    color_flags = {
+        "k_eFantasyMutationTarget_Rubies",
+        "k_eFantasyMutationTarget_Sapphires",
+        "k_eFantasyMutationTarget_Emeralds",
+    }
+    selector_flags = {
+        "k_eFantasyMutationTarget_AllColor",
+        "k_eFantasyMutationTarget_OneColor",
+        "k_eFantasyMutationTarget_FirstColor",
+        "k_eFantasyMutationTarget_LastColor",
+    }
+    return (
+        len(target_set) == 2 and len(target_set & color_flags) == 1 and len(target_set & selector_flags) == 1
+    )
+
+
+def _inspect_fantasy_crafting(text: str) -> dict[str, Any]:
+    gems: list[dict[str, Any]] = []
+    scoring_to_stat = {client_key: stat_id for stat_id, client_key in CLIENT_SCORING_KEYS.items()}
+    for index, block in enumerate(_top_level_objects(_assignment_list(text, "m_vecGems"))):
+        client_type = _scalar_value(block, "m_eType")
+        if client_type is None and index == 0:
+            client_type = "FANTASY_GEM_TYPE_RUBY"
+        stats_text = _assignment_list(block, "m_eStats")
+        client_stats = re.findall(r'"(FANTASY_SCORING_[A-Z_]+)"', stats_text)
+        gems.append(
+            {
+                "client_type": client_type,
+                "color": GEM_TYPE_COLORS.get(str(client_type)),
+                "stat_ids": [scoring_to_stat.get(value, value) for value in client_stats],
+            }
+        )
+
+    traits: list[dict[str, Any]] = []
+    for block in _top_level_objects(_assignment_list(text, "m_vecShapes")):
+        shape_id = _scalar_value(block, "m_unShapeID")
+        traits.append(
+            {
+                "shape_id": int(shape_id) if shape_id is not None else None,
+                "client_behavior": _scalar_value(block, "m_eShapeBehavior"),
+                "name_key": _scalar_value(block, "m_sLocName"),
+            }
+        )
+
+    qualities: list[dict[str, Any]] = []
+    for block in _top_level_objects(_assignment_list(text, "m_vecQualities")):
+        quality_id = _scalar_value(block, "m_unQualityID")
+        bonus = _scalar_value(block, "m_nBonus")
+        weight = _scalar_value(block, "m_nRollWeight")
+        qualities.append(
+            {
+                "tier": int(quality_id) if quality_id is not None else None,
+                "bonus_percent": int(bonus) if bonus is not None else None,
+                "roll_weight": int(weight) if weight is not None else None,
+            }
+        )
+
+    banners: list[dict[str, Any]] = []
+    for block in _top_level_objects(_assignment_list(text, "m_vecTablets")):
+        role = FANTASY_ROLE_IDS.get(str(_scalar_value(block, "m_eRole")))
+        slots: list[dict[str, Any]] = []
+        for slot_block in _top_level_objects(_assignment_list(block, "m_vecGemSlots")):
+            slot = _scalar_value(slot_block, "m_unGemSlot")
+            required_level = _scalar_value(slot_block, "m_nRequiredTabletLevel")
+            client_type = _scalar_value(slot_block, "m_eGemType")
+            slots.append(
+                {
+                    "slot": int(slot) if slot is not None else None,
+                    "color": GEM_TYPE_COLORS.get(str(client_type)),
+                    "required_tablet_level": int(required_level) if required_level is not None else 1,
+                }
+            )
+        banners.append({"role": role, "slots": slots})
+
+    tablets_start = text.find("m_vecTablets")
+    operations_list = _assignment_list(text, "m_vecOperations", start=max(0, tablets_start))
+    operation_wrappers = _top_level_objects(operations_list)
+    wrapper = operation_wrappers[0] if operation_wrappers else ""
+    offer_size = _scalar_value(wrapper, "m_unOperationCount")
+    operation_list = _assignment_list(wrapper, "m_vecOperations")
+    operations: list[dict[str, Any]] = []
+    for block in _top_level_objects(operation_list):
+        operation_id = _scalar_value(block, "m_unOperationID")
+        roll_weight = _scalar_value(block, "m_nRollWeight")
+        mutations_list = _assignment_list(block, "m_vecOperations")
+        prefix = block[: block.find("m_vecOperations")] if mutations_list else block
+        mutations: list[dict[str, Any]] = []
+        for mutation in _top_level_objects(mutations_list):
+            raw_target = _scalar_value(mutation, "m_eTarget")
+            mutations.append(
+                {
+                    "operation": _scalar_value(mutation, "m_eOperation"),
+                    "targets": _client_target_flags(raw_target) if raw_target else [],
+                }
+            )
+        operations.append(
+            {
+                "operation_id": int(operation_id) if operation_id is not None else None,
+                "roll_weight": int(roll_weight) if roll_weight is not None else None,
+                "operation_target": _scalar_value(prefix, "m_eTarget"),
+                "description_key": _scalar_value(block, "m_sLocDescription"),
+                "mutations": mutations,
+            }
+        )
+
+    return {
+        "offer_size": int(offer_size) if offer_size is not None else None,
+        "gems": gems,
+        "traits": traits,
+        "qualities": qualities,
+        "banners": banners,
+        "operations": operations,
+    }
+
+
 def np_cumsum(values: list[int]) -> list[int]:
     total = 0
     result = []
@@ -348,6 +597,10 @@ def np_cumsum(values: list[int]) -> list[int]:
 
 def compare_observed(observed: dict[str, Any], rules: dict[str, Any]) -> list[AuditIssue]:
     issues: list[AuditIssue] = []
+
+    def client_block(code: str, message: str, **context: Any) -> None:
+        issues.append(AuditIssue(code=code, severity="blocking", message=message, context=context))
+
     checks = {
         "group_max_grants": 16,
         "main_max_grants": 14,
@@ -377,6 +630,154 @@ def compare_observed(observed: dict[str, Any], rules: dict[str, Any]) -> list[Au
                     context={"expected": expected, "observed": value},
                 )
             )
+    fantasy = rules["fantasy"]
+    roll_contract = fantasy["roll"]["client_contract"]
+    fantasy_roll = observed.get("fantasy_roll")
+    if not isinstance(fantasy_roll, dict):
+        client_block("client-fantasy-roll-missing", "Client snapshot did not expose Fantasy Roll rules")
+    else:
+        if fantasy_roll.get("offer_size") != fantasy["roll"]["offer"]["count"]:
+            client_block(
+                "client-fantasy-roll-offer-size",
+                "Client Roll offer count differs from the canonical contract",
+                observed=fantasy_roll.get("offer_size"),
+            )
+        expected_qualities = [
+            {
+                "tier": int(item["tier"]),
+                "bonus_percent": int(item["bonus_percent"]),
+                "roll_weight": int(item["roll_weight"]),
+            }
+            for item in fantasy["qualities"]
+        ]
+        if fantasy_roll.get("qualities") != expected_qualities:
+            client_block(
+                "client-fantasy-roll-qualities",
+                "Client Quality definitions differ from canonical rules",
+            )
+        expected_gems = []
+        for color, client_type in (
+            ("red", "FANTASY_GEM_TYPE_RUBY"),
+            ("blue", "FANTASY_GEM_TYPE_SAPPHIRE"),
+            ("green", "FANTASY_GEM_TYPE_EMERALD"),
+        ):
+            expected_gems.append(
+                {
+                    "client_type": client_type,
+                    "color": color,
+                    "stat_ids": [
+                        stat_id
+                        for stat_id, definition in fantasy["stats"].items()
+                        if definition["color"] == color
+                    ],
+                }
+            )
+        if fantasy_roll.get("gems") != expected_gems:
+            client_block(
+                "client-fantasy-roll-gems",
+                "Client legal Stats by Gem color differ from canonical rules",
+            )
+        expected_traits = [
+            {
+                "shape_id": int(item["shape_id"]),
+                "client_behavior": item["client_behavior"],
+                "name_key": {
+                    "fractal": "#DOTA_FantasyCraft_Trait_UniqueQualities",
+                    "benevolent": "#DOTA_FantasyCraft_Trait_AdjBonus",
+                    "vampiric": "#DOTA_FantasyCraft_Trait_Steal",
+                    "unique": "#DOTA_FantasyCraft_Trait_Unique",
+                    "friendly": "#DOTA_FantasyCraft_Trait_Multiples",
+                }[item["id"]],
+            }
+            for item in fantasy["traits"]
+        ]
+        if fantasy_roll.get("traits") != expected_traits:
+            client_block(
+                "client-fantasy-roll-traits",
+                "Client Trait Shapes differ from canonical rules",
+            )
+        required_levels = [1, 1, 1, 2, 3]
+        expected_banners = [
+            {
+                "role": role,
+                "slots": [
+                    {"slot": index, "color": color, "required_tablet_level": required_levels[index - 1]}
+                    for index, color in enumerate(colors, start=1)
+                ],
+            }
+            for role, colors in fantasy["role_banners"].items()
+        ]
+        if fantasy_roll.get("banners") != expected_banners:
+            client_block(
+                "client-fantasy-roll-banners",
+                "Client War Banner slot colors differ from canonical rules",
+            )
+
+        operations = fantasy_roll.get("operations")
+        if not isinstance(operations, list):
+            client_block(
+                "client-fantasy-roll-operations",
+                "Client snapshot did not expose a Roll operation list",
+            )
+        else:
+            ids = [item.get("operation_id") for item in operations]
+            if len(ids) != len(set(ids)):
+                client_block("client-fantasy-roll-duplicate-id", "Client Roll operation IDs repeat")
+            positive = [
+                item
+                for item in operations
+                if isinstance(item.get("roll_weight"), int) and item["roll_weight"] > 0
+            ]
+            zero = [item for item in operations if item.get("roll_weight") == 0]
+            if [item["operation_id"] for item in positive] != roll_contract["positive_operation_ids"]:
+                client_block(
+                    "client-fantasy-roll-positive-ids",
+                    "Client positive Roll operation IDs differ from the frozen contract",
+                )
+            if [item["operation_id"] for item in zero] != roll_contract["zero_weight_template_ids"]:
+                client_block(
+                    "client-fantasy-roll-zero-ids",
+                    "Client zero-weight Roll templates differ from the frozen contract",
+                )
+            if sum(item["roll_weight"] for item in positive) != roll_contract["positive_weight_sum"]:
+                client_block(
+                    "client-fantasy-roll-weight-sum",
+                    "Client positive Roll weights differ from the frozen contract",
+                )
+            supported_mutations = {
+                "k_eFantasyMutationOperation_RollQuality",
+                "k_eFantasyMutationOperation_RollShape",
+                "k_eFantasyMutationOperation_RollStat",
+                "k_eFantasyMutationOperation_IncreaseOneQuality",
+                "k_eFantasyMutationOperation_IncreaseTwoQualitiesDecreaseOne",
+            }
+            supported_targets = {
+                "k_eFantasyMutationTarget_All",
+                "k_eFantasyMutationTarget_Rubies",
+                "k_eFantasyMutationTarget_Sapphires",
+                "k_eFantasyMutationTarget_Emeralds",
+                "k_eFantasyMutationTarget_AllColor",
+                "k_eFantasyMutationTarget_OneColor",
+                "k_eFantasyMutationTarget_FirstColor",
+                "k_eFantasyMutationTarget_LastColor",
+            }
+            for operation in positive:
+                mutations = operation.get("mutations")
+                if (
+                    not isinstance(mutations, list)
+                    or len(mutations) != 1
+                    or mutations[0].get("operation") not in supported_mutations
+                    or not set(mutations[0].get("targets", [])) <= supported_targets
+                    or not _client_mutation_targets_supported(
+                        mutations[0].get("operation"), mutations[0].get("targets", [])
+                    )
+                    or not operation.get("description_key")
+                ):
+                    client_block(
+                        "client-fantasy-roll-unsupported-operation",
+                        "A positive client Roll operation is malformed or unsupported",
+                        operation=operation,
+                    )
     observed_scoring = observed.get("fantasy_scoring", {})
     for stat_id, client_key in CLIENT_SCORING_KEYS.items():
         rule = rules["fantasy"]["stats"][stat_id]

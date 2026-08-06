@@ -42,7 +42,7 @@
     }
   },
   "fantasy": {
-    "rule_policy_version": "2026-08-06-native-replay-v3",
+    "rule_policy_version": "2026-08-06-group-roll-v4",
     "score_unit": "client_fantasy_points",
     "periods": [
       {"id": "group", "index": 0, "banner_slots": 3, "new_rolls": 40, "carried_slots": []},
@@ -67,6 +67,38 @@
       "coach_application": "multiply_final_game_score",
       "emblem_evidence": "strong_inference_from_client_localization_and_total_stat_value",
       "coach_policy": "owner_defined_until_client_formula_verified"
+    },
+    "roll": {
+      "policy_version": "group-roll-transition-v1",
+      "supported_periods": ["group"],
+      "offer": {
+        "count": 3,
+        "unique": true,
+        "shared_across_banners": true,
+        "apply_replaces_all": true,
+        "refresh_replaces_all": true
+      },
+      "token_cost": {"apply": 1, "refresh": 1},
+      "application_scope": "selected_banner_only",
+      "client_contract": {
+        "positive_operation_ids": [9, 10, 11, 12, 13, 14, 15, 16, 17, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33],
+        "zero_weight_template_ids": [1, 2, 3, 4, 5, 6, 7, 8],
+        "positive_weight_sum": 168
+      },
+      "outcome_assumptions": {
+        "reroll_may_repeat_current": true,
+        "multi_target_draws": "independent",
+        "one_color_target": "all_matching_slots_in_support",
+        "increase_one_quality": "each_slot_increment_clamped",
+        "increase_two_decrease_one": "each_decreased_slot_other_two_increment_clamped",
+        "quality_bounds": [1, 5],
+        "unweighted_model_choices": "uniform"
+      },
+      "transition_models": [
+        {"id": "client-weight-primary-v1", "exposed_weight_power": 1.0},
+        {"id": "flattened-weights-v1", "exposed_weight_power": 0.5},
+        {"id": "sharpened-weights-v1", "exposed_weight_power": 2.0}
+      ]
     },
     "stats": {
       "kills": {"label": "击杀", "color": "red", "mode": "linear", "factor": 107.0, "source": "kills", "provenance": "exact"},
@@ -96,11 +128,11 @@
       {"tier": 5, "bonus_percent": 150, "roll_weight": 2}
     ],
     "traits": [
-      {"id": "fractal", "condition": "all_qualities_distinct", "self_bonus_percent": 60, "adjacent_bonus_percent": 0},
-      {"id": "benevolent", "condition": "always", "self_bonus_percent": 0, "adjacent_bonus_percent": 20},
-      {"id": "vampiric", "condition": "always", "self_bonus_percent": 50, "adjacent_bonus_percent": -10},
-      {"id": "unique", "condition": "only_unique_trait", "self_bonus_percent": 30, "adjacent_bonus_percent": 0},
-      {"id": "friendly", "condition": "at_least_three_friendly", "self_bonus_percent": 50, "adjacent_bonus_percent": 0}
+      {"id": "fractal", "shape_id": 1, "client_behavior": "k_eFantasyShapeBehavior_UniqueQualities", "condition": "all_qualities_distinct", "self_bonus_percent": 60, "adjacent_bonus_percent": 0},
+      {"id": "benevolent", "shape_id": 2, "client_behavior": "k_eFantasyShapeBehavior_AdjBonus", "condition": "always", "self_bonus_percent": 0, "adjacent_bonus_percent": 20},
+      {"id": "vampiric", "shape_id": 3, "client_behavior": "k_eFantasyShapeBehavior_StealBonus", "condition": "always", "self_bonus_percent": 50, "adjacent_bonus_percent": -10},
+      {"id": "unique", "shape_id": 4, "client_behavior": "k_eFantasyShapeBehavior_OnlyOne", "condition": "only_unique_trait", "self_bonus_percent": 30, "adjacent_bonus_percent": 0},
+      {"id": "friendly", "shape_id": 5, "client_behavior": "k_eFantasyShapeBehavior_NeedMultiples", "condition": "at_least_three_friendly", "self_bonus_percent": 50, "adjacent_bonus_percent": 0}
     ],
     "coach": {
       "selection": {

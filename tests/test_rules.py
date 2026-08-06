@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -44,6 +45,24 @@ def test_golden_rules_have_expected_shapes(project_paths) -> None:
     assert suffixes["fountain"]["condition"] == "any_player_killed_in_own_fountain"
     assert rules["fantasy"]["period_rewards"]["between_anchor_mapping"] == ("unknown_do_not_interpolate")
     assert [period["banner_slots"] for period in rules["fantasy"]["periods"]] == [3, 5]
+    roll = rules["fantasy"]["roll"]
+    assert roll["supported_periods"] == ["group"]
+    assert roll["offer"] == {
+        "count": 3,
+        "unique": True,
+        "shared_across_banners": True,
+        "apply_replaces_all": True,
+        "refresh_replaces_all": True,
+    }
+    assert roll["token_cost"] == {"apply": 1, "refresh": 1}
+    assert roll["application_scope"] == "selected_banner_only"
+    assert roll["client_contract"]["positive_weight_sum"] == 168
+    assert {item["id"]: item["exposed_weight_power"] for item in roll["transition_models"]} == {
+        "client-weight-primary-v1": 1.0,
+        "flattened-weights-v1": 0.5,
+        "sharpened-weights-v1": 2.0,
+    }
+    assert [trait["shape_id"] for trait in rules["fantasy"]["traits"]] == [1, 2, 3, 4, 5]
 
 
 def test_manifest_has_sixteen_unique_complete_teams(project_paths) -> None:
@@ -80,6 +99,11 @@ def test_client_snapshot_records_sources_and_conflict(tmp_path: Path, project_pa
     scoring_text = " ".join(f'"{key}" "{value}"' for key, value in scoring.items())
     group_text = " ".join(f'"points" "{value}"' for value in group_grants)
     main_text = " ".join(f'"points" "{value}"' for value in main_grants)
+    crafting_fixture = Path(__file__).parent / "fixtures/fantasy_roll_rules_2026.vdata"
+    crafting_bytes = crafting_fixture.read_bytes()
+    assert hashlib.sha256(crafting_bytes).hexdigest() == (
+        "8208a82d2f8a15f947ba69ffb076df622a19c10803895a230394ad1d4c141b4b"
+    )
     files = {
         "scripts/events/international_2026.eventdef": f"""
             \"predictions_road_to_ti\" {{ \"max_grants\" \"16\" {group_text} }}
@@ -94,12 +118,7 @@ def test_client_snapshot_records_sources_and_conflict(tmp_path: Path, project_pa
               }}
             }}
         """,
-        "scripts/fantasy_crafting.vdata": """
-            m_nBonus = 10 m_nBonus = 30 m_nBonus = 60 m_nBonus = 100 m_nBonus = 150
-            m_nRollWeight = 10 m_nRollWeight = 20 m_nRollWeight = 10
-            m_nRollWeight = 5 m_nRollWeight = 2
-            first_blood_after_6_minutes
-        """,
+        "scripts/fantasy_crafting.vdata": crafting_bytes.decode("utf-8") + "\nfirst_blood_after_6_minutes\n",
         "scripts/events/fantasy/dpc_fantasy_period_pointscore.eventactions": "fixture",
         "resource/localization/dota_english.txt": "after 10 minutes",
         "resource/localization/dota_schinese.txt": "10分钟之后",
@@ -114,10 +133,40 @@ def test_client_snapshot_records_sources_and_conflict(tmp_path: Path, project_pa
         paths=project_paths,
     )
     assert output.is_file()
-    assert snapshot.status == "warning"
+    assert snapshot.status == "warning", snapshot.issues
     assert len(snapshot.source_files) == 5
     assert any(issue.code == "late_first_blood_threshold" for issue in snapshot.issues)
     assert sum(issue.code == "late_first_blood_threshold" for issue in snapshot.issues) == 1
+    client_roll = snapshot.observed["fantasy_roll"]
+    operations = client_roll["operations"]
+    positive = [item for item in operations if item["roll_weight"] > 0]
+    assert client_roll["offer_size"] == 3
+    assert len(operations) == 28
+    assert [item["operation_id"] for item in positive] == [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+    ]
+    assert sum(item["roll_weight"] for item in positive) == 168
+    assert [item["operation_id"] for item in operations if item["roll_weight"] == 0] == list(range(1, 9))
+    assert next(item for item in operations if item["operation_id"] == 27)["roll_weight"] == 6
     status, issues = validate_snapshot(paths=project_paths)
     assert status == "warning"
     assert not [issue for issue in issues if issue.severity == "blocking"]

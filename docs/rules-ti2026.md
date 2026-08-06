@@ -39,6 +39,27 @@ The visible final leaderboard rewards and prediction point tables are transcribe
 - Prefix and suffix conditions apply to all selected players and do not consume reroll tokens.
 - The nine visible percentile reward anchors are recorded, but rewards between anchors remain unavailable; the project does not interpolate them.
 
+### Group Roll contract
+
+- Group grants 40 Roll tokens. The screen exposes three unique options shared by all three War
+  Banners. Applying an option to one selected Banner or refreshing the offer costs one token and
+  replaces all three options; an application never mutates another Banner.
+- The hashed build `6888:10887746` snapshot `20260806T081345Z-702ddf2a6953` contains 28 operation
+  definitions. IDs `1–8` have zero offer weight and are audit templates only. The 20 offered IDs
+  are `9–17` and `23–33`; their positive weights sum to `168`.
+- The same snapshot supplies the six legal Stats per color, five Trait Shapes, five Quality values
+  and Quality Roll weights, role slot colors, mutation enums and target flags. A parser or contract
+  mismatch blocks use of the transition engine.
+- The client does not expose every random sub-choice rate. The project therefore separates exact
+  legal support from probability models. Support allows a reroll to repeat the current value,
+  includes every matching slot as a possible `OneColor` target, treats affected slots as separate
+  draws, and clamps Quality changes to T1–T5. None of those support assumptions is labelled as a
+  recovered Valve probability.
+- Model-conditional work preregisters client weights, square-root-flattened weights and squared
+  weights. All three preserve the same legal support. The Rate-agnostic route assigns no
+  probabilities. Group is executable; Main fields are reserved but rejected until its policy is
+  separately implemented and verified.
+
 ## Known uncertainties
 
 - The client internal name for late first blood says six minutes while localization says ten minutes.
@@ -54,3 +75,5 @@ The source decision and validation evidence are recorded in
 [`ti2026-fantasy-proxy-stat-validation.md`](research/ti2026-fantasy-proxy-stat-validation.md), with
 the completed coverage in
 [`p1-native-replay-stats-implementation-2026-08-06.md`](reports/p1-native-replay-stats-implementation-2026-08-06.md).
+The Roll extraction, assumptions and pure-transition acceptance evidence are recorded in
+[`p2-roll-transition-engine-implementation-2026-08-06.md`](reports/p2-roll-transition-engine-implementation-2026-08-06.md).

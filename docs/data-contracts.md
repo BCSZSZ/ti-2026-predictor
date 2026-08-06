@@ -43,6 +43,19 @@ Native Fantasy replay ingestion adds four keyed tables:
 Only presence-verified native rows are overlaid into `fantasy_performance_samples.parquet`. A
 diagnostic proxy never fills a native `null`.
 
+The normalized Fantasy Roll block in each client Rule snapshot preserves:
+
+- legal Stat IDs by Gem color, Trait Shape IDs/behaviors and Quality values/weights;
+- War Banner roles, ordered slot colors and unlock levels;
+- offered option count; and
+- every operation ID, offer weight, target class, localization key, mutation enum and raw target
+  flags, including zero-weight audit templates.
+
+The executable Group transition rule set is built from both this observed block and the canonical
+contract. It fails closed on drift or unsupported target combinations. Rate-agnostic support is
+kept probability-free; callers must supply a named transition-model ID and explicit random-number
+generator, and any persisted sampled run must record that model ID and seed.
+
 Team-history summaries are retained for strength modeling. The canonical Fantasy player history
 scope is selected by stable `account_id`: collect the reviewed TI players' UTC-year match IDs,
 intersect them with the professional match catalog, retain OpenDota league tier `premium` or

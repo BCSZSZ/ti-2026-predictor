@@ -6,6 +6,7 @@
 *.yml text eol=lf
 *.toml text eol=lf
 *.lock text eol=lf
+*.vdata text eol=lf
 .env.example text eol=lf
 .gitattributes text eol=lf
 .gitignore text eol=lf

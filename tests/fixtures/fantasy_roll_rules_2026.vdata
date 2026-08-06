@@ -1,0 +1,77 @@
+<!-- Minimal factual TI 2026 Fantasy Roll fixture; values frozen from client build 6888. -->
+{
+  m_vecGems = [
+    { m_eStats = [ "FANTASY_SCORING_KILLS", "FANTASY_SCORING_DEATHS", "FANTASY_SCORING_CS", "FANTASY_SCORING_GPM", "FANTASY_SCORING_MADSTONE", "FANTASY_SCORING_TOWER_KILLS" ] },
+    { m_eType = "FANTASY_GEM_TYPE_SAPPHIRE" m_eStats = [ "FANTASY_SCORING_WARDS_PLANTED", "FANTASY_SCORING_CAMPS_STACKED", "FANTASY_SCORING_RUNES_GRABBED", "FANTASY_SCORING_SMOKES_USED", "FANTASY_SCORING_WATCHERS_TAKEN", "FANTASY_SCORING_LOTUSES_GAINED" ] },
+    { m_eType = "FANTASY_GEM_TYPE_EMERALD" m_eStats = [ "FANTASY_SCORING_ROSHAN_KILLS", "FANTASY_SCORING_TEAMFIGHT_PARTICIPATION", "FANTASY_SCORING_FIRST_BLOOD", "FANTASY_SCORING_STUNS", "FANTASY_SCORING_TORMENTOR_KILLS", "FANTASY_SCORING_COURIER_KILLS" ] },
+  ]
+  m_vecShapes = [
+    { m_unShapeID = 1 m_eShapeBehavior = "k_eFantasyShapeBehavior_UniqueQualities" m_sLocName = "#DOTA_FantasyCraft_Trait_UniqueQualities" },
+    { m_unShapeID = 2 m_eShapeBehavior = "k_eFantasyShapeBehavior_AdjBonus" m_sLocName = "#DOTA_FantasyCraft_Trait_AdjBonus" },
+    { m_unShapeID = 3 m_eShapeBehavior = "k_eFantasyShapeBehavior_StealBonus" m_sLocName = "#DOTA_FantasyCraft_Trait_Steal" },
+    { m_unShapeID = 4 m_eShapeBehavior = "k_eFantasyShapeBehavior_OnlyOne" m_sLocName = "#DOTA_FantasyCraft_Trait_Unique" },
+    { m_unShapeID = 5 m_eShapeBehavior = "k_eFantasyShapeBehavior_NeedMultiples" m_sLocName = "#DOTA_FantasyCraft_Trait_Multiples" },
+  ]
+  m_vecQualities = [
+    { m_unQualityID = 1 m_nBonus = 10 m_nRollWeight = 10 },
+    { m_unQualityID = 2 m_nBonus = 30 m_nRollWeight = 20 },
+    { m_unQualityID = 3 m_nBonus = 60 m_nRollWeight = 10 },
+    { m_unQualityID = 4 m_nBonus = 100 m_nRollWeight = 5 },
+    { m_unQualityID = 5 m_nBonus = 150 m_nRollWeight = 2 },
+  ]
+  m_vecTablets = [
+    { m_eRole = "FANTASY_ROLE_CORE" m_vecGemSlots = [
+      { m_unGemSlot = 1 m_eGemType = "FANTASY_GEM_TYPE_RUBY" },
+      { m_unGemSlot = 2 m_eGemType = "FANTASY_GEM_TYPE_EMERALD" },
+      { m_unGemSlot = 3 m_eGemType = "FANTASY_GEM_TYPE_RUBY" },
+      { m_unGemSlot = 4 m_nRequiredTabletLevel = 2 m_eGemType = "FANTASY_GEM_TYPE_EMERALD" },
+      { m_unGemSlot = 5 m_nRequiredTabletLevel = 3 m_eGemType = "FANTASY_GEM_TYPE_RUBY" },
+    ] },
+    { m_eRole = "FANTASY_ROLE_MID" m_vecGemSlots = [
+      { m_unGemSlot = 1 m_eGemType = "FANTASY_GEM_TYPE_RUBY" },
+      { m_unGemSlot = 2 m_eGemType = "FANTASY_GEM_TYPE_SAPPHIRE" },
+      { m_unGemSlot = 3 m_eGemType = "FANTASY_GEM_TYPE_EMERALD" },
+      { m_unGemSlot = 4 m_nRequiredTabletLevel = 2 m_eGemType = "FANTASY_GEM_TYPE_RUBY" },
+      { m_unGemSlot = 5 m_nRequiredTabletLevel = 3 m_eGemType = "FANTASY_GEM_TYPE_EMERALD" },
+    ] },
+    { m_eRole = "FANTASY_ROLE_SUPPORT" m_vecGemSlots = [
+      { m_unGemSlot = 1 m_eGemType = "FANTASY_GEM_TYPE_SAPPHIRE" },
+      { m_unGemSlot = 2 m_eGemType = "FANTASY_GEM_TYPE_EMERALD" },
+      { m_unGemSlot = 3 m_eGemType = "FANTASY_GEM_TYPE_SAPPHIRE" },
+      { m_unGemSlot = 4 m_nRequiredTabletLevel = 2 m_eGemType = "FANTASY_GEM_TYPE_EMERALD" },
+      { m_unGemSlot = 5 m_nRequiredTabletLevel = 3 m_eGemType = "FANTASY_GEM_TYPE_SAPPHIRE" },
+    ] },
+  ]
+  m_vecOperations = [
+    { m_unOperationCount = 3 m_vecOperations = [
+      { m_unOperationID = 1 m_nRollWeight = 0 m_eTarget = "k_eFantasyOperationTarget_GemType" m_sLocDescription = "#DOTA_FantasyCraft_Operation_IncreaseQuality" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_IncreaseQuality" m_eTarget = "k_eFantasyMutationTarget_OperationChoice" } ] },
+      { m_unOperationID = 2 m_nRollWeight = 0 m_eTarget = "k_eFantasyOperationTarget_SpecificGem" m_sLocDescription = "#DOTA_FantasyCraft_Operation_IncreaseQuality" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_IncreaseQuality" m_eTarget = "k_eFantasyMutationTarget_OperationChoice" } ] },
+      { m_unOperationID = 3 m_nRollWeight = 0 m_eTarget = "k_eFantasyOperationTarget_GemType" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollQuality" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollQuality" m_eTarget = "k_eFantasyMutationTarget_OperationChoice" } ] },
+      { m_unOperationID = 4 m_nRollWeight = 0 m_eTarget = "k_eFantasyOperationTarget_GemType" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollShape" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollShape" m_eTarget = "k_eFantasyMutationTarget_OperationChoice" } ] },
+      { m_unOperationID = 5 m_nRollWeight = 0 m_eTarget = "k_eFantasyOperationTarget_GemType" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollStat" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollStat" m_eTarget = "k_eFantasyMutationTarget_OperationChoice" } ] },
+      { m_unOperationID = 6 m_nRollWeight = 0 m_eTarget = "k_eFantasyOperationTarget_SpecificGem" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollQuality" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollQuality" m_eTarget = "k_eFantasyMutationTarget_OperationChoice" } ] },
+      { m_unOperationID = 7 m_nRollWeight = 0 m_eTarget = "k_eFantasyOperationTarget_SpecificGem" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollShape" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollShape" m_eTarget = "k_eFantasyMutationTarget_OperationChoice" } ] },
+      { m_unOperationID = 8 m_nRollWeight = 0 m_eTarget = "k_eFantasyOperationTarget_SpecificGem" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollStat" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollStat" m_eTarget = "k_eFantasyMutationTarget_OperationChoice" } ] },
+      { m_unOperationID = 9 m_nRollWeight = 10 m_eTarget = "k_eFantasyOperationTarget_None" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollQuality" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollQuality" m_eTarget = "k_eFantasyMutationTarget_Rubies | k_eFantasyMutationTarget_AllColor" } ] },
+      { m_unOperationID = 10 m_nRollWeight = 10 m_eTarget = "k_eFantasyOperationTarget_None" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollShape" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollShape" m_eTarget = "k_eFantasyMutationTarget_Rubies | k_eFantasyMutationTarget_AllColor" } ] },
+      { m_unOperationID = 11 m_nRollWeight = 10 m_eTarget = "k_eFantasyOperationTarget_None" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollStat" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollStat" m_eTarget = "k_eFantasyMutationTarget_Rubies | k_eFantasyMutationTarget_AllColor" } ] },
+      { m_unOperationID = 12 m_nRollWeight = 10 m_eTarget = "k_eFantasyOperationTarget_None" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollQuality" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollQuality" m_eTarget = "k_eFantasyMutationTarget_Sapphires | k_eFantasyMutationTarget_AllColor" } ] },
+      { m_unOperationID = 13 m_nRollWeight = 10 m_eTarget = "k_eFantasyOperationTarget_None" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollShape" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollShape" m_eTarget = "k_eFantasyMutationTarget_Sapphires | k_eFantasyMutationTarget_AllColor" } ] },
+      { m_unOperationID = 14 m_nRollWeight = 10 m_eTarget = "k_eFantasyOperationTarget_None" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollStat" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollStat" m_eTarget = "k_eFantasyMutationTarget_Sapphires | k_eFantasyMutationTarget_AllColor" } ] },
+      { m_unOperationID = 15 m_nRollWeight = 10 m_eTarget = "k_eFantasyOperationTarget_None" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollQuality" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollQuality" m_eTarget = "k_eFantasyMutationTarget_Emeralds | k_eFantasyMutationTarget_AllColor" } ] },
+      { m_unOperationID = 16 m_nRollWeight = 10 m_eTarget = "k_eFantasyOperationTarget_None" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollShape" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollShape" m_eTarget = "k_eFantasyMutationTarget_Emeralds | k_eFantasyMutationTarget_AllColor" } ] },
+      { m_unOperationID = 17 m_nRollWeight = 10 m_eTarget = "k_eFantasyOperationTarget_None" m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollStat" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_RollStat" m_eTarget = "k_eFantasyMutationTarget_Emeralds | k_eFantasyMutationTarget_AllColor" } ] },
+      { m_unOperationID = 23 m_nRollWeight = 4 m_sLocDescription = "#DOTA_FantasyCraft_Operation_IncreaseOneQuality" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_IncreaseOneQuality" m_eTarget = "k_eFantasyMutationTarget_All" } ] },
+      { m_unOperationID = 24 m_nRollWeight = 8 m_sLocDescription = "#DOTA_FantasyCraft_Operation_IncreaseTwoQualitiesDecreaseOne" m_vecOperations = [ { m_eOperation = "k_eFantasyMutationOperation_IncreaseTwoQualitiesDecreaseOne" m_eTarget = "k_eFantasyMutationTarget_All" } ] },
+      { m_unOperationID = 25 m_nRollWeight = 10 m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollQuality" m_vecOperations = [ { m_eTarget = "k_eFantasyMutationTarget_Rubies | k_eFantasyMutationTarget_OneColor" m_eOperation = "k_eFantasyMutationOperation_RollQuality" } ] },
+      { m_unOperationID = 26 m_nRollWeight = 6 m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollQuality" m_vecOperations = [ { m_eTarget = "k_eFantasyMutationTarget_Rubies | k_eFantasyMutationTarget_FirstColor" m_eOperation = "k_eFantasyMutationOperation_RollQuality" } ] },
+      { m_nRollWeight = 6 m_unOperationID = 27 m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollQuality" m_vecOperations = [ { m_eTarget = "k_eFantasyMutationTarget_Rubies | k_eFantasyMutationTarget_LastColor" m_eOperation = "k_eFantasyMutationOperation_RollQuality" } ] },
+      { m_unOperationID = 28 m_nRollWeight = 10 m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollShape" m_vecOperations = [ { m_eTarget = "k_eFantasyMutationTarget_Sapphires | k_eFantasyMutationTarget_OneColor" m_eOperation = "k_eFantasyMutationOperation_RollShape" } ] },
+      { m_unOperationID = 29 m_nRollWeight = 6 m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollShape" m_vecOperations = [ { m_eTarget = "k_eFantasyMutationTarget_Sapphires | k_eFantasyMutationTarget_FirstColor" m_eOperation = "k_eFantasyMutationOperation_RollShape" } ] },
+      { m_unOperationID = 30 m_nRollWeight = 6 m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollShape" m_vecOperations = [ { m_eTarget = "k_eFantasyMutationTarget_Sapphires | k_eFantasyMutationTarget_LastColor" m_eOperation = "k_eFantasyMutationOperation_RollShape" } ] },
+      { m_unOperationID = 31 m_nRollWeight = 10 m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollStat" m_vecOperations = [ { m_eTarget = "k_eFantasyMutationTarget_Emeralds | k_eFantasyMutationTarget_OneColor" m_eOperation = "k_eFantasyMutationOperation_RollStat" } ] },
+      { m_unOperationID = 32 m_nRollWeight = 6 m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollStat" m_vecOperations = [ { m_eTarget = "k_eFantasyMutationTarget_Emeralds | k_eFantasyMutationTarget_FirstColor" m_eOperation = "k_eFantasyMutationOperation_RollStat" } ] },
+      { m_unOperationID = 33 m_nRollWeight = 6 m_sLocDescription = "#DOTA_FantasyCraft_Operation_RollStat" m_vecOperations = [ { m_eTarget = "k_eFantasyMutationTarget_Emeralds | k_eFantasyMutationTarget_LastColor" m_eOperation = "k_eFantasyMutationOperation_RollStat" } ] },
+    ] },
+  ]
+}

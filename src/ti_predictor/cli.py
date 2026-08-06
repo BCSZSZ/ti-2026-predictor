@@ -11,6 +11,7 @@ import typer
 from ti_predictor import __version__
 from ti_predictor.audit import audit_run
 from ti_predictor.backtesting import run_ti2025_backtest
+from ti_predictor.fantasy.advisor_reporting import generate_group_advisor_evidence
 from ti_predictor.fantasy.cross_audit_reporting import generate_group_cross_audit_evidence
 from ti_predictor.fantasy.playbook_reporting import generate_group_playbook_evidence
 from ti_predictor.fantasy.solver_reporting import generate_group_solver_evidence
@@ -567,6 +568,28 @@ def fantasy_group_cross_audit(
             "evidence_path": str(result.evidence_path),
             "evidence_sha256": result.evidence["evidence_sha256"],
             "gate": result.evidence["gate"],
+            "runtime_seconds": result.runtime_seconds,
+        }
+    )
+    _exit_for_status(result.run.status)
+
+
+@fantasy_app.command("group-advisor-evidence")
+def fantasy_group_advisor_evidence(
+    as_of: Annotated[
+        str,
+        typer.Option("--as-of", help="P7 本地 Group Roll 顾问证据截止时间，必须带时区。"),
+    ],
+) -> None:
+    result = generate_group_advisor_evidence(as_of=parse_as_of(as_of))
+    _echo(
+        {
+            "run_id": result.run.run_id,
+            "status": result.run.status,
+            "run_path": str(result.run_path),
+            "evidence_path": str(result.evidence_path),
+            "evidence_sha256": result.evidence["evidence_sha256"],
+            "functional_gate": result.evidence["functional_gate"],
             "runtime_seconds": result.runtime_seconds,
         }
     )

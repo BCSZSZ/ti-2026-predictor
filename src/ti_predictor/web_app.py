@@ -9,6 +9,7 @@ import streamlit as st
 
 from ti_predictor.audit import audit_run
 from ti_predictor.config import load_rules, load_tournament_manifest
+from ti_predictor.fantasy.advisor_ui import render_advisor_page
 from ti_predictor.hashing import sha256_bytes
 from ti_predictor.match_catalog import filter_match_catalog, utc_year_bounds
 from ti_predictor.ocr import inspect_screenshot
@@ -231,12 +232,17 @@ def audit_page() -> None:
 manifest = load_tournament_manifest()
 st.sidebar.title("TI 2026")
 st.sidebar.caption(f"{manifest.display_name} · 仅监听 localhost")
-page = st.sidebar.radio("页面", ("数据与规则状态", "预测", "Fantasy", "审计"))
+page = st.sidebar.radio(
+    "页面",
+    ("数据与规则状态", "预测", "Fantasy", "Group Roll 顾问（实验）", "审计"),
+)
 if page == "数据与规则状态":
     data_page()
 elif page == "预测":
     recommendation_page("prediction")
 elif page == "Fantasy":
     recommendation_page("fantasy")
+elif page == "Group Roll 顾问（实验）":
+    render_advisor_page()
 else:
     audit_page()

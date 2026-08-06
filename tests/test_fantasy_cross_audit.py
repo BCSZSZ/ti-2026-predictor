@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 
 from ti_predictor.fantasy.cross_audit import (
@@ -10,7 +12,7 @@ from ti_predictor.fantasy.cross_audit import (
     release_labels,
 )
 from ti_predictor.fantasy.scenarios import ROLE_IDS, CommonScenarioSet, ScenarioDraws
-from ti_predictor.fantasy.solver import WeightedOutcomeDistribution
+from ti_predictor.fantasy.solver import WeightedOutcomeDistribution, load_solver_policy
 from ti_predictor.tournament.group import SLOT_CATEGORIES
 
 
@@ -52,6 +54,40 @@ def test_p6_policy_freezes_expected_108_rows(project_paths) -> None:
     assert len(policy.semantic_hash) == 64
 
 
+def test_v2_cross_audit_extends_runtime_without_drifting_v1_semantics() -> None:
+    legacy = load_cross_audit_policy(Path("config/models/fantasy-group-read-only-cross-audit-v1.json"))
+    current = load_cross_audit_policy(Path("config/models/fantasy-group-read-only-cross-audit-v2.json"))
+
+    assert legacy.semantic_hash == "803ffeb46c1b340badeeb213a8b1229eba3b7e66dfe5160a643c04206c0e7b35"
+    assert current.expected_row_count == 108
+    assert current.as_of == "2026-08-06T17:27:00Z"
+    assert current.runtime_target_seconds == 1800
+    assert current.stop_new_computation_seconds == 3540
+    assert current.runtime_hard_ceiling_seconds == 3600
+    assert current.source_solver_evidence_scope == "historical-v1-effectiveness-only"
+
+
+def test_v2_audit_solver_changes_context_identity_not_algorithm() -> None:
+    legacy = load_solver_policy(Path("config/models/fantasy-group-branch-capped-solver-v1.json"))
+    current = load_solver_policy(Path("config/models/fantasy-group-branch-capped-solver-audit-v2.json"))
+    ignored = {
+        "policy_id",
+        "as_of",
+        "source_playbook_evidence_sha256",
+        "source_validation_policy_sha256",
+    }
+    legacy_algorithm = {
+        key: value for key, value in legacy.model_dump(mode="json").items() if key not in ignored
+    }
+    current_algorithm = {
+        key: value for key, value in current.model_dump(mode="json").items() if key not in ignored
+    }
+
+    assert legacy.semantic_hash == "9466049f426e10c03926152c9cf60ecd9a4b96c155c19389456f2a5b73e5d3d9"
+    assert current.semantic_hash == "6b067754c1caf6e5f866e3c86bc0358eb30e4fd789a497239577ea3d094e8f9c"
+    assert current_algorithm == legacy_algorithm
+
+
 def test_p6_scenarios_are_explicitly_disjoint_from_p4_and_p5(project_paths) -> None:
     policy = load_cross_audit_policy(
         project_paths.config / "models" / "fantasy-group-read-only-cross-audit-v1.json"
@@ -80,6 +116,33 @@ def test_p6_scenarios_are_explicitly_disjoint_from_p4_and_p5(project_paths) -> N
     assert audit.p4_p6_overlap_count == 0
     assert audit.p5_p6_overlap_count == 0
     assert audit.p4_p5_overlap_count > 0
+
+
+def test_v2_scenarios_are_disjoint_from_v2_p3_and_recorded_p5_indexes() -> None:
+    policy = load_cross_audit_policy(Path("config/models/fantasy-group-read-only-cross-audit-v2.json"))
+
+    first, audit = build_held_out_scenarios(
+        _scenario_set(count=8192),
+        policy,
+        p4_seed=2026080704,
+        p4_count=512,
+        p5_seed=2026080605,
+        p5_count=128,
+    )
+    repeated, repeated_audit = build_held_out_scenarios(
+        _scenario_set(count=8192),
+        policy,
+        p4_seed=2026080704,
+        p4_count=512,
+        p5_seed=2026080605,
+        p5_count=128,
+    )
+
+    assert first.semantic_hash == repeated.semantic_hash
+    assert audit == repeated_audit
+    assert audit.selected_count == 128
+    assert audit.p4_p6_overlap_count == 0
+    assert audit.p5_p6_overlap_count == 0
 
 
 def test_independent_weighted_loss_bounds_are_deterministic_and_detect_loss(project_paths) -> None:

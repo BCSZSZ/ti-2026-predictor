@@ -1,6 +1,6 @@
 # TI 2026 Group 40-Roll playbook v2 implementation
 
-Status: P0-P3 complete; P4 held-out read-only cross-audit is next
+Status: P0-P4 complete; P5 project audit and plain-language summary is next
 
 - Plan freeze date: 2026-08-07
 - Starting `main`: `5d701c9e56bfb73a3436b85273f404946ed628bc`
@@ -213,6 +213,13 @@ implementation. Do not revise either manual or automatically activate the Full p
 - every disagreement, unresolved decision, 5% warning and 10% significant exception is disclosed;
 - per-edition labels are derived only from P3 and P4 gates;
 - the versioned evidence package contains every governed input, output, limitation and runtime.
+
+Result: complete. The new held-out audit finished all 108/108 rows in 44m48.6s, with zero overlap
+against both v2 standalone and recorded P5 indexes. Rate-agnostic had no baseline material exception
+in this conditional matrix; Primary-model had one directionally wrong Common case. Both retain their
+standalone `draft` labels and no rule was changed. The 30-minute soft target failed, the 60-minute
+hard ceiling passed, and P3 plus P4 finished in 1h10m21s. See
+[`group-roll-playbook-v2-p4-read-only-cross-audit-2026-08-07.md`](../reports/group-roll-playbook-v2-p4-read-only-cross-audit-2026-08-07.md).
 
 ## P5 — Project audit, verified cleanup and plain-language report
 

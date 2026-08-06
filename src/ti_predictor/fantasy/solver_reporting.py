@@ -104,12 +104,15 @@ def _find_p4_evidence(paths: ProjectPaths, expected_sha256: str) -> tuple[dict[s
 def prepare_solver_context(
     *,
     as_of,
+    solver_policy_path: Path | None = None,
     paths: ProjectPaths = PATHS,
 ) -> PreparedSolverContext:
     cutoff = as_utc(as_of)
     if cutoff is None:
         raise ValueError("as_of is required")
-    policy_path = paths.config / "models" / "fantasy-group-branch-capped-solver-v1.json"
+    policy_path = solver_policy_path or (
+        paths.config / "models" / "fantasy-group-branch-capped-solver-v1.json"
+    )
     policy = load_solver_policy(policy_path)
     cutoff_text = cutoff.isoformat().replace("+00:00", "Z")
     if policy.as_of != cutoff_text:

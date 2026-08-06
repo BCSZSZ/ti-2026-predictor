@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -145,6 +146,25 @@ class CrossAuditPolicy(StrictModel):
         return cells * sum(len(item.models) for item in self.editions)
 
 
+class CrossAuditPolicyV2(CrossAuditPolicy):
+    policy_id: Literal["fantasy-group-read-only-cross-audit-v2"]
+    source_solver_evidence_policy_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    source_solver_evidence_scope: Literal["historical-v1-effectiveness-only"]
+    stop_new_computation_seconds: int = Field(gt=0)
+
+    @model_validator(mode="after")
+    def validate_v2_contract(self) -> CrossAuditPolicyV2:
+        if not (
+            self.runtime_target_seconds
+            < self.stop_new_computation_seconds
+            < self.runtime_hard_ceiling_seconds
+        ):
+            raise ValueError("v2 target, stop-new-work point and hard ceiling are inconsistent")
+        if self.source_solver_policy_sha256 == self.source_solver_evidence_policy_sha256:
+            raise ValueError("v2 must distinguish its audit policy from historical P5 evidence")
+        return self
+
+
 @dataclass(frozen=True)
 class HeldOutScenarioAudit:
     p4_indexes_sha256: str
@@ -170,7 +190,10 @@ class HeldOutScenarioAudit:
 
 
 def load_cross_audit_policy(path: Path) -> CrossAuditPolicy:
-    return CrossAuditPolicy.model_validate_json(path.read_text(encoding="utf-8"))
+    text = path.read_text(encoding="utf-8")
+    payload = json.loads(text)
+    policy_type = CrossAuditPolicyV2 if "source_solver_evidence_scope" in payload else CrossAuditPolicy
+    return policy_type.model_validate_json(text)
 
 
 def _seed(base_seed: int, *parts: Any) -> int:

@@ -1,11 +1,15 @@
 # Group Roll 人工手册索引
 
-截至 `2026-08-06T17:27:00Z`，v2 已完成独立推导和 standalone validation；两版均未通过
-全部门槛，状态为 `draft`。两份 v1 操作手册继续作为 `draft` 历史证据保留：
+截至 `2026-08-06T17:27:00Z`，v2 已完成独立推导、standalone validation 和 108/108 held-out
+只读交叉审计；两版均未通过全部门槛，状态为 `draft`。两份 v1 操作手册继续作为 `draft`
+历史证据保留：
 
 - [v2 standalone validation 报告](../../reports/group-roll-playbook-v2-p3-standalone-validation-2026-08-07.md)：
   Primary 保持 10% Common 门槛但仍有五条核心规则和两个风险修正失败；Rate 有 23 个
   10% Common 失败。两版候选均未按结果回写。
+- [v2 held-out 只读交叉审计](../../reports/group-roll-playbook-v2-p4-read-only-cross-audit-2026-08-07.md)：
+  108/108 在 44 分 48.6 秒内完成，与 standalone/P5 索引交集均为 0。Rate 没有重大例外；
+  Primary 有一个同时劣于刷新的方向性例外。两版仍为 `draft`，且没有按结果回写。
 
 - [生成率无关版 v2 候选](playbook-rate-agnostic-v2.md)：保留三个跨模型支持原则，收窄
   v1 RA06，并把 RA10/RA12 移出发布序列；standalone 状态为 `draft`。

@@ -1,6 +1,6 @@
 # TI 2026 Group 40-Roll playbook v2 implementation
 
-Status: P0-P4 complete; P5 project audit and plain-language summary is next
+Status: P0-P5 complete; engineering work is closed with both playbooks remaining draft
 
 - Plan freeze date: 2026-08-07
 - Starting `main`: `5d701c9e56bfb73a3436b85273f404946ed628bc`
@@ -247,6 +247,17 @@ verification.
 - `docs/reports/group-roll-playbook-v2-summary-2026-08-07.md` explains the outcome, how to use the
   manuals, measured improvement, runtime and remaining limitations without solver terminology being
   presented as user-facing guidance.
+
+Result: complete. P5 reproduced the standalone semantic and file hashes, found and fixed an
+artifact-path determinism defect, then reproduced the path-pinned 108-row audit byte-for-byte on two
+complete runs. The final offline suite passed 152 tests with one optional skip; rules, lint, format,
+lock, dependencies and six real replay fixtures passed. No superseded production path was safe to
+remove. One warning remains explicit: the current twice-reproducible replay JAR is not byte-identical
+to the historical raw-data JAR, although source is unchanged and all 300 frozen player-stat values
+match. See
+[`group-roll-playbook-v2-p5-project-audit-2026-08-07.md`](../reports/group-roll-playbook-v2-p5-project-audit-2026-08-07.md),
+the [final evidence package](../playbooks/group-roll/evidence-package-v2.json), and the separate
+[`group-roll-playbook-v2-summary-2026-08-07.md`](../reports/group-roll-playbook-v2-summary-2026-08-07.md).
 
 ## Expected improvement and honest ceiling
 

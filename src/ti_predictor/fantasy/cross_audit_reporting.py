@@ -51,7 +51,29 @@ def _find_semantic_artifact(
     filename: str,
     hash_field: str,
     expected_sha256: str,
+    expected_relative_path: str | None = None,
 ) -> tuple[dict[str, Any], Path]:
+    if expected_relative_path is not None:
+        relative_path = Path(expected_relative_path)
+        if relative_path.is_absolute() or ".." in relative_path.parts:
+            raise ValueError("frozen artifact path must be relative and cannot traverse parents")
+        path = paths.root / relative_path
+        try:
+            path.resolve().relative_to(paths.artifacts.resolve())
+        except ValueError as exc:
+            raise ValueError("frozen artifact path must stay under artifacts") from exc
+        if path.name != filename:
+            raise ValueError(f"frozen artifact path must end with {filename}")
+        if not path.is_file():
+            raise FileNotFoundError(f"frozen artifact is missing: {expected_relative_path}")
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"frozen artifact is unreadable: {expected_relative_path}") from exc
+        if payload.get(hash_field) != expected_sha256:
+            raise ValueError(f"frozen artifact {hash_field} drifted: {expected_relative_path}")
+        return payload, path
+
     matches: list[tuple[dict[str, Any], Path]] = []
     for path in sorted(paths.artifacts.glob(f"fantasy-*/{filename}")):
         try:
@@ -194,6 +216,9 @@ def generate_group_cross_audit_evidence(
     context = prepare_solver_context(
         as_of=cutoff,
         solver_policy_path=solver_policy_path,
+        playbook_evidence_path=(
+            paths.root / policy.source_playbook_artifact if isinstance(policy, CrossAuditPolicyV2) else None
+        ),
         paths=paths,
     )
     if context.policy.semantic_hash != policy.source_solver_policy_sha256:
@@ -207,6 +232,9 @@ def generate_group_cross_audit_evidence(
         filename="group-solver-evidence.json",
         hash_field="evidence_sha256",
         expected_sha256=policy.source_solver_evidence_sha256,
+        expected_relative_path=(
+            policy.source_solver_artifact if isinstance(policy, CrossAuditPolicyV2) else None
+        ),
     )
     source_solver_evidence_policy_sha256 = (
         policy.source_solver_evidence_policy_sha256

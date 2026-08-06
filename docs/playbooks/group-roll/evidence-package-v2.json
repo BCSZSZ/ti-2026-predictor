@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "package_id": "ti2026-group-roll-playbook-evidence-v2",
+  "period": "group",
+  "as_of": "2026-08-06T17:27:00Z",
+  "manual_route_independent_of_solver": true,
+  "solver_sources_used_for_derivation": [],
+  "release_status": {
+    "rate-agnostic": "draft",
+    "primary-model": "draft"
+  },
+  "release_reasons": {
+    "rate-agnostic": "standalone validation has 23 baseline-10-percent Common failures and only four rules pass ablation across all release models",
+    "primary-model": "standalone validation has five core-rule and two active risk-overlay failures; held-out cross-audit adds one directionally wrong Common case"
+  },
+  "identities": {
+    "data_snapshot_sha256": "49e373b2c03a4598d51f3de3eb5b85f80f001a097dd26acaa41137862b58f88b",
+    "series_pool_sha256": "9a86b14e913e6e53fe4a53f7bd7325386b372521fe18c7924004cfbccfa33c16",
+    "rule_snapshot_id": "20260806T172612Z-702ddf2a6953",
+    "rule_snapshot_sha256": "702ddf2a6953f383895efdfa3e45460c770e7c3c37e71d6a2b1d68e547a3235f",
+    "source_scenario_sha256": "22fd9f2f400cff0a4b08926824f181b8e05287e46de12d1139c5fda6bdeff7c3",
+    "standalone_validation_scenario_sha256": "35028c1f0c29802e47ade6dcb0dbf9ba69583488c52287aa449510f4de49b93b",
+    "cross_audit_validation_scenario_sha256": "716b7ee324918a17bfacd42767f758e8f1154e0790b5013f53487f458f080d54",
+    "p2_baseline_evidence_sha256": "de84baa3081ac5d81e55ec9110766d96c26071a907b7a74824bff8e8faf7a42f",
+    "standalone_evidence_sha256": "77032ccf42dccd2d6a7bda1e9f51786245b955f0ed548d934c5c9f956bc7e299",
+    "cross_audit_evidence_sha256": "d0f90db675344da733e44e7acd9069b729f5b12fc7ff15d268b7963aa73f3a0a",
+    "rate_agnostic_playbook_sha256": "2e4936c773722ba8979349cef4eb381d9699a10aeb6db1c11ccb33783c1b4e9a",
+    "primary_model_playbook_sha256": "8a548206fae6072ef83c3979189049d00c9ab63074718a4a85ada7ab3b47cb0a"
+  },
+  "policies": {
+    "scenario_file_sha256": "e28876f6573afcdd261c044c215ece5fbbf6bc9ff0cf02324defcf445b961065",
+    "standalone_validation_semantic_sha256": "a3ee5a9976e0668d7d6d01c76a52f28d954b72e714b3c13afd2870b76dcff3d5",
+    "audit_solver_semantic_sha256": "6b067754c1caf6e5f866e3c86bc0358eb30e4fd789a497239577ea3d094e8f9c",
+    "cross_audit_semantic_sha256": "5aee998b6aab224fbe986fe894558c604db9e96625790cfc3f1847bd36a834d7",
+    "historical_p5_solver_semantic_sha256": "9466049f426e10c03926152c9cf60ecd9a4b96c155c19389456f2a5b73e5d3d9"
+  },
+  "artifacts": [
+    {
+      "phase": "p2-baseline",
+      "run_id": "fantasy-bcffa25a645c8438",
+      "path": "artifacts/fantasy-bcffa25a645c8438/group-fantasy-evidence.json",
+      "semantic_field": "evidence_package_sha256",
+      "semantic_sha256": "de84baa3081ac5d81e55ec9110766d96c26071a907b7a74824bff8e8faf7a42f",
+      "file_sha256": "67917884967a7e43f8925af0c24f2fd52f7be9f4cb370faeb31b0cca25fc8aa6"
+    },
+    {
+      "phase": "p3-standalone",
+      "run_id": "fantasy-1c8871c419f59f08",
+      "source_commit": "642f7ba77e3f9624dc7d892c9dcdcc918ae1b5c8",
+      "path": "artifacts/fantasy-1c8871c419f59f08/group-playbook-evidence.json",
+      "semantic_field": "evidence_sha256",
+      "semantic_sha256": "77032ccf42dccd2d6a7bda1e9f51786245b955f0ed548d934c5c9f956bc7e299",
+      "file_sha256": "38751743bb44c8f0aa79e7ca75cb02d3d152f15e6bc5a52e38a98ab073a84783"
+    },
+    {
+      "phase": "p4-path-pinned-cross-audit",
+      "run_id": "fantasy-26e4f9240b19a518",
+      "source_commit": "1f48f8a",
+      "path": "artifacts/fantasy-26e4f9240b19a518/group-playbook-cross-audit.json",
+      "semantic_field": "evidence_sha256",
+      "semantic_sha256": "d0f90db675344da733e44e7acd9069b729f5b12fc7ff15d268b7963aa73f3a0a",
+      "file_sha256": "0f01ffb2146c73addd96a950e31fc37447d603a3cc1b8518153770242c49db56"
+    }
+  ],
+  "historical_dependencies": {
+    "v1_p5": {
+      "scope": "historical-v1-effectiveness-only",
+      "status": "failed-escalation-review-required",
+      "run_id": "fantasy-afa5cb6f3b665fd1",
+      "path": "artifacts/fantasy-afa5cb6f3b665fd1/group-solver-evidence.json",
+      "semantic_field": "evidence_sha256",
+      "semantic_sha256": "eb6a399d19653377ec20757e17c195cd3bac32e66b2dad2bddd411abb82e80d7",
+      "file_sha256": "ee16553b2fbd109438c1b92a2102714437f0acb82d13006992a6cd8753264f20"
+    },
+    "pre_path_pinning_p4_stage_run": {
+      "status": "valid-stage-history-superseded-for-final-packaging",
+      "run_id": "fantasy-1fc085f551c890a4",
+      "evidence_sha256": "6dca84fe1192de7e04a9ca0c8dcfd095d7b3bc3f09a8e445735865661159aebf",
+      "file_sha256": "2871ded7f030f78ac1872f55c9c297882727d9273e4f31774e04a81e2e68dbce",
+      "rows_summary_and_gate_identical_to_final": true
+    }
+  },
+  "reproducibility": {
+    "standalone": {
+      "repeat_run_id": "fantasy-9e3dfc60cc576e79",
+      "repeat_source_commit": "b8848313844700323b2986a310dae70ffa93587d",
+      "semantic_sha256_match": true,
+      "file_sha256_match": true,
+      "repeat_runtime_seconds": 1494.4347934999969
+    },
+    "cross_audit": {
+      "first_run_id": "fantasy-26e4f9240b19a518",
+      "second_run_id": "fantasy-26e4f9240b19a518",
+      "semantic_sha256_match": true,
+      "file_sha256_match": true,
+      "immutable_writer_byte_match": true,
+      "first_runtime_seconds": 2679.1644662999897,
+      "second_runtime_seconds": 2726.7444391000317
+    }
+  },
+  "standalone_gate": {
+    "rate-agnostic": {
+      "common_situation_count": 253,
+      "baseline_10_percent_failure_count": 23,
+      "strict_5_percent_failure_count": 96,
+      "rule_ablation_failure_count": 23,
+      "unique_rules_passing_all_release_models": ["R2A01", "R2A02", "R2A03", "R2A08"],
+      "status": "draft"
+    },
+    "primary-model": {
+      "common_situation_count": 83,
+      "baseline_10_percent_failure_count": 0,
+      "strict_5_percent_failure_count": 19,
+      "rule_ablation_failure_count": 5,
+      "risk_overlay_failure_count": 2,
+      "supported_rule_count": 7,
+      "status": "draft"
+    }
+  },
+  "cross_audit_gate": {
+    "status": "complete-draft",
+    "completed_rows": 108,
+    "planned_rows": 108,
+    "standalone_audit_overlap_count": 0,
+    "p5_audit_overlap_count": 0,
+    "rate_agnostic_baseline_material_exception_count": 0,
+    "primary_model_baseline_material_exception_count": 1,
+    "manual_hashes_unchanged": true,
+    "promotion_permitted": false
+  },
+  "stat_provenance": {
+    "unique_exact_stats": 16,
+    "unique_approved_derived_stats": 2,
+    "formal_proxy_stats": 0,
+    "formal_unavailable_stats": 0,
+    "coach": "unavailable-excluded"
+  },
+  "runtime_seconds": {
+    "standalone_repeat": 1494.4347934999969,
+    "cross_audit_first_path_pinned": 2679.1644662999897,
+    "normal_combined": 4173.599259799987,
+    "cross_audit_determinism_repeat_extra": 2726.7444391000317
+  },
+  "replay_jar_warning": {
+    "status": "packaging-identity-warning-no_observed_semantic_regression",
+    "source_changed_since_v2_start": false,
+    "historical_raw_jar_sha256": "fc109d605ab7d190b95fcb5fa7b5619db2495c1372dfc89640eb5dbc190e40b1",
+    "current_reproducible_jar_sha256": "8be3def5ecb8fe5dfcb890363e786369bd2fde8044511aab8b1c0ab43e645bd1",
+    "current_repeated_build_count": 2,
+    "real_replay_fixture_count": 6,
+    "verified_player_stat_value_count": 300,
+    "historical_raw_responses_rewritten": false
+  },
+  "tracked_files": [
+    {"path": "config/rules/ti2026.json", "sha256": "5c0236554e225eea8a494fb705fe08ec0dd3c9b67320602c4220ff7d356fd09d"},
+    {"path": "config/models/fantasy-group-scenarios-v1.json", "sha256": "e28876f6573afcdd261c044c215ece5fbbf6bc9ff0cf02324defcf445b961065"},
+    {"path": "config/models/fantasy-group-playbook-validation-v2.json", "sha256": "7868c841454e2762a1fa7ddc203cf70e8924a2eb4c46f4aad4631098af8020f2"},
+    {"path": "config/models/fantasy-group-branch-capped-solver-audit-v2.json", "sha256": "dd917516a9aecf84d932ef531f60a4563783cc4a914549bf78eacc8be8bc16ef"},
+    {"path": "config/models/fantasy-group-read-only-cross-audit-v2.json", "sha256": "c591d90dd5725f57ae847462f74cbf75afc35b748ac85a5d713b1ad577649217"},
+    {"path": "config/playbooks/group-rate-agnostic-v2.json", "sha256": "f12f4089997d308c0f63aae38e34313c15e7be4f8da56822adbacdcbef00b115"},
+    {"path": "config/playbooks/group-primary-model-v2.json", "sha256": "1308ac117f682dda7cdbb1e732667cb6e2395d180af43b977eaf49120b347c16"},
+    {"path": "docs/playbooks/group-roll/playbook-rate-agnostic-v2.md", "sha256": "a87164635e3e69c2d76fdb4e69bca19552788d368639afd95b43739c0b62464d"},
+    {"path": "docs/playbooks/group-roll/playbook-primary-model-v2.md", "sha256": "e16188d28dfde5cbcf47b2ad2ed1239f5c437e88b8c641b8a3ebc4760e8d42a9"},
+    {"path": "docs/playbooks/group-roll/stat-quality-trait-evidence-v2.md", "sha256": "e4bec28eac3de8a41321c3edc09f1f9af7204b4879a80d28f8ec025b922cf19c"},
+    {"path": "docs/playbooks/group-roll/candidate-freeze-v2.json", "sha256": "4c0fe811dad195a43ba45c3d7e525ea8c055f90f19b3a2e023a9d67890404430"},
+    {"path": "docs/reports/group-roll-playbook-v2-p2-independent-freeze-2026-08-07.md", "sha256": "120d29507e9631376adb6f6492c4f0ce39247650e5fd52b0565a79f1815e40fa"},
+    {"path": "docs/reports/group-roll-playbook-v2-p3-standalone-validation-2026-08-07.md", "sha256": "db6dbe782b25280463700ba32c935bf2a901556c59ff8f707479adf322cf71ab"},
+    {"path": "docs/reports/group-roll-playbook-v2-p4-read-only-cross-audit-2026-08-07.md", "sha256": "d9b4701f71a8c5b8db4aa9f159cb59f6ac6146a8554a6e91da19e169f50b03cc"},
+    {"path": "docs/reports/group-roll-playbook-v2-p5-project-audit-2026-08-07.md", "sha256": "9512c4512b08a54bc37983cfb768888429119274ec138b3ab413ca31c1925849"},
+    {"path": "docs/reports/group-roll-playbook-v2-summary-2026-08-07.md", "sha256": "e790363d9fe68b2a74fe0663d7f420d5f895ad5958f9b95cbf5178fd5903a16c"},
+    {"path": "docs/plans/group-roll-playbook-v2-implementation.md", "sha256": "1ea0773ffe2754e1d7574447f747482cf5554b452c138c08e42988c5af563e36"}
+  ],
+  "limitations": [
+    "Both independently derived Human Roll playbooks remain draft",
+    "The conditional exact audit covers only one to three Rolls and uses a fixed cyclic future-offer schedule",
+    "No new v2 full-session P5 solver effectiveness validation was run",
+    "The experimental local advisor remains frozen to v1 evidence identities",
+    "Main Roll policy and automatic Dota interaction remain unsupported",
+    "The current replay JAR is semantically fixture-validated but is not byte-identical to the historical raw-data JAR"
+  ]
+}

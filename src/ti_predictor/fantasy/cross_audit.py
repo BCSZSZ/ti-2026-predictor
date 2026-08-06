@@ -148,6 +148,12 @@ class CrossAuditPolicy(StrictModel):
 
 class CrossAuditPolicyV2(CrossAuditPolicy):
     policy_id: Literal["fantasy-group-read-only-cross-audit-v2"]
+    source_playbook_artifact: str = Field(
+        pattern=r"^artifacts/fantasy-[0-9a-f]{16}/group-playbook-evidence\.json$"
+    )
+    source_solver_artifact: str = Field(
+        pattern=r"^artifacts/fantasy-[0-9a-f]{16}/group-solver-evidence\.json$"
+    )
     source_solver_evidence_policy_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     source_solver_evidence_scope: Literal["historical-v1-effectiveness-only"]
     stop_new_computation_seconds: int = Field(gt=0)

@@ -188,5 +188,8 @@ Primary-model 在发布模型识别 93 个 Common 情形：
 - `ti audit fantasy-99d3b0ecf4e9c5e9` 返回 `publishable: true`、`status: warning`，输出文件
   SHA-256 与本报告一致；warning 明确包含两版 `draft`，以及既有 First Blood、percentile、
   校准/证据警告，没有新的 blocking issue。
-- clean-commit 复现将在首个 P4 commit 后执行；若 hash 漂移，追加修正 commit 而不改写本次
-  失败结论。
+- 在首个 P4 commit `6fd0b61aace858e0760dfb9bdcde003eed358fdd` 的干净工作树上完成独立
+  复现 `fantasy-d9e35d3e81c5d466`：语义 evidence SHA-256 仍为
+  `a0361a228629c46663fe844387af7f71eea37113838b3036dc6181dd227ad857`，artifact 文件
+  SHA-256 仍为 `25e25d92649689cbd1201939a606950b30ff79286626dc08ec47b859e89da89d`；两次
+  输出逐字节一致，且 rate-agnostic / primary-model 的门禁结论仍均为 `draft`。

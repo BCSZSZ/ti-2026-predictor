@@ -60,9 +60,7 @@ def _find_semantic_artifact(
         if payload.get(hash_field) == expected_sha256:
             matches.append((payload, path))
     if not matches:
-        raise FileNotFoundError(
-            f"P6 requires {filename} with {hash_field}={expected_sha256}"
-        )
+        raise FileNotFoundError(f"P6 requires {filename} with {hash_field}={expected_sha256}")
     reference = sha256_json(matches[0][0])
     if any(sha256_json(payload) != reference for payload, _ in matches[1:]):
         raise ValueError(f"multiple {filename} artifacts claim one semantic hash but differ")
@@ -108,9 +106,7 @@ def _row_summary(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     keys = sorted({(row["edition"], row["model_id"]) for row in rows})
     result = []
     for edition, model_id in keys:
-        selected = [
-            row for row in rows if row["edition"] == edition and row["model_id"] == model_id
-        ]
+        selected = [row for row in rows if row["edition"] == edition and row["model_id"] == model_id]
         common = [row for row in selected if row["p4_common_activation"]]
         result.append(
             {
@@ -118,19 +114,13 @@ def _row_summary(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "model_id": model_id,
                 "row_count": len(selected),
                 "common_row_count": len(common),
-                "solver_disagreement_count": sum(
-                    row["manual_solver_disagreement"] for row in selected
-                ),
-                "oracle_disagreement_count": sum(
-                    row["manual_oracle_disagreement"] for row in selected
-                ),
+                "solver_disagreement_count": sum(row["manual_solver_disagreement"] for row in selected),
+                "oracle_disagreement_count": sum(row["manual_oracle_disagreement"] for row in selected),
                 "solver_unresolved_count": sum(not row["solver_resolved"] for row in selected),
                 "baseline_material_exception_count": sum(
                     row["baseline_material_exception"] for row in selected
                 ),
-                "strict_material_exception_count": sum(
-                    row["strict_material_exception"] for row in selected
-                ),
+                "strict_material_exception_count": sum(row["strict_material_exception"] for row in selected),
                 "maximum_mean_loss_fraction": max(
                     (float(row["mean_loss_fraction"]) for row in selected),
                     default=0.0,
@@ -184,10 +174,7 @@ def generate_group_cross_audit_evidence(
         raise ValueError("P6 source solver policy hash drifted")
     if context.p4_evidence.get("evidence_sha256") != policy.source_playbook_evidence_sha256:
         raise ValueError("P6 source P4 evidence hash drifted")
-    if (
-        context.p4_evidence.get("validation_policy_sha256")
-        != policy.source_playbook_validation_policy_sha256
-    ):
+    if context.p4_evidence.get("validation_policy_sha256") != policy.source_playbook_validation_policy_sha256:
         raise ValueError("P6 source P4 validation policy hash drifted")
     p5_evidence, p5_path = _find_semantic_artifact(
         paths,
@@ -203,12 +190,8 @@ def generate_group_cross_audit_evidence(
         raise ValueError("P6 preregistration expects the recorded P5 failed escalation review")
 
     definitions = {
-        "rate-agnostic": load_playbook(
-            paths.config / "playbooks" / "group-rate-agnostic-v1.json"
-        ),
-        "primary-model": load_playbook(
-            paths.config / "playbooks" / "group-primary-model-v1.json"
-        ),
+        "rate-agnostic": load_playbook(paths.config / "playbooks" / "group-rate-agnostic-v1.json"),
+        "primary-model": load_playbook(paths.config / "playbooks" / "group-primary-model-v1.json"),
     }
     for edition, definition in definitions.items():
         if definition.semantic_hash != policy.playbook_sha256[edition]:
@@ -322,12 +305,9 @@ def generate_group_cross_audit_evidence(
     audit_finished = perf_counter()
 
     complete = len(rows) == policy.expected_row_count
-    scenario_disjoint = (
-        scenario_audit.p4_p6_overlap_count == 0 and scenario_audit.p5_p6_overlap_count == 0
-    )
+    scenario_disjoint = scenario_audit.p4_p6_overlap_count == 0 and scenario_audit.p5_p6_overlap_count == 0
     manual_hashes_unchanged = all(
-        definitions[edition].semantic_hash == policy.playbook_sha256[edition]
-        for edition in definitions
+        definitions[edition].semantic_hash == policy.playbook_sha256[edition] for edition in definitions
     )
     labels = release_labels(
         context.p4_evidence["gate"],
@@ -356,9 +336,7 @@ def generate_group_cross_audit_evidence(
         "cross_audit_policy": policy.model_dump(mode="json"),
         "cross_audit_policy_sha256": policy.semantic_hash,
         "source_playbook_evidence_sha256": policy.source_playbook_evidence_sha256,
-        "source_playbook_artifact": str(context.p4_evidence_path.relative_to(paths.root)).replace(
-            "\\", "/"
-        ),
+        "source_playbook_artifact": str(context.p4_evidence_path.relative_to(paths.root)).replace("\\", "/"),
         "source_solver_evidence_sha256": policy.source_solver_evidence_sha256,
         "source_solver_artifact": str(p5_path.relative_to(paths.root)).replace("\\", "/"),
         "source_solver_effectiveness_status": p5_evidence["gate"]["p5_status"],

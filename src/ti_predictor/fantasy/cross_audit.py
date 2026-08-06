@@ -72,15 +72,11 @@ class SignificancePolicy(StrictModel):
     common_session_frequency: Literal[0.1]
     baseline_material_loss: Literal[0.1]
     strict_material_loss: Literal[0.05]
-    directionally_wrong: Literal[
-        "manual_action_strictly_dominated_by_refresh_in_both_mean_and_cvar10"
-    ]
+    directionally_wrong: Literal["manual_action_strictly_dominated_by_refresh_in_both_mean_and_cvar10"]
 
 
 class ReleasePolicy(StrictModel):
-    allowed_labels: tuple[
-        Literal["baseline-reliable", "strict-reliable", "draft", "inapplicable"], ...
-    ]
+    allowed_labels: tuple[Literal["baseline-reliable", "strict-reliable", "draft", "inapplicable"], ...]
     solver_disagreement_alone_changes_manual: Literal[False]
     manual_revision_allowed: Literal[False]
     ui_is_release_gate: Literal[False]
@@ -145,9 +141,7 @@ class CrossAuditPolicy(StrictModel):
 
     @property
     def expected_row_count(self) -> int:
-        cells = self.conditional_states.coverage_case_count * len(
-            self.conditional_states.remaining_rolls
-        )
+        cells = self.conditional_states.coverage_case_count * len(self.conditional_states.remaining_rolls)
         return cells * sum(len(item.models) for item in self.editions)
 
 
@@ -388,16 +382,11 @@ def audit_one_condition(
     manual_value = values[manual_decision.action]
     refresh_action = next(action for action in values if isinstance(action, RefreshRollAction))
     refresh_value = values[refresh_action]
-    mean_loss = max(0.0, oracle_value.mean - manual_value.mean) / max(
-        abs(oracle_value.mean), 1e-12
-    )
-    cvar_loss = max(0.0, oracle_value.cvar - manual_value.cvar) / max(
-        abs(oracle_value.cvar), 1e-12
-    )
+    mean_loss = max(0.0, oracle_value.mean - manual_value.mean) / max(abs(oracle_value.mean), 1e-12)
+    cvar_loss = max(0.0, oracle_value.cvar - manual_value.cvar) / max(abs(oracle_value.cvar), 1e-12)
     situation = manual_decision.rule_id or "fallback"
     is_common = (
-        common_frequency is not None
-        and common_frequency >= policy.significance.common_session_frequency
+        common_frequency is not None and common_frequency >= policy.significance.common_session_frequency
     )
     bounds: dict[str, float | None] = {
         "mean_loss_upper95_fraction": None,
@@ -420,14 +409,10 @@ def audit_one_condition(
     )
     upper_values = [value for value in bounds.values() if value is not None]
     baseline_exception = bool(
-        is_common
-        and upper_values
-        and max(upper_values) > policy.significance.baseline_material_loss
+        is_common and upper_values and max(upper_values) > policy.significance.baseline_material_loss
     )
     strict_exception = bool(
-        is_common
-        and upper_values
-        and max(upper_values) > policy.significance.strict_material_loss
+        is_common and upper_values and max(upper_values) > policy.significance.strict_material_loss
     )
     return {
         "edition": edition.edition,

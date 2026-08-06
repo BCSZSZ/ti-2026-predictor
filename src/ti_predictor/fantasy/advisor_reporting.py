@@ -129,10 +129,9 @@ def generate_group_advisor_evidence(
         and final_state.remaining_rolls == 0
         and final_state.banners == applied_state.banners
     )
-    observed_replanning_pass = (
-        first["state_sha256"] != replanned["state_sha256"]
-        and replanned["state_sha256"] == state_sha256(applied_state)
-    )
+    observed_replanning_pass = first["state_sha256"] != replanned["state_sha256"] and replanned[
+        "state_sha256"
+    ] == state_sha256(applied_state)
     main_state = GroupRollState(
         banners=initial.banners,
         offer=initial.offer,
@@ -158,9 +157,7 @@ def generate_group_advisor_evidence(
         "unsupported_main_fails_closed": main_fail_closed,
         "streamlit_page_has_no_runtime_exception": "verified_by_AppTest_and_browser_outside_artifact",
     }
-    boolean_gate_pass = all(
-        value is True for value in functional_gate.values() if isinstance(value, bool)
-    )
+    boolean_gate_pass = all(value is True for value in functional_gate.values() if isinstance(value, bool))
     payload: dict[str, Any] = {
         "schema_version": 1,
         "artifact_type": "group_fantasy_local_interactive_advisor_evidence",
@@ -186,9 +183,7 @@ def generate_group_advisor_evidence(
         "saved_session": saved_session,
         "functional_gate": functional_gate,
         "boolean_functional_gate_pass": boolean_gate_pass,
-        "performance_targets_seconds": context.policy.performance_targets_seconds.model_dump(
-            mode="json"
-        ),
+        "performance_targets_seconds": context.policy.performance_targets_seconds.model_dump(mode="json"),
         "limitations": [
             "the default diagnostic is one-step and excludes future-offer option value",
             "the P5 solver failed its effectiveness gate and is not a release authority",
@@ -260,4 +255,3 @@ def generate_group_advisor_evidence(
         evidence=payload,
         runtime_seconds=runtime,
     )
-

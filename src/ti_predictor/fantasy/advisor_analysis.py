@@ -89,9 +89,7 @@ def _find_semantic_artifact(
         if payload.get(hash_field) == expected_sha256:
             matches.append((payload, path))
     if not matches:
-        raise FileNotFoundError(
-            f"P7 requires {filename} with {hash_field}={expected_sha256}"
-        )
+        raise FileNotFoundError(f"P7 requires {filename} with {hash_field}={expected_sha256}")
     reference = sha256_json(matches[0][0])
     if any(sha256_json(payload) != reference for payload, _ in matches[1:]):
         raise AdvisorPolicyError(f"multiple {filename} artifacts claim one semantic hash but differ")
@@ -122,9 +120,7 @@ def prepare_advisor_context(
     cutoff = as_utc(as_of)
     if cutoff is None:
         raise ValueError("as_of is required")
-    policy = load_advisor_policy(
-        paths.config / "models" / "fantasy-group-interactive-advisor-v1.json"
-    )
+    policy = load_advisor_policy(paths.config / "models" / "fantasy-group-interactive-advisor-v1.json")
     cutoff_text = cutoff.isoformat().replace("+00:00", "Z")
     if policy.as_of != cutoff_text:
         raise AdvisorPolicyError("P7 advisor as_of differs from the explicit cutoff")
@@ -159,12 +155,8 @@ def prepare_advisor_context(
         raise AdvisorPolicyError("P7 requires a draft P6 audit status")
 
     definitions = {
-        "rate-agnostic": load_playbook(
-            paths.config / "playbooks" / "group-rate-agnostic-v1.json"
-        ),
-        "primary-model": load_playbook(
-            paths.config / "playbooks" / "group-primary-model-v1.json"
-        ),
+        "rate-agnostic": load_playbook(paths.config / "playbooks" / "group-rate-agnostic-v1.json"),
+        "primary-model": load_playbook(paths.config / "playbooks" / "group-primary-model-v1.json"),
     }
     for edition, definition in definitions.items():
         if definition.semantic_hash != policy.playbook_sha256[edition]:
@@ -219,9 +211,7 @@ def prepare_advisor_context(
     terminal.attach_batch_evaluator(fixed_evaluator)
     potential = ExactPotentialProvider(
         fixed_evaluator,
-        maximum_attribute_differences=(
-            solver_context.policy.synergy_potential.maximum_attribute_differences
-        ),
+        maximum_attribute_differences=(solver_context.policy.synergy_potential.maximum_attribute_differences),
     )
     solver = BranchCappedRollSolver(
         solver_context.roll_rules,
@@ -244,8 +234,7 @@ def prepare_advisor_context(
     )
     release_labels = p6_evidence.get("gate", {}).get("release_labels", {})
     manual_statuses = {
-        edition: str(release_labels.get(edition, {}).get("p6_status", "draft"))
-        for edition in definitions
+        edition: str(release_labels.get(edition, {}).get("p6_status", "draft")) for edition in definitions
     }
     manifest = load_tournament_manifest(paths.tournament)
     warnings = tuple(
@@ -333,12 +322,9 @@ def analyze_advisor_state(
         context.manuals["rate-agnostic"].banner_value,
     )
     interval_by_action = {
-        action_identity(item.action): {"lower": item.lower, "upper": item.upper}
-        for item in intervals
+        action_identity(item.action): {"lower": item.lower, "upper": item.upper} for item in intervals
     }
-    safety_order = {
-        action_identity(item.action): index for index, item in enumerate(intervals)
-    }
+    safety_order = {action_identity(item.action): index for index, item in enumerate(intervals)}
     if state.remaining_rolls:
         manual_decision = manual.decide(
             state,
@@ -389,8 +375,7 @@ def analyze_advisor_state(
                 "epsilon": epsilon,
                 "selected_team_ids": list(current.selected_team_ids),
                 "selected_teams": [
-                    context.team_names.get(team_id, str(team_id))
-                    for team_id in current.selected_team_ids
+                    context.team_names.get(team_id, str(team_id)) for team_id in current.selected_team_ids
                 ],
                 **current_summary,
                 "maximum_mean": current.maximum_mean,
@@ -433,9 +418,7 @@ def analyze_advisor_state(
                         rules,
                         model_id,
                     )
-                    values = np.concatenate(
-                        [outcome_cache[item.banner].values for item in mutation]
-                    )
+                    values = np.concatenate([outcome_cache[item.banner].values for item in mutation])
                     weights = np.concatenate(
                         [outcome_cache[item.banner].weights * item.probability for item in mutation]
                     )
@@ -472,9 +455,7 @@ def analyze_advisor_state(
                         "model_id": model_id,
                         "action_id": selected,
                         "action_label": next(
-                            str(row["action_label"])
-                            for row in model_rows
-                            if row["action_id"] == selected
+                            str(row["action_label"]) for row in model_rows if row["action_id"] == selected
                         ),
                     }
                 )

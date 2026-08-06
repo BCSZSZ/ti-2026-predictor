@@ -368,9 +368,7 @@ class AdvisorEvent:
         if event_type not in {"apply", "refresh"}:
             raise AdvisorSessionError("event_type must be apply or refresh")
         operation_id = payload["operation_id"]
-        if operation_id is not None and (
-            not isinstance(operation_id, int) or isinstance(operation_id, bool)
-        ):
+        if operation_id is not None and (not isinstance(operation_id, int) or isinstance(operation_id, bool)):
             raise AdvisorSessionError("event operation_id must be an integer or null")
         offer = _sequence(payload["replacement_offer"], "event.replacement_offer")
         if any(not isinstance(item, int) or isinstance(item, bool) for item in offer):
@@ -526,9 +524,7 @@ class AdvisorSession:
             raise AdvisorSessionError("saved session baseline differs from the locked local context")
         initial_state = state_from_payload(payload["initial_state"])
         validate_group_state(initial_state, rules)
-        events = tuple(
-            AdvisorEvent.from_payload(item) for item in _sequence(payload["events"], "events")
-        )
+        events = tuple(AdvisorEvent.from_payload(item) for item in _sequence(payload["events"], "events"))
         session = cls(baseline=baseline, initial_state=initial_state, events=events)
         if state_sha256(session.current_state(rules)) != payload["final_state_sha256"]:
             raise AdvisorSessionError("saved final_state_sha256 differs from deterministic replay")

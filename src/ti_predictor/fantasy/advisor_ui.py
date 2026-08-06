@@ -69,17 +69,12 @@ def _cached_context(as_of: str) -> AdvisorContext:
 
 
 def _policy():
-    return load_advisor_policy(
-        PATHS.config / "models" / "fantasy-group-interactive-advisor-v1.json"
-    )
+    return load_advisor_policy(PATHS.config / "models" / "fantasy-group-interactive-advisor-v1.json")
 
 
 def _stat_labels() -> dict[str, str]:
     stats = load_rules()["fantasy"]["stats"]
-    return {
-        stat_id: f"{row['label']} · {stat_id}"
-        for stat_id, row in stats.items()
-    }
+    return {stat_id: f"{row['label']} · {stat_id}" for stat_id, row in stats.items()}
 
 
 def _clear_computed_results() -> None:
@@ -101,9 +96,7 @@ def _initial_state_form(rules) -> GroupRollState | None:
         with st.expander(_ROLE_LABELS[role], expanded=True):
             columns = st.columns(3)
             emblems = []
-            for index, (column, color) in enumerate(
-                zip(columns, rules.colors_for(role)[:3], strict=True)
-            ):
+            for index, (column, color) in enumerate(zip(columns, rules.colors_for(role)[:3], strict=True)):
                 with column:
                     st.markdown(f"{index + 1}. {_COLOR_LABELS[color]}色")
                     stats = rules.stats_for(color)
@@ -290,9 +283,7 @@ def _render_diagnostic(
     else:
         st.info("Roll 已用完，没有可执行动作。")
 
-    matching = next(
-        row for row in analysis["current_matching"] if row["epsilon"] == selected_epsilon
-    )
+    matching = next(row for row in analysis["current_matching"] if row["epsilon"] == selected_epsilon)
     st.subheader("4. 当前战旗的最终队伍匹配")
     team_columns = st.columns(3)
     for column, role, team_name, team_id in zip(
@@ -304,8 +295,7 @@ def _render_diagnostic(
     ):
         column.metric(_ROLE_LABELS[role], team_name, help=f"stable team_id={team_id}")
     st.caption(
-        f"Group 总分期望 {matching['mean']:.2f}；CVaR10 {matching['cvar10']:.2f}；"
-        "三个位置可分别匹配战队。"
+        f"Group 总分期望 {matching['mean']:.2f}；CVaR10 {matching['cvar10']:.2f}；三个位置可分别匹配战队。"
     )
 
     with st.expander("模型分歧、证据状态与限制"):
@@ -570,6 +560,5 @@ def render_advisor_page() -> None:
         _clear_computed_results()
         st.rerun()
     st.caption(
-        "服务仅监听 127.0.0.1；不保存 Steam 凭据，不控制 Dota 客户端，不自动填写，"
-        "本局观测不会修改出率权重。"
+        "服务仅监听 127.0.0.1；不保存 Steam 凭据，不控制 Dota 客户端，不自动填写，本局观测不会修改出率权重。"
     )

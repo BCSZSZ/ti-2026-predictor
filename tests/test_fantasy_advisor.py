@@ -163,4 +163,3 @@ def test_generated_labels_expose_operation_target_and_realised_change(roll_rules
     assert "#23" in operation_label(23, roll_rules)
     assert "Carry" in action_label(action, roll_rules)
     assert mutation_outcome_label(state.banners[0], outcome)
-

@@ -1,6 +1,6 @@
 # P5 Branch-capped Reference Roll solver
 
-状态：**实施前冻结；尚无求解器结果**  
+状态：**`failed-escalation-review-required`；已实装并完成一小时门禁运行**
 冻结日期：2026-08-06  
 显式 `as_of`：`2026-08-06T08:15:00Z`
 
@@ -166,3 +166,36 @@ P5 状态为 **`failed-escalation-review-required`**。此次 review 的决定�
 `ti audit fantasy-7611686c6c0f92e7` 校验 artifact 文件 hash，返回 run `status: warning`。
 通用 audit 的 `publishable: true` 只表示完整性检查未阻塞，不覆盖 P5 artifact 内明确失败的
 effectiveness gate；该 solver 不应作为可靠或全局最优推荐发布。
+
+## Clean-commit 复现审计
+
+为区分“求解数值是否确定”与“一小时内能完成多少单元”，又在已推送的干净提交
+`eab526a63fdf249a4c19e791711a48d788a836fa` 上完整重跑一次。复现 run 为
+`fantasy-afa5cb6f3b665fd1`，语义 evidence SHA-256 为
+`eb6a399d19653377ec20757e17c195cd3bac32e66b2dad2bddd411abb82e80d7`，artifact 文件
+SHA-256 为 `ee16553b2fbd109438c1b92a2102714437f0acb82d13006992a6cd8753264f20`。
+
+| 复现项 | clean run | 与首次运行的关系 |
+| --- | ---: | --- |
+| 上下文重建 | 18.76s | 较首次 13.02s 慢 |
+| 18 个条件 oracle | 92.17s | 18/18 整个 JSON 逐值一致 |
+| 完整会话验证 | 2,925.03s | 完成 4 个 solver+两基线配对单元 |
+| 总计 | 3,035.96s | 50 分 36 秒，安全停在一小时内 |
+| 已完成配对中位时间 | 749.29s | 首次为 492.95s |
+
+clean run 只完成 `4/216`，因为第五个单元的投影已会越过冻结的 3,600 秒目标。
+这四个单元对应 coverage-01/02 的两个 replicate；它们的 12 行 solver、one-step 和
+Rate-agnostic safety 结果与首次运行的同键行逐字段一致。其中 solver 分数为
+`53,524.68 / 55,049.99 / 58,268.82 / 42,854.14`，unresolved 数为
+`27 / 29 / 31 / 33`。18 个条件 oracle 也完全一致。
+
+因此 P5 的正确结论是：给定同一个状态、模型、seed 和已执行单元时，数值结果可重现；
+但基于墙钟中位数预测的动态停止使“一小时内完成几个单元”受当时性能影响，不是
+跨运行确定值。这不改变任何 gate：复现运行仍对 one-step 差（均值差
+`-2,345.72`，单侧 95% 下界 `-14,036.32`），Common unresolved 仍为 100%，P5 仍是
+`failed-escalation-review-required`。
+
+`ti audit fantasy-afa5cb6f3b665fd1` 返回 `status: warning` 且文件 hash 一致；其
+`publishable: true` 同样只表示产物完整性，不改变 effectiveness 失败。clean 产物还有两个预期的
+语义 schema 改进：运行时中位数不再进入 evidence hash，并显式记录 Common unresolved 是
+case-level 上界。

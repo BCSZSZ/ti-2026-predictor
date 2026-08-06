@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "policy_id": "fantasy-group-branch-capped-solver-v1",
+  "period": "group",
+  "as_of": "2026-08-06T08:15:00Z",
+  "seed": 2026080605,
+  "source_playbook_evidence_sha256": "a0361a228629c46663fe844387af7f71eea37113838b3036dc6181dd227ad857",
+  "source_validation_policy_sha256": "19b505159bb7c42b93d952359932e26dd0434ff4ae9283738432784afe685865",
+  "scenario_subset_count": 128,
+  "scenario_subset_sampling": "fixed_without_replacement",
+  "transition_models": [
+    "client-weight-primary-v1",
+    "flattened-weights-v1",
+    "sharpened-weights-v1"
+  ],
+  "mean_retention_epsilons": [0.0, 0.01, 0.02, 0.05],
+  "cvar_alpha": 0.1,
+  "synergy_potential": {
+    "positioned_configuration_count": 15625,
+    "maximum_attribute_differences": 3,
+    "decay_denominator": 39,
+    "last_roll_multiplier": 0.0,
+    "fixed_stat_scope": "observed_decision_root",
+    "simulated_stat_change_potential": "zero_until_observed_replan"
+  },
+  "decision_budget": {
+    "screening_paths_per_action": 4,
+    "confirmation_paths_per_finalist": 12,
+    "finalist_count": 2,
+    "confidence_level": 0.95,
+    "bootstrap_replicates": 1000,
+    "unresolved_fallback": "rate_agnostic_safety"
+  },
+  "validation": {
+    "starting_coverage_case_count": 9,
+    "full_session_replicates_per_stratum": 2,
+    "oracle_horizons": [1, 2, 3],
+    "oracle_states_per_horizon": 6,
+    "oracle_regret_upper_bound": 0.02,
+    "common_unresolved_upper_bound": 0.1,
+    "baseline_comparators": [
+      "one_step_greedy",
+      "rate_agnostic_safety"
+    ]
+  },
+  "full_horizon_equivalent_path_ceiling": 2400000,
+  "runtime_target_seconds": 3600,
+  "outputs_must_not_claim_global_optimality": true,
+  "full_planner_auto_activation": false
+}

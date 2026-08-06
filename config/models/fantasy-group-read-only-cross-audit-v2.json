@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "policy_id": "fantasy-group-read-only-cross-audit-v2",
+  "period": "group",
+  "as_of": "2026-08-06T17:27:00Z",
+  "seed": 2026080706,
+  "source_playbook_evidence_sha256": "77032ccf42dccd2d6a7bda1e9f51786245b955f0ed548d934c5c9f956bc7e299",
+  "source_playbook_validation_policy_sha256": "a3ee5a9976e0668d7d6d01c76a52f28d954b72e714b3c13afd2870b76dcff3d5",
+  "source_solver_evidence_sha256": "eb6a399d19653377ec20757e17c195cd3bac32e66b2dad2bddd411abb82e80d7",
+  "source_solver_policy_sha256": "6b067754c1caf6e5f866e3c86bc0358eb30e4fd789a497239577ea3d094e8f9c",
+  "source_solver_evidence_policy_sha256": "9466049f426e10c03926152c9cf60ecd9a4b96c155c19389456f2a5b73e5d3d9",
+  "source_solver_evidence_scope": "historical-v1-effectiveness-only",
+  "source_scenario_sha256": "22fd9f2f400cff0a4b08926824f181b8e05287e46de12d1139c5fda6bdeff7c3",
+  "playbook_sha256": {
+    "rate-agnostic": "2e4936c773722ba8979349cef4eb381d9699a10aeb6db1c11ccb33783c1b4e9a",
+    "primary-model": "8a548206fae6072ef83c3979189049d00c9ab63074718a4a85ada7ab3b47cb0a"
+  },
+  "held_out_scenarios": {
+    "count": 128,
+    "sampling": "fixed_without_replacement_from_source_indexes",
+    "exclude_p4_validation_indexes": true,
+    "exclude_p5_validation_indexes": true
+  },
+  "conditional_states": {
+    "coverage_case_count": 9,
+    "remaining_rolls": [1, 2, 3],
+    "current_offer": "frozen_offer_of_each_p4_coverage_case",
+    "replacement_offer_schedule": "subsequent_p4_coverage_offers_cyclic",
+    "future_offer_randomness_integrated": false
+  },
+  "editions": [
+    {
+      "edition": "rate-agnostic",
+      "risk_preference": "default-knee",
+      "mean_retention_epsilon": 0.01,
+      "models": [
+        "client-weight-primary-v1",
+        "flattened-weights-v1",
+        "sharpened-weights-v1"
+      ]
+    },
+    {
+      "edition": "primary-model",
+      "risk_preference": "default-knee",
+      "mean_retention_epsilon": 0.02,
+      "models": ["client-weight-primary-v1"]
+    }
+  ],
+  "published_rule_count": 12,
+  "cvar_alpha": 0.1,
+  "confidence": {
+    "level": 0.95,
+    "method": "independent_weighted_outcome_bootstrap",
+    "replicates": 2000,
+    "sample_size": 128,
+    "compute_only_for_p4_common_activations": true
+  },
+  "significance": {
+    "common_session_frequency": 0.1,
+    "baseline_material_loss": 0.1,
+    "strict_material_loss": 0.05,
+    "directionally_wrong": "manual_action_strictly_dominated_by_refresh_in_both_mean_and_cvar10"
+  },
+  "release": {
+    "allowed_labels": [
+      "baseline-reliable",
+      "strict-reliable",
+      "draft",
+      "inapplicable"
+    ],
+    "solver_disagreement_alone_changes_manual": false,
+    "manual_revision_allowed": false,
+    "ui_is_release_gate": false
+  },
+  "runtime_target_seconds": 1800,
+  "runtime_hard_ceiling_seconds": 3600,
+  "stop_new_computation_seconds": 3540
+}

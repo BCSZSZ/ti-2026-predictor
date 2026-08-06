@@ -565,8 +565,15 @@ def fantasy_group_cross_audit(
         str,
         typer.Option("--as-of", help="P6 只读手册交叉审计截止时间，必须带时区。"),
     ],
+    cross_audit_version: Annotated[
+        Literal["v1", "v2"],
+        typer.Option("--cross-audit-version", help="选择冻结的只读交叉审计版本。"),
+    ] = "v1",
 ) -> None:
-    result = generate_group_cross_audit_evidence(as_of=parse_as_of(as_of))
+    result = generate_group_cross_audit_evidence(
+        as_of=parse_as_of(as_of),
+        cross_audit_version=cross_audit_version,
+    )
     _echo(
         {
             "run_id": result.run.run_id,

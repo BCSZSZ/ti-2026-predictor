@@ -6,11 +6,12 @@ import json
 from dataclasses import dataclass, replace
 from pathlib import Path
 from time import perf_counter
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
 from ti_predictor.fantasy.cross_audit import (
+    CrossAuditPolicyV2,
     audit_one_condition,
     build_held_out_scenarios,
     common_activation_frequencies,
@@ -70,25 +71,38 @@ def _find_semantic_artifact(
 def _source_manifest(
     paths: ProjectPaths,
     *,
+    cross_audit_version: Literal["v1", "v2"],
+    solver_policy_path: Path,
+    cross_audit_policy_path: Path,
     p3_path: Path,
     p4_path: Path,
     p5_path: Path,
 ) -> list[dict[str, str]]:
-    files = (
+    playbook_suffix = cross_audit_version
+    files = [
         paths.config / "rules" / "ti2026.json",
         paths.config / "models" / "fantasy-group-scenarios-v1.json",
-        paths.config / "models" / "fantasy-group-playbook-validation-v1.json",
-        paths.config / "models" / "fantasy-group-branch-capped-solver-v1.json",
-        paths.config / "models" / "fantasy-group-read-only-cross-audit-v1.json",
-        paths.config / "playbooks" / "group-rate-agnostic-v1.json",
-        paths.config / "playbooks" / "group-primary-model-v1.json",
-        paths.root / "docs" / "playbooks" / "group-roll" / "playbook-rate-agnostic-v1.md",
-        paths.root / "docs" / "playbooks" / "group-roll" / "playbook-primary-model-v1.md",
-        paths.root / "docs" / "playbooks" / "group-roll" / "stat-quality-trait-evidence-v1.md",
+        paths.config / "models" / f"fantasy-group-playbook-validation-{playbook_suffix}.json",
+        solver_policy_path,
+        cross_audit_policy_path,
+        paths.config / "playbooks" / f"group-rate-agnostic-{playbook_suffix}.json",
+        paths.config / "playbooks" / f"group-primary-model-{playbook_suffix}.json",
+        paths.root / "docs" / "playbooks" / "group-roll" / f"playbook-rate-agnostic-{playbook_suffix}.md",
+        paths.root / "docs" / "playbooks" / "group-roll" / f"playbook-primary-model-{playbook_suffix}.md",
+        paths.root
+        / "docs"
+        / "playbooks"
+        / "group-roll"
+        / f"stat-quality-trait-evidence-{playbook_suffix}.md",
         p3_path,
         p4_path,
         p5_path,
-    )
+    ]
+    if cross_audit_version == "v2":
+        files.insert(
+            10,
+            paths.root / "docs" / "playbooks" / "group-roll" / "candidate-freeze-v2.json",
+        )
     result = []
     for path in files:
         if not path.is_file():
@@ -153,6 +167,7 @@ def _row_summary(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def generate_group_cross_audit_evidence(
     *,
     as_of,
+    cross_audit_version: Literal["v1", "v2"] = "v1",
     paths: ProjectPaths = PATHS,
     progress=print,
 ) -> CrossAuditEvidenceResult:
@@ -162,14 +177,25 @@ def generate_group_cross_audit_evidence(
     cutoff = as_utc(as_of)
     if cutoff is None:
         raise ValueError("as_of is required")
-    policy_path = paths.config / "models" / "fantasy-group-read-only-cross-audit-v1.json"
+    if cross_audit_version not in {"v1", "v2"}:
+        raise ValueError(f"unsupported Group cross-audit version: {cross_audit_version}")
+    policy_path = paths.config / "models" / f"fantasy-group-read-only-cross-audit-{cross_audit_version}.json"
+    solver_policy_path = (
+        paths.config / "models" / "fantasy-group-branch-capped-solver-v1.json"
+        if cross_audit_version == "v1"
+        else paths.config / "models" / "fantasy-group-branch-capped-solver-audit-v2.json"
+    )
     policy = load_cross_audit_policy(policy_path)
     cutoff_text = cutoff.isoformat().replace("+00:00", "Z")
     if cutoff_text != policy.as_of:
         raise ValueError("P6 policy as_of differs from the explicit command cutoff")
 
     progress("P6 verifying frozen P3/P4/P5 identities")
-    context = prepare_solver_context(as_of=cutoff, paths=paths)
+    context = prepare_solver_context(
+        as_of=cutoff,
+        solver_policy_path=solver_policy_path,
+        paths=paths,
+    )
     if context.policy.semantic_hash != policy.source_solver_policy_sha256:
         raise ValueError("P6 source solver policy hash drifted")
     if context.p4_evidence.get("evidence_sha256") != policy.source_playbook_evidence_sha256:
@@ -182,16 +208,28 @@ def generate_group_cross_audit_evidence(
         hash_field="evidence_sha256",
         expected_sha256=policy.source_solver_evidence_sha256,
     )
-    if p5_evidence.get("solver_policy_sha256") != policy.source_solver_policy_sha256:
+    source_solver_evidence_policy_sha256 = (
+        policy.source_solver_evidence_policy_sha256
+        if isinstance(policy, CrossAuditPolicyV2)
+        else policy.source_solver_policy_sha256
+    )
+    if p5_evidence.get("solver_policy_sha256") != source_solver_evidence_policy_sha256:
         raise ValueError("P6 source P5 artifact uses another solver policy")
-    if p5_evidence.get("source_playbook_evidence_sha256") != policy.source_playbook_evidence_sha256:
+    if (
+        not isinstance(policy, CrossAuditPolicyV2)
+        and p5_evidence.get("source_playbook_evidence_sha256") != policy.source_playbook_evidence_sha256
+    ):
         raise ValueError("P6 source P5 artifact uses another playbook evidence package")
     if p5_evidence.get("gate", {}).get("p5_status") != "failed-escalation-review-required":
         raise ValueError("P6 preregistration expects the recorded P5 failed escalation review")
 
     definitions = {
-        "rate-agnostic": load_playbook(paths.config / "playbooks" / "group-rate-agnostic-v1.json"),
-        "primary-model": load_playbook(paths.config / "playbooks" / "group-primary-model-v1.json"),
+        "rate-agnostic": load_playbook(
+            paths.config / "playbooks" / f"group-rate-agnostic-{cross_audit_version}.json"
+        ),
+        "primary-model": load_playbook(
+            paths.config / "playbooks" / f"group-primary-model-{cross_audit_version}.json"
+        ),
     }
     for edition, definition in definitions.items():
         if definition.semantic_hash != policy.playbook_sha256[edition]:
@@ -267,8 +305,17 @@ def generate_group_cross_audit_evidence(
     for index, (edition, model_id, case_index, case, horizon) in enumerate(planned):
         elapsed = perf_counter() - started
         estimated = float(np.median(durations[-5:])) if durations else 0.0
-        if elapsed + estimated >= policy.runtime_target_seconds:
-            stop_reason = "projected next P6 row would exceed the frozen 30-minute target"
+        stop_new_computation_seconds = (
+            policy.stop_new_computation_seconds
+            if isinstance(policy, CrossAuditPolicyV2)
+            else policy.runtime_target_seconds
+        )
+        if elapsed + estimated >= stop_new_computation_seconds:
+            stop_reason = (
+                "projected next P6 row would exceed the frozen 30-minute target"
+                if not isinstance(policy, CrossAuditPolicyV2)
+                else "projected next v2 cross-audit row would exceed the frozen 59-minute stop point"
+            )
             break
         progress(
             f"P6 cross-audit {index + 1}/{len(planned)} {edition.edition} {model_id} "
@@ -316,6 +363,9 @@ def generate_group_cross_audit_evidence(
     )
     source_manifest = _source_manifest(
         paths,
+        cross_audit_version=cross_audit_version,
+        solver_policy_path=solver_policy_path,
+        cross_audit_policy_path=policy_path,
         p3_path=p3_path,
         p4_path=context.p4_evidence_path,
         p5_path=p5_path,
@@ -365,6 +415,28 @@ def generate_group_cross_audit_evidence(
             "both frozen P4 editions already remain draft and P6 cannot promote them",
         ],
     }
+    if isinstance(policy, CrossAuditPolicyV2):
+        payload.update(
+            {
+                "audit_solver_policy_sha256": policy.source_solver_policy_sha256,
+                "historical_solver_evidence_policy_sha256": (policy.source_solver_evidence_policy_sha256),
+                "source_solver_evidence_scope": policy.source_solver_evidence_scope,
+                "p5_validation_index_source": {
+                    "seed": context.policy.seed,
+                    "count": context.policy.scenario_subset_count,
+                    "historical_evidence_sha256": policy.source_solver_evidence_sha256,
+                },
+            }
+        )
+        payload["limitations"] = [
+            "the exact comparison covers only one to three Rolls remaining",
+            "future replacement offers are fixed to a declared cyclic schedule rather than integrated",
+            "the independent weighted-outcome bootstrap is diagnostic and is not standalone "
+            "Series-cluster confirmation",
+            "the v2 audit reuses the bounded-solver algorithm but has no new full-session "
+            "effectiveness validation; the recorded failed P5 status is historical v1 evidence only",
+            "both frozen v2 standalone editions already remain draft and this audit cannot promote them",
+        ]
     payload["evidence_sha256"] = sha256_json(payload)
     runtime = {
         "identity_and_context": context_finished - started,
@@ -382,7 +454,11 @@ def generate_group_cross_audit_evidence(
         }
     )
     parameters = {
-        "phase": "p6_read_only_playbook_cross_audit",
+        "phase": (
+            "p6_read_only_playbook_cross_audit"
+            if cross_audit_version == "v1"
+            else "p4_v2_read_only_playbook_cross_audit"
+        ),
         "cross_audit_policy_id": policy.policy_id,
         "cross_audit_policy_sha256": policy.semantic_hash,
         "source_playbook_evidence_sha256": policy.source_playbook_evidence_sha256,
@@ -413,7 +489,10 @@ def generate_group_cross_audit_evidence(
         data_sha256=hashes["data"],
         config_sha256=hashes["config"],
         git_commit=hashes["source"],
-        model={"name": "read_only_group_playbook_cross_audit_v1", "parameters": parameters},
+        model={
+            "name": f"read_only_group_playbook_cross_audit_{cross_audit_version}",
+            "parameters": parameters,
+        },
         profiles=[],
         outputs=[evidence_path.name],
         warnings=warnings,

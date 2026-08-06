@@ -1,6 +1,6 @@
 # TI 2026 Group 40-Roll playbook v2 implementation
 
-Status: P0 plan frozen; implementation not started
+Status: P0-P1 complete; P2 current-baseline and independent-manual work is next
 
 - Plan freeze date: 2026-08-07
 - Starting `main`: `5d701c9e56bfb73a3436b85273f404946ed628bc`
@@ -113,6 +113,11 @@ They are hypotheses, not pre-authorized implementation scope.
 - the 108-row v1 matrix completes inside 60 minutes, or the exact remaining blocker is reported;
 - focused and full offline tests, Ruff and formatting pass;
 - no debug instrumentation, throwaway prototype or unverified legacy path remains.
+
+Result: complete under the explicit blocker-report branch. The semantic-preserving matcher pruning
+raised formal P6 throughput by about 12.3x, while the frozen 30-minute stop still ended v1 at
+84/108 rows. See
+[`group-roll-playbook-v2-p1-performance-2026-08-07.md`](../reports/group-roll-playbook-v2-p1-performance-2026-08-07.md).
 
 ## P2 — Current baseline and independently frozen v2 manuals
 

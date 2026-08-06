@@ -456,11 +456,15 @@ def match_group_roles(
     role_means = [matrices[role].outcomes.mean(axis=1) for role in ROLE_IDS]
     maximum_mean = float(sum(values.max() for values in role_means))
     floor = _mean_floor(maximum_mean, risk.mean_retention_epsilon)
+    mean_loss_budget = max(0.0, maximum_mean - floor)
+    eligible_indexes = [
+        np.flatnonzero(values >= float(values.max()) - mean_loss_budget - 1e-12) for values in role_means
+    ]
     selected_key: tuple[float, float, tuple[int, int, int]] | None = None
     selected_cvar: float | None = None
     selected_team_ids: tuple[int, int, int] | None = None
     selected_outcomes: np.ndarray | None = None
-    for indexes in product(range(len(first.team_ids)), repeat=len(ROLE_IDS)):
+    for indexes in product(*eligible_indexes):
         mean = float(sum(role_means[offset][index] for offset, index in enumerate(indexes)))
         if mean < floor:
             continue

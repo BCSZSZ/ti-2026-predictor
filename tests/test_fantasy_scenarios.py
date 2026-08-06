@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import itertools
 from datetime import UTC, datetime, timedelta
 
 import numpy as np
 import pandas as pd
 import pytest
 
+import ti_predictor.fantasy.valuation as valuation_module
 from ti_predictor.config import load_tournament_manifest
 from ti_predictor.fantasy.roll import BannerState, EmblemState
 from ti_predictor.fantasy.scenarios import (
@@ -409,6 +411,75 @@ def test_group_cvar_is_joint_not_sum_of_role_cvars() -> None:
     assert separate_sum == 0.0
     assert result.summary["cvar"] == 200.0
     assert lower_tail_cvar(np.asarray([0.0, 10.0, 20.0]), 0.5) == pytest.approx(10.0 / 3.0)
+
+
+def test_group_matching_skips_combinations_that_cannot_reach_mean_floor(monkeypatch) -> None:
+    scenario_hash = "f" * 64
+    team_ids = tuple(range(1, 17))
+    outcomes = np.zeros((16, 4), dtype=float)
+    outcomes[0] = 100.0
+    matrices = {
+        role: TeamOutcomeMatrix(
+            "banner",
+            role,
+            role,
+            scenario_hash,
+            team_ids,
+            outcomes,
+        )
+        for role in ROLE_IDS
+    }
+    combinations_visited = 0
+
+    def counting_product(*args, **kwargs):
+        nonlocal combinations_visited
+        for indexes in itertools.product(*args, **kwargs):
+            combinations_visited += 1
+            yield indexes
+
+    monkeypatch.setattr(valuation_module, "product", counting_product)
+
+    result = match_group_roles(
+        matrices,
+        RiskConfiguration(mean_retention_epsilon=0.0, cvar_alpha=0.1),
+    )
+
+    assert result.selected_team_ids == (1, 1, 1)
+    assert combinations_visited == 1
+
+
+@pytest.mark.parametrize("epsilon", [0.0, 0.01, 0.02, 0.05])
+def test_group_candidate_pruning_matches_full_enumeration(monkeypatch, epsilon: float) -> None:
+    team_ids = tuple(range(1, 17))
+    for seed in range(3):
+        generator = np.random.default_rng(seed)
+        matrices = {
+            role: TeamOutcomeMatrix(
+                "banner",
+                role,
+                role,
+                "e" * 64,
+                team_ids,
+                generator.normal(loc=100.0, scale=15.0, size=(16, 13)),
+            )
+            for role in ROLE_IDS
+        }
+        risk = RiskConfiguration(mean_retention_epsilon=epsilon, cvar_alpha=0.1)
+
+        pruned = match_group_roles(matrices, risk)
+        with monkeypatch.context() as full_enumeration:
+            full_enumeration.setattr(
+                valuation_module,
+                "product",
+                lambda *args: itertools.product(range(16), repeat=len(ROLE_IDS)),
+            )
+            reference = match_group_roles(matrices, risk)
+
+        assert pruned.selected_team_ids == reference.selected_team_ids
+        assert np.array_equal(pruned.outcomes, reference.outcomes)
+        assert pruned.maximum_mean == reference.maximum_mean
+        assert pruned.summary == reference.summary
+        assert pruned.semantic_hash == reference.semantic_hash
 
 
 def test_stat_forecasts_and_cluster_bootstrap_have_stable_hashes(project_paths, rules_payload) -> None:

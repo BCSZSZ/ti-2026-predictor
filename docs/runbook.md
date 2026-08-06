@@ -76,6 +76,18 @@ recommendation. The implementation order and acceptance contract are in the
 coverage and performance are in the
 [P1 implementation report](reports/p1-native-replay-stats-implementation-2026-08-06.md).
 
+The frozen Group manual validation is a separate cached-snapshot command:
+
+```powershell
+uv run ti fantasy group-playbook-evidence --as-of 2026-08-06T08:15:00Z
+```
+
+It first reproduces the P3 source hash, then evaluates both independently frozen manuals over the
+nine non-probability-weighted starting-state strata. It does not invoke the Reference Roll solver.
+The current v1 result is `warning`: both editions remain `draft`; consult the
+[manual index](playbooks/group-roll/README.md) and
+[P4 report](reports/p4-independent-human-playbooks-2026-08-06.md) before operational use.
+
 The OpenDota `data sync` and `data fantasy-history` commands stop before exceeding their per-run
 `--request-limit` (default 5,000), and keyed
 attempts are reserved in `data/cache/opendota_api_usage.json` before the network call. A repeated

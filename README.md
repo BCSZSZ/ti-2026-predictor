@@ -19,6 +19,7 @@ uv run ti data sync --as-of 2026-08-12T23:00:00Z --year 2026 --team-detail-limit
 uv run ti forecast group --as-of 2026-08-12T23:00:00Z --profile all
 uv run ti fantasy recommend --as-of 2026-08-12T23:00:00Z --period group --profile all
 uv run ti fantasy group-evidence --as-of 2026-08-12T23:00:00Z --bootstrap
+uv run ti fantasy group-playbook-evidence --as-of 2026-08-06T08:15:00Z
 uv run ti web
 ```
 
@@ -60,6 +61,10 @@ Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策
 
 `fantasy group-evidence` 是 P3 的 Group 专用证据入口：它用完整 Series 块、8,192 个公共情景
 和 400 次 Series 分组重采样生成可复现的 Stat 表及终局估值哈希；它不是人工手册或重随求解器。
+P4 的两版人工手册、完整 Stat/Quality/Trait 表和当前发布状态见
+[Group Roll 手册索引](docs/playbooks/group-roll/README.md)。两版 v1 都已完成独立 40-Roll
+验证，但目前均为 `draft`：主模型版通过 10% Common 损失线却未通过全部规则消融，生成率
+无关版另有 5 个 Common 失败。`group-playbook-evidence` 复现这项验证，不调用 P5 solver。
 完整操作顺序、主赛事种子导入和状态含义见 [docs/runbook.md](docs/runbook.md)。模型的时间
 切分、覆盖门槛和三种目标见 [docs/modeling.md](docs/modeling.md)。
 

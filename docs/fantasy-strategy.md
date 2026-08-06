@@ -8,6 +8,9 @@
 - 当前阶段：策略内核已经形成；最终选手、徽标和称号推荐仍需使用显式 UTC `as_of`、TI 2026 赛程、当时可用数据以及用户实际战旗状态计算。
 - 当前 Group 数据驱动优先级与制作指南见 [`reports/ti2026-fantasy-data-driven-guide-2026-08-02.md`](reports/ti2026-fantasy-data-driven-guide-2026-08-02.md)。旧的固定阵容报告保留为历史运行记录，不再代表当前版本加权结论。
 - Maroomm 的 Reddit 2026 指南已作为独立社区基线审计，见 [`research/fantasy-league-2026-reddit-guide-audit.md`](research/fantasy-league-2026-reddit-guide-audit.md)；它不覆盖客户端规则或当前项目默认模型。
+- P4 已把 Group 40 Roll 单独落实为两版人工手册和七张 Stat 表，见
+  [`playbooks/group-roll/README.md`](playbooks/group-roll/README.md)。两版 v1 均为 `draft`；本文
+  后续的旧口诀不能覆盖 P4 的精确分档、条件 Trait 配方或发布门槛。
 
 ## 1. 参考作业做了什么
 

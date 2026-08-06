@@ -122,3 +122,22 @@ candidate exists.
 Uncertainty uses 400 weighted full-Series clustered bootstrap replicates with 512 predictive
 scenarios each. It reports a 95% interval for the best-equals-100 Stat index; boundary status is
 separate from the point estimate and does not silently change a grade.
+
+### P4 independent Group human playbooks
+
+P4 freezes its Rate-agnostic and Primary-model 8/12/16-rule candidates before any P5 solver output
+exists. Starting-state coverage crosses exact same-team low/middle/high Stat readiness with
+low/middle/high positioned Quality-and-Trait readiness for each role; the nine complete starts are
+balanced cases, not a starting-state probability distribution. A fixed 512-scenario subset of the
+P3 common set pairs Group performance across policies.
+
+Every future shared offer uses a step/model/case/replicate random stream independent from mutation
+and performance streams. Thus applying a different operation cannot shift the next offer merely by
+consuming another random number. Full-session confirmation reports Expected Group score, CVaR10,
+the `0/1/2/5%` epsilon frontier, activation/fallback, nested complexity, Common conditional loss and
+paired rule ablation.
+
+The v1 evidence does not pass release: the Primary-model edition has no 10% Common loss failure but
+only two of twelve rules pass the strict ablation gate; the Rate-agnostic edition has five 10%
+Common failures and cross-model ablation failures. Both remain `draft`. The 16-rule candidate is the
+standalone manual comparator, not P5 and not evidence of global optimality.

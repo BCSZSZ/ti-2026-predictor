@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "playbook_id": "group-primary-model-v1",
+  "edition": "primary-model",
+  "status": "candidate-frozen",
+  "period": "group",
+  "roll_count": 40,
+  "as_of": "2026-08-06T08:15:00Z",
+  "origin": "independent-stat-quality-trait-derivation-before-reference-solver",
+  "source_evidence_sha256": "f42517fa5c0c596f2b15397ad2206136d48b0ff7fef578e131b4a919aa7fd9b8",
+  "transition_model": "client-weight-primary-v1",
+  "sensitivity_models": ["flattened-weights-v1", "sharpened-weights-v1"],
+  "phases": [
+    {"id": "early", "remaining_min": 26, "remaining_max": 40},
+    {"id": "middle", "remaining_min": 11, "remaining_max": 25},
+    {"id": "late", "remaining_min": 1, "remaining_max": 10}
+  ],
+  "stat_grade_thresholds": {
+    "hard_protect_runner_up_below": 0.44,
+    "keep_at_least": 0.846,
+    "conditional_reroll_at_least": 0.44
+  },
+  "published_rule_count": 12,
+  "candidate_rule_counts": [8, 12, 16],
+  "risk_overlays": {
+    "mean-first": {"minimum_expected_delta": 0.0, "allow_balanced_trade": true},
+    "default-knee": {"minimum_expected_delta": 0.02, "allow_balanced_trade": true},
+    "downside-first": {"minimum_expected_delta": 0.05, "allow_balanced_trade": false}
+  },
+  "rules": [
+    {
+      "rule_id": "PM01",
+      "handler": "increase_one_quality",
+      "title": "先拿不会降级的随机 +1",
+      "visible_conditions": ["出现 +1 一格品质", "至少一面战旗不是全 T5"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "PM02",
+      "handler": "targeted_green_priority_repair",
+      "title": "精确修复绿色 C 档统计项",
+      "visible_conditions": ["绿色统计项为 priority-repair", "选项只动该绿色格"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "PM03",
+      "handler": "singleton_positive_stat_mean",
+      "title": "单格统计项按主模型正期望改善",
+      "visible_conditions": ["该颜色在所选战旗只有一格", "当前统计项低于该色主模型平均", "不处于最后十次或改善明显"],
+      "parameters": {"late_minimum_relative_gain": 0.05}
+    },
+    {
+      "rule_id": "PM04",
+      "handler": "duplicate_positive_stat_mean",
+      "title": "两格整色统计项只在合计正期望时洗",
+      "visible_conditions": ["同色受影响两格合计低于随机重随均值", "没有 hard-protect 格", "剩余至少 11 次"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "PM05",
+      "handler": "precise_quality_positive_mean",
+      "title": "精确重随 T1/T2 品质",
+      "visible_conditions": ["目标格为 T1 或 T2", "不破坏完整 Fractal 品质结构"],
+      "parameters": {"maximum_quality_tier": 2}
+    },
+    {
+      "rule_id": "PM06",
+      "handler": "broad_quality_positive_mean",
+      "title": "整色品质按合计正期望判断",
+      "visible_conditions": ["受影响品质合计低于主模型重随均值", "不破坏完整 Fractal 品质结构", "剩余至少 11 次"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "PM07",
+      "handler": "precise_blue_trait_positive_mean",
+      "title": "精确重随蓝色失效 Trait",
+      "visible_conditions": ["目标 Trait 不触发或拖累当前总分", "不是完整认可套装", "主模型平均改善为正"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "PM08",
+      "handler": "singleton_trait_positive_mean",
+      "title": "单格颜色 Trait 按正期望改善",
+      "visible_conditions": ["该颜色在所选战旗只有一格", "不是完整认可套装", "剩余至少 11 次"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "PM09",
+      "handler": "balanced_two_up_one_down_early",
+      "title": "前期低品质均衡战旗用二升一降",
+      "visible_conditions": ["剩余 26–40 次", "三格都不高于 T3", "任一格贡献不超过总贡献 45%"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "PM10",
+      "handler": "targeted_green_conditional_mean",
+      "title": "前中期精确改善绿色 B 档",
+      "visible_conditions": ["剩余至少 11 次", "绿色统计项为 conditional-reroll", "主模型平均改善为正"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "PM11",
+      "handler": "one_away_blue_trait_recipe",
+      "title": "只差一格时精确追蓝色 Trait 套装",
+      "visible_conditions": ["离认可套装只差这一格", "选项精确命中蓝色格", "剩余至少 11 次"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "PM12",
+      "handler": "late_positive_mean",
+      "title": "最后十次只做明显正期望动作",
+      "visible_conditions": ["剩余 1–10 次", "主模型相对改善达到风险偏好门槛", "不破坏 keep/hard-protect 结构"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "PM13",
+      "handler": "broad_trait_positive_mean_early",
+      "title": "前期整色 Trait 合计正期望时可洗",
+      "visible_conditions": ["剩余 26–40 次", "没有认可套装会被破坏", "主模型平均改善为正"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "PM14",
+      "handler": "conditional_stat_boundary_mean_first",
+      "title": "均值优先可追统计边界项",
+      "visible_conditions": ["剩余 26–40 次", "当前是 bootstrap 边界项", "风险偏好为 mean-first"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "PM15",
+      "handler": "balanced_two_up_one_down_middle",
+      "title": "主模型正期望时把二升一降延长到中期",
+      "visible_conditions": ["剩余 11–25 次", "三格都不高于 T2", "主模型平均改善为正"],
+      "parameters": {}
+    },
+    {
+      "rule_id": "PM16",
+      "handler": "precise_trait_mean_first_late",
+      "title": "均值优先在末期接受小幅 Trait 正期望",
+      "visible_conditions": ["剩余 1–10 次", "选项只动一格", "风险偏好为 mean-first"],
+      "parameters": {}
+    }
+  ],
+  "fallback": {
+    "action": "refresh",
+    "instruction": "没有任何规则支持应用当前选项时，花 1 次 Roll 刷新三个共享选项。"
+  }
+}

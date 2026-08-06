@@ -11,6 +11,7 @@ import typer
 from ti_predictor import __version__
 from ti_predictor.audit import audit_run
 from ti_predictor.backtesting import run_ti2025_backtest
+from ti_predictor.fantasy.playbook_reporting import generate_group_playbook_evidence
 from ti_predictor.forecasting import (
     generate_bracket,
     generate_fantasy,
@@ -498,6 +499,28 @@ def fantasy_group_evidence(
             "evidence_path": str(result.evidence_path),
             "evidence_package_sha256": result.evidence["evidence_package_sha256"],
             "scenario_sha256": result.evidence["scenario_set"]["scenario_sha256"],
+            "runtime_seconds": result.runtime_seconds,
+        }
+    )
+    _exit_for_status(result.run.status)
+
+
+@fantasy_app.command("group-playbook-evidence")
+def fantasy_group_playbook_evidence(
+    as_of: Annotated[
+        str,
+        typer.Option("--as-of", help="P4 冻结人工手册验证截止时间，必须带时区。"),
+    ],
+) -> None:
+    result = generate_group_playbook_evidence(as_of=parse_as_of(as_of))
+    _echo(
+        {
+            "run_id": result.run.run_id,
+            "status": result.run.status,
+            "run_path": str(result.run_path),
+            "evidence_path": str(result.evidence_path),
+            "evidence_sha256": result.evidence["evidence_sha256"],
+            "gate": result.evidence["gate"],
             "runtime_seconds": result.runtime_seconds,
         }
     )

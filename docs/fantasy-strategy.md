@@ -18,6 +18,10 @@
   [`reports/p6-read-only-playbook-cross-audit-2026-08-06.md`](reports/p6-read-only-playbook-cross-audit-2026-08-06.md)。
   它的留出索引与 P4/P5 都不交，但只完成 9/108 行，因此只能披露两个 5% 严格警告，
   不能补完手册或升级两个 `draft` 标签。
+- P7 本地交互顾问见
+  [`reports/p7-local-interactive-group-roll-advisor-2026-08-06.md`](reports/p7-local-interactive-group-roll-advisor-2026-08-06.md)。
+  它只跟踪人工确认的 Group 状态；默认一步层不含未来 offer 价值，P5 长视野交互被性能门禁
+  阻断，不能反向改写本页或两份人工手册。
 
 ## 1. 参考作业做了什么
 

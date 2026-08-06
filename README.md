@@ -21,6 +21,7 @@ uv run ti fantasy recommend --as-of 2026-08-12T23:00:00Z --period group --profil
 uv run ti fantasy group-evidence --as-of 2026-08-12T23:00:00Z --bootstrap
 uv run ti fantasy group-playbook-evidence --as-of 2026-08-06T08:15:00Z
 uv run ti fantasy group-cross-audit --as-of 2026-08-06T08:15:00Z
+uv run ti fantasy group-advisor-evidence --as-of 2026-08-06T08:15:00Z
 uv run ti web
 ```
 
@@ -75,6 +76,13 @@ Common unresolved 为 100%，且这 7 条上不劣于 one-step greedy 的门禁�
 P6 只读交叉审计明确排除 P4/P5 验证索引，但广分支 horizon=3 使 30 分钟目标内只完成
 9/108 行。已完成行没有 10% 重大例外，但有 2 个 5% strict 警告；两版手册仍是
 `draft`。详见 [P6 报告](docs/reports/p6-read-only-playbook-cross-audit-2026-08-06.md)。
+P7 已增加本地 `Group Roll 顾问（实验）` 页面：手工录入九格、三个共享选项和剩余 Roll，
+优先显示冻结人工手册，再显示不含未来 offer 价值的一步诊断与最终队伍匹配。每次实际操作后
+必须人工确认实现结果和新选项；会话可保存并从初始状态确定性重放。首次上下文、完整快速层和
+缓存重复的正式耗时分别为 18.92s、1.25s、0.028s；真实浏览器为 22.60s、2.16s、0.06s。
+P5 长视野历史中位数约 749s，因此交互入口只在最后 1 次 Roll 开放（正式实测 8.60s），
+且仍显示失败门禁。详见
+[P7 报告](docs/reports/p7-local-interactive-group-roll-advisor-2026-08-06.md)。
 完整操作顺序、主赛事种子导入和状态含义见 [docs/runbook.md](docs/runbook.md)。模型的时间
 切分、覆盖门槛和三种目标见 [docs/modeling.md](docs/modeling.md)。
 

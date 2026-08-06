@@ -1,10 +1,29 @@
 # TI 2026 Group 40-Roll playbook v1 implementation
 
-Status: accepted implementation plan; implementation begins at P1 after this checkpoint
+Status: P0–P7 implemented and independently recorded; v1 closed with both manuals still `draft`
 
 Decision scope closed: 2026-08-06
 
-Current code baseline: `b347ff2` (`54 passed` in `12.81s` on 2026-08-06)
+P0 code baseline: `b347ff2` (`54 passed` in `12.81s` on 2026-08-06)
+
+Implementation closure: P0–P6 were committed phase-by-phase; P7 implementation commit is
+`f7640d7`. The final P7 run is `fantasy-125d96172389a0aa`, with semantic evidence hash
+`07c14dffe8f2b9c216aa30f3d6ff7ec4cd81106087f95d59fddcd8779dd7051c`. The frozen plan remains
+the decision record; measured deviations and honest failure labels are in the dated phase reports.
+
+| Phase | Implementation commits | Closed result |
+| --- | --- | --- |
+| P0 | `1b9804` | Scope, terminology, source priority and route separation frozen |
+| P1 | `87fde6` | Five native replay counters and provenance-safe backfill path |
+| P2 | `257746` | Immutable Group transition support and model-conditional probabilities |
+| P3 | `362ddb`, `3dcab47` | Common Series scenarios, terminal valuation and clean evidence |
+| P4 | `6fd0b61`, `b605803` | Two independently frozen manuals; both honestly labelled `draft` |
+| P5 | `a7b8755`, `eab526a`, `64030a8` | Branch-capped solver implemented; effectiveness gate failed |
+| P6 | `db9c3a1`, `58036bd`, `b911d9d` | Read-only audit completed partially; no manual rewritten |
+| P7 | `b5c76d2`, `f7640d7` | Local advisor contract and implementation; functional/performance gates passed |
+
+The full offline suite at P7 is `128 passed, 1 skipped`. Phase artifacts remain ignored local run
+outputs; their semantic/file hashes and run IDs are committed in the dated reports.
 
 ## Objective
 
@@ -46,7 +65,7 @@ were explicitly resolved during the interview and are not implementation-time ch
 No further user choice blocks implementation. Empirical questions are listed later as gates rather
 than interview questions.
 
-## Current baseline and missing capabilities
+## P0 baseline and capabilities missing at that checkpoint
 
 Already present:
 

@@ -113,6 +113,32 @@ both, and compares the frozen manual, solver and conditional exact oracle. The v
 is a counterexample audit, not a replacement for P4 full-session validation. See the
 [P6 report](reports/p6-read-only-playbook-cross-audit-2026-08-06.md).
 
+The P7 local advisor has a separate reproducible evidence command:
+
+```powershell
+uv run ti fantasy group-advisor-evidence --as-of 2026-08-06T08:15:00Z
+uv run ti web
+```
+
+Open `Group Roll 顾问（实验）`, keep `Group` selected, and manually enter the nine ordered
+Emblems, exactly three shared operations and remaining Rolls. Creating a session verifies the
+frozen P3–P6 identities. The page shows the selected draft manual first, then exact one-step
+mutation/performance diagnostics under all three rate models and four epsilon values, followed by
+the best Team match for each role. The one-step table deliberately excludes future-offer option
+value and remaining-Roll reachability.
+
+After acting in Dota, select the action actually used, confirm the realised Banner result and the
+new three-operation offer, tick the manual-confirmation box, then record the event. A refresh must
+leave all Banners unchanged. Downloaded session JSON stores the initial state and confirmed events;
+loading it replays every transition and rejects baseline/hash drift. `Main` fails closed. The app
+never controls or fills Dota and never learns rates from the current session.
+
+The P5 button remains secondary and retains
+`failed-escalation-review-required`. It is available only when exactly one Roll remains: the formal
+last-Roll run took 8.60 seconds, while prior long-horizon P5 sessions had a roughly 749-second
+median and are blocked from the responsive UI. See the
+[P7 report](reports/p7-local-interactive-group-roll-advisor-2026-08-06.md).
+
 The OpenDota `data sync` and `data fantasy-history` commands stop before exceeding their per-run
 `--request-limit` (default 5,000), and keyed
 attempts are reserved in `data/cache/opendota_api_usage.json` before the network call. A repeated

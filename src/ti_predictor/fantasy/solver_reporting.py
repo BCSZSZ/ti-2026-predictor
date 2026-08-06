@@ -82,7 +82,29 @@ class SolverEvidenceResult:
     runtime_seconds: dict[str, float]
 
 
-def _find_p4_evidence(paths: ProjectPaths, expected_sha256: str) -> tuple[dict[str, Any], Path]:
+def _find_p4_evidence(
+    paths: ProjectPaths,
+    expected_sha256: str,
+    *,
+    expected_path: Path | None = None,
+) -> tuple[dict[str, Any], Path]:
+    if expected_path is not None:
+        try:
+            expected_path.resolve().relative_to(paths.artifacts.resolve())
+        except ValueError as exc:
+            raise ValueError("frozen P4 artifact path must stay under artifacts") from exc
+        if expected_path.name != "group-playbook-evidence.json":
+            raise ValueError("frozen P4 artifact path has the wrong filename")
+        if not expected_path.is_file():
+            raise FileNotFoundError(f"frozen P4 artifact is missing: {expected_path}")
+        try:
+            payload = json.loads(expected_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"frozen P4 artifact is unreadable: {expected_path}") from exc
+        if payload.get("evidence_sha256") != expected_sha256:
+            raise ValueError("frozen P4 artifact semantic hash drifted")
+        return payload, expected_path
+
     matches = []
     for path in sorted(paths.artifacts.glob("fantasy-*/group-playbook-evidence.json")):
         try:
@@ -105,6 +127,7 @@ def prepare_solver_context(
     *,
     as_of,
     solver_policy_path: Path | None = None,
+    playbook_evidence_path: Path | None = None,
     paths: ProjectPaths = PATHS,
 ) -> PreparedSolverContext:
     cutoff = as_utc(as_of)
@@ -117,7 +140,11 @@ def prepare_solver_context(
     cutoff_text = cutoff.isoformat().replace("+00:00", "Z")
     if policy.as_of != cutoff_text:
         raise ValueError("P5 solver as_of differs from the explicit command cutoff")
-    p4_evidence, p4_path = _find_p4_evidence(paths, policy.source_playbook_evidence_sha256)
+    p4_evidence, p4_path = _find_p4_evidence(
+        paths,
+        policy.source_playbook_evidence_sha256,
+        expected_path=playbook_evidence_path,
+    )
     if p4_evidence.get("validation_policy_sha256") != policy.source_validation_policy_sha256:
         raise ValueError("P5 source P4 validation policy hash drifted")
 

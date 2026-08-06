@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -11,6 +12,7 @@ from ti_predictor.fantasy.cross_audit import (
     load_cross_audit_policy,
     release_labels,
 )
+from ti_predictor.fantasy.cross_audit_reporting import _find_semantic_artifact
 from ti_predictor.fantasy.scenarios import ROLE_IDS, CommonScenarioSet, ScenarioDraws
 from ti_predictor.fantasy.solver import WeightedOutcomeDistribution, load_solver_policy
 from ti_predictor.tournament.group import SLOT_CATEGORIES
@@ -65,6 +67,32 @@ def test_v2_cross_audit_extends_runtime_without_drifting_v1_semantics() -> None:
     assert current.stop_new_computation_seconds == 3540
     assert current.runtime_hard_ceiling_seconds == 3600
     assert current.source_solver_evidence_scope == "historical-v1-effectiveness-only"
+    assert current.semantic_hash == "5aee998b6aab224fbe986fe894558c604db9e96625790cfc3f1847bd36a834d7"
+    assert (
+        current.source_playbook_artifact == "artifacts/fantasy-1c8871c419f59f08/group-playbook-evidence.json"
+    )
+    assert current.source_solver_artifact == "artifacts/fantasy-afa5cb6f3b665fd1/group-solver-evidence.json"
+
+
+def test_v2_cross_audit_can_pin_one_artifact_when_semantic_duplicates_exist(project_paths) -> None:
+    payload = {"evidence_sha256": "a" * 64, "value": 1}
+    frozen = project_paths.artifacts / "fantasy-1111111111111111" / "evidence.json"
+    duplicate = project_paths.artifacts / "fantasy-ffffffffffffffff" / "evidence.json"
+    frozen.parent.mkdir()
+    duplicate.parent.mkdir()
+    frozen.write_text(json.dumps(payload), encoding="utf-8")
+    duplicate.write_text(json.dumps(payload), encoding="utf-8")
+
+    loaded, path = _find_semantic_artifact(
+        project_paths,
+        filename="evidence.json",
+        hash_field="evidence_sha256",
+        expected_sha256="a" * 64,
+        expected_relative_path="artifacts/fantasy-1111111111111111/evidence.json",
+    )
+
+    assert loaded == payload
+    assert path == frozen
 
 
 def test_v2_audit_solver_changes_context_identity_not_algorithm() -> None:

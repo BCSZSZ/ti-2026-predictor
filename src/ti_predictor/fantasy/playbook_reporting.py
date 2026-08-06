@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
-from typing import Any
+from typing import Any, Literal
 
 from ti_predictor.config import (
     load_rules,
@@ -55,6 +56,7 @@ class PlaybookEvidenceResult:
 def generate_group_playbook_evidence(
     *,
     as_of,
+    playbook_version: Literal["v1", "v2"] = "v1",
     paths: ProjectPaths = PATHS,
     progress=print,
 ) -> PlaybookEvidenceResult:
@@ -64,11 +66,14 @@ def generate_group_playbook_evidence(
     cutoff = as_utc(as_of)
     if cutoff is None:
         raise ValueError("as_of is required")
-    validation_path = paths.config / "models" / "fantasy-group-playbook-validation-v1.json"
-    rate_path = paths.config / "playbooks" / "group-rate-agnostic-v1.json"
-    primary_path = paths.config / "playbooks" / "group-primary-model-v1.json"
+    if playbook_version not in {"v1", "v2"}:
+        raise ValueError(f"unsupported Group playbook version: {playbook_version}")
+    validation_path = paths.config / "models" / f"fantasy-group-playbook-validation-{playbook_version}.json"
+    rate_path = paths.config / "playbooks" / f"group-rate-agnostic-{playbook_version}.json"
+    primary_path = paths.config / "playbooks" / f"group-primary-model-{playbook_version}.json"
     validation = load_playbook_validation_policy(validation_path)
     definitions = (load_playbook(rate_path), load_playbook(primary_path))
+    candidate_freeze = _verify_v2_candidate_freeze(paths, definitions) if playbook_version == "v2" else None
     if validation.as_of != cutoff.isoformat().replace("+00:00", "Z"):
         raise ValueError("P4 validation as_of differs from the explicit command cutoff")
     if any(definition.as_of != validation.as_of for definition in definitions):
@@ -153,6 +158,21 @@ def generate_group_playbook_evidence(
         as_of=cutoff,
         seed=20260813,
     )
+    if candidate_freeze is not None:
+        identities = candidate_freeze["identities"]
+        reconstructed = {
+            "data_snapshot_sha256": data_snapshot_sha256,
+            "series_pool_sha256": pool_result.semantic_hash,
+            "p3_source_scenario_sha256": scenario_set.semantic_hash,
+            "p3_evidence_sha256": p3_hash,
+        }
+        mismatches = {
+            key: {"frozen": identities[key], "reconstructed": value}
+            for key, value in reconstructed.items()
+            if identities.get(key) != value
+        }
+        if mismatches:
+            raise ValueError(f"v2 candidate source identities drifted: {mismatches}")
     stat_forecasts = build_stat_forecast_package(
         pool_result,
         scenario_set,
@@ -180,6 +200,13 @@ def generate_group_playbook_evidence(
     client_roll = snapshot.observed.get("fantasy_roll")
     if not isinstance(client_roll, dict):
         raise ValueError("P4 Rule snapshot does not contain normalized Fantasy Roll operations")
+    if candidate_freeze is not None:
+        identities = candidate_freeze["identities"]
+        if (
+            snapshot.snapshot_id != identities["rule_snapshot_id"]
+            or snapshot.snapshot_sha256 != identities["rule_snapshot_sha256"]
+        ):
+            raise ValueError("v2 candidate Rule snapshot identity drifted")
     roll_rules = build_group_roll_rules(rules, client_roll)
     context_finished = perf_counter()
 
@@ -217,6 +244,13 @@ def generate_group_playbook_evidence(
             "rule_snapshot_path": str(snapshot_path.relative_to(paths.root)).replace("\\", "/"),
         }
     )
+    if candidate_freeze is not None:
+        payload["candidate_freeze"] = {
+            "package_id": candidate_freeze["package_id"],
+            "file_sha256": sha256_file(paths.root / "docs/playbooks/group-roll/candidate-freeze-v2.json"),
+            "manual_route_independent_of_solver": candidate_freeze["manual_route_independent_of_solver"],
+            "solver_sources_used_for_derivation": candidate_freeze["solver_sources_used_for_derivation"],
+        }
     payload.pop("evidence_sha256", None)
     payload["evidence_sha256"] = sha256_json(payload)
 
@@ -240,7 +274,11 @@ def generate_group_playbook_evidence(
         else "publishable"
     )
     parameters = {
-        "phase": "p4_independent_human_playbooks",
+        "phase": (
+            "p4_independent_human_playbooks"
+            if playbook_version == "v1"
+            else "p3_v2_independent_standalone_validation"
+        ),
         "validation_policy_id": validation.policy_id,
         "validation_policy_sha256": validation.semantic_hash,
         "playbook_sha256": {definition.edition: definition.semantic_hash for definition in definitions},
@@ -271,7 +309,10 @@ def generate_group_playbook_evidence(
         data_sha256=hashes["data"],
         config_sha256=hashes["config"],
         git_commit=hashes["source"],
-        model={"name": "frozen_group_human_playbooks_v1", "parameters": parameters},
+        model={
+            "name": f"frozen_group_human_playbooks_{playbook_version}",
+            "parameters": parameters,
+        },
         profiles=[],
         outputs=[evidence_path.name],
         warnings=warnings,
@@ -284,3 +325,39 @@ def generate_group_playbook_evidence(
         evidence=payload,
         runtime_seconds=runtime,
     )
+
+
+def _verify_v2_candidate_freeze(
+    paths: ProjectPaths,
+    definitions,
+) -> dict[str, Any]:
+    freeze_path = paths.root / "docs/playbooks/group-roll/candidate-freeze-v2.json"
+    if not freeze_path.is_file():
+        raise FileNotFoundError(f"v2 validation requires the candidate freeze: {freeze_path}")
+    package = json.loads(freeze_path.read_text(encoding="utf-8"))
+    if package.get("manual_route_independent_of_solver") is not True:
+        raise ValueError("v2 candidate freeze lost its independent-manual boundary")
+    if package.get("solver_sources_used_for_derivation") != []:
+        raise ValueError("v2 candidate freeze contains a solver-derived source")
+
+    mismatches = []
+    for entry in package.get("tracked_files", ()):
+        relative = Path(str(entry["path"]))
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError(f"unsafe v2 candidate freeze path: {relative}")
+        target = paths.root / relative
+        if not target.is_file():
+            mismatches.append(f"{relative}: missing")
+        elif sha256_file(target) != entry["sha256"]:
+            mismatches.append(f"{relative}: file hash drifted")
+
+    frozen_playbooks = package.get("playbooks", {})
+    for definition in definitions:
+        entry = frozen_playbooks.get(definition.edition)
+        if not isinstance(entry, dict):
+            mismatches.append(f"{definition.edition}: missing freeze entry")
+        elif definition.semantic_hash != entry.get("semantic_sha256"):
+            mismatches.append(f"{definition.edition}: semantic hash drifted")
+    if mismatches:
+        raise ValueError("v2 candidate freeze drifted: " + "; ".join(mismatches))
+    return package

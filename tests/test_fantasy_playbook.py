@@ -15,8 +15,12 @@ from ti_predictor.fantasy.playbook import (
     playbook_snapshot,
 )
 from ti_predictor.fantasy.playbook_validation import (
+    ScoredSession,
+    SessionKey,
     StartingReadinessEvaluator,
+    _risk_overlay_evidence,
     build_starting_coverage_suite,
+    classify_risk_overlay,
     load_playbook_validation_policy,
     simulate_playbook_session,
 )
@@ -308,6 +312,105 @@ def test_validation_policy_and_nine_cell_coverage_are_frozen(
             if cell.role == role
         }
         assert len(cells) == 9
+
+
+def test_v2_validation_policy_is_fresh_and_v1_semantics_stay_frozen() -> None:
+    legacy = load_playbook_validation_policy(ROOT / "config/models/fantasy-group-playbook-validation-v1.json")
+    current = load_playbook_validation_policy(
+        ROOT / "config/models/fantasy-group-playbook-validation-v2.json"
+    )
+
+    assert legacy.semantic_hash == "19b505159bb7c42b93d952359932e26dd0434ff4ae9283738432784afe685865"
+    assert current.policy_id == "fantasy-group-playbook-validation-v2"
+    assert current.as_of == "2026-08-06T17:27:00Z"
+    assert current.seed != legacy.seed
+    assert current.runtime_target_seconds == 1800
+    assert current.risk_overlay_baseline == "mean-first"
+    assert current.risk_overlay_mean_retention_tolerances == {
+        "rate-agnostic": {"default-knee": 0.01, "downside-first": 0.02},
+        "primary-model": {"default-knee": 0.02, "downside-first": 0.05},
+    }
+
+
+def test_risk_overlay_gate_distinguishes_inactive_supported_and_failed() -> None:
+    assert (
+        classify_risk_overlay(
+            active=False,
+            mean_loss_upper95_fraction=0.0,
+            cvar10_improvement_lower95=0.0,
+            mean_retention_tolerance=0.02,
+        )
+        == "inactive"
+    )
+    assert (
+        classify_risk_overlay(
+            active=True,
+            mean_loss_upper95_fraction=0.015,
+            cvar10_improvement_lower95=1.0,
+            mean_retention_tolerance=0.02,
+        )
+        == "supported"
+    )
+    assert (
+        classify_risk_overlay(
+            active=True,
+            mean_loss_upper95_fraction=0.021,
+            cvar10_improvement_lower95=1.0,
+            mean_retention_tolerance=0.02,
+        )
+        == "failed"
+    )
+    assert (
+        classify_risk_overlay(
+            active=True,
+            mean_loss_upper95_fraction=0.01,
+            cvar10_improvement_lower95=0.0,
+            mean_retention_tolerance=0.02,
+        )
+        == "failed"
+    )
+
+
+def test_risk_overlay_evidence_keeps_sessions_paired() -> None:
+    baseline = [
+        ScoredSession(
+            key=SessionKey(model_id="model", case_id="case", replicate=replicate),
+            epsilon=0.0,
+            score=100.0,
+            selected_team_ids=(1, 2, 3),
+            situations=(),
+            action_sequence=("refresh",),
+        )
+        for replicate in range(12)
+    ]
+    improved = [
+        ScoredSession(
+            key=item.key,
+            epsilon=0.0,
+            score=101.0,
+            selected_team_ids=(1, 2, 3),
+            situations=(),
+            action_sequence=("core:23",),
+        )
+        for item in baseline
+    ]
+    result = _risk_overlay_evidence(
+        improved,
+        baseline,
+        preference="downside-first",
+        baseline_preference="mean-first",
+        mean_retention_tolerance=0.02,
+        alpha=0.1,
+        confidence_level=0.95,
+        replicates=100,
+        seed=17,
+    )
+
+    assert result["sample_count"] == 12
+    assert result["action_disagreement_frequency"] == 1.0
+    assert result["mean_difference"] == 1.0
+    assert result["cvar10_difference"] == 1.0
+    assert result["status"] == "supported"
 
 
 def test_complete_playbook_session_is_deterministic(

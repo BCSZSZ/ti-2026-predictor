@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "policy_id": "fantasy-group-playbook-validation-v2",
+  "period": "group",
+  "as_of": "2026-08-06T17:27:00Z",
+  "seed": 2026080704,
+  "source_scenario_policy_id": "fantasy-group-scenarios-v1",
+  "scenario_subset_count": 512,
+  "scenario_subset_sampling": "fixed_without_replacement",
+  "full_session_replicates_per_stratum": 64,
+  "screening_replicates_per_stratum": 16,
+  "confirmation_replicates_per_stratum": 48,
+  "ablation_replicates_per_stratum": 48,
+  "rolls_per_session": 40,
+  "candidate_rule_counts": [8, 12, 16],
+  "published_rule_count": 12,
+  "risk_preference": "default-knee",
+  "risk_overlay_baseline": "mean-first",
+  "risk_overlay_mean_retention_tolerances": {
+    "rate-agnostic": {"default-knee": 0.01, "downside-first": 0.02},
+    "primary-model": {"default-knee": 0.02, "downside-first": 0.05}
+  },
+  "mean_retention_epsilons": [0.0, 0.01, 0.02, 0.05],
+  "cvar_alpha": 0.1,
+  "common_session_frequency": 0.1,
+  "baseline_material_loss": 0.1,
+  "strict_material_loss": 0.05,
+  "confidence_level": 0.95,
+  "bootstrap_replicates": 2000,
+  "primary_model": "client-weight-primary-v1",
+  "transition_variants": ["flattened-weights-v1", "sharpened-weights-v1"],
+  "release_scope": {
+    "rate-agnostic": [
+      "client-weight-primary-v1",
+      "flattened-weights-v1",
+      "sharpened-weights-v1"
+    ],
+    "primary-model": ["client-weight-primary-v1"]
+  },
+  "sensitivity_scope": {
+    "primary-model": ["flattened-weights-v1", "sharpened-weights-v1"]
+  },
+  "runtime_target_seconds": 1800,
+  "runtime_hard_ceiling_seconds": 3600,
+  "stop_new_computation_seconds": 3300
+}

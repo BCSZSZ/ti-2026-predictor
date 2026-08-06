@@ -25,6 +25,7 @@ from ti_predictor.fantasy.roll import (
     BannerState,
     EmblemState,
     GroupRollState,
+    RefreshRollAction,
     RollOffer,
     build_group_roll_rules,
 )
@@ -38,6 +39,14 @@ def frozen_playbooks() -> tuple[PlaybookDefinition, PlaybookDefinition]:
     return (
         load_playbook(ROOT / "config/playbooks/group-rate-agnostic-v1.json"),
         load_playbook(ROOT / "config/playbooks/group-primary-model-v1.json"),
+    )
+
+
+@pytest.fixture
+def v2_playbooks() -> tuple[PlaybookDefinition, PlaybookDefinition]:
+    return (
+        load_playbook(ROOT / "config/playbooks/group-rate-agnostic-v2.json"),
+        load_playbook(ROOT / "config/playbooks/group-primary-model-v2.json"),
     )
 
 
@@ -146,6 +155,29 @@ def test_frozen_playbooks_obey_human_complexity_contract(frozen_playbooks) -> No
     assert rate_agnostic.origin == primary.origin
 
 
+def test_v2_playbooks_freeze_independent_narrowed_candidates(v2_playbooks) -> None:
+    rate_agnostic, primary = v2_playbooks
+
+    assert rate_agnostic.as_of == primary.as_of == "2026-08-06T17:27:00Z"
+    assert rate_agnostic.source_evidence_sha256 == primary.source_evidence_sha256
+    assert rate_agnostic.candidate_rule_counts == primary.candidate_rule_counts == (8, 12, 16)
+    assert [rule.handler for rule in rate_agnostic.rules[:3]] == [
+        "increase_one_quality",
+        "mid_singleton_priority_repair",
+        "late_nonnegative_support",
+    ]
+    rate_published = {rule.handler for rule in rate_agnostic.rules[:12]}
+    assert "precise_t2_quality_early" not in rate_published
+    assert "balanced_two_up_one_down_early" not in rate_published
+    assert "broad_all_t1_quality_early" in rate_published
+    assert [rule.handler for rule in primary.rules[:2]] == [
+        "precise_quality_positive_mean",
+        "late_positive_mean",
+    ]
+    assert "targeted_green_conditional_mean" not in {rule.handler for rule in primary.rules[:12]}
+    assert all(len(rule.visible_conditions) <= 3 for book in v2_playbooks for rule in book.rules)
+
+
 def test_playbook_rejects_non_nested_candidate_frontier(frozen_playbooks) -> None:
     payload = frozen_playbooks[0].model_dump(mode="json")
     payload["candidate_rule_counts"] = [8, 10, 16]
@@ -169,6 +201,18 @@ def test_point_grade_and_bootstrap_marker_are_independent(rules_payload) -> None
     assert core_red[2].grade == "conditional-reroll"
 
 
+def test_stat_priorities_fail_closed_on_proxy_or_incomplete_provenance(rules_payload) -> None:
+    forecasts, bootstrap = _stat_packages(rules_payload)
+    forecasts["rows"][0]["provenance"] = "proxy"
+    with pytest.raises(ValueError, match="exact or accepted derived"):
+        build_stat_priorities(forecasts, bootstrap)
+
+    forecasts, bootstrap = _stat_packages(rules_payload)
+    forecasts["rows"][0]["complete_block_provenance_coverage"] = 0.99
+    with pytest.raises(ValueError, match="complete provenance coverage"):
+        build_stat_priorities(forecasts, bootstrap)
+
+
 def test_rate_agnostic_rule_order_prefers_non_decreasing_quality(
     frozen_playbooks, rules_payload, playbook_roll_rules
 ) -> None:
@@ -180,6 +224,41 @@ def test_rate_agnostic_rule_order_prefers_non_decreasing_quality(
     assert decision.action.operation_id == 23
     assert decision.metrics is not None
     assert decision.metrics.minimum_delta >= 0.0
+
+
+def test_v2_rate_agnostic_broad_t1_quality_is_early_only(
+    v2_playbooks,
+    rules_payload,
+    playbook_roll_rules,
+) -> None:
+    policy = _policy(v2_playbooks[0], rules_payload, playbook_roll_rules)
+    baseline = _low_state(playbook_roll_rules)
+    offer = RollOffer((9, 12, 15))
+    early = GroupRollState(baseline.banners, offer, remaining_rolls=26)
+    middle = GroupRollState(baseline.banners, offer, remaining_rolls=25)
+
+    early_decision = policy.decide(early, candidate_rule_count=8)
+    middle_decision = policy.decide(middle, candidate_rule_count=8)
+
+    assert early_decision.rule_id == "R2A06"
+    assert isinstance(middle_decision.action, RefreshRollAction)
+
+
+def test_v2_primary_late_gate_precedes_generic_quality_increment(
+    v2_playbooks,
+    rules_payload,
+    playbook_roll_rules,
+) -> None:
+    policy = _policy(v2_playbooks[1], rules_payload, playbook_roll_rules)
+    baseline = _low_state(playbook_roll_rules)
+    late = GroupRollState(baseline.banners, baseline.offer, remaining_rolls=5)
+
+    decision = policy.decide(late, risk_preference="default-knee")
+
+    assert decision.rule_id == "P2M02"
+    assert decision.metrics is not None
+    assert decision.metrics.expected_relative_gain is not None
+    assert decision.metrics.expected_relative_gain > 0.02
 
 
 def test_rule_ablation_moves_to_next_frozen_rule(

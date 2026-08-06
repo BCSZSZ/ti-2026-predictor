@@ -1,6 +1,6 @@
 # TI 2026 Group 40-Roll playbook v2 implementation
 
-Status: P0-P1 complete; P2 current-baseline and independent-manual work is next
+Status: P0-P2 complete; P3 standalone validation is next
 
 - Plan freeze date: 2026-08-07
 - Starting `main`: `5d701c9e56bfb73a3436b85273f404946ed628bc`
@@ -149,6 +149,11 @@ reclassified or omitted.
 - nested 8/12/16 candidates and risk overlays are preregistered;
 - rule/config/manual semantic hashes are frozen before P3 validation starts;
 - production manual modules do not import the solver or cross-audit routes.
+
+Result: complete. The current-rule/current-`as_of` baseline was reproduced without a replay
+redownload, both v2 candidates were independently frozen with fail-closed provenance and a
+self-checking hash manifest, and no P5/P6 action source entered derivation. See
+[`group-roll-playbook-v2-p2-independent-freeze-2026-08-07.md`](../reports/group-roll-playbook-v2-p2-independent-freeze-2026-08-07.md).
 
 ## P3 — Independent standalone validation
 

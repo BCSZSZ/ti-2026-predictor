@@ -200,7 +200,8 @@ implementation correction recorded before any P4 grade or manual rule was genera
 
 ## Frozen production evidence
 
-- Evidence run: `fantasy-f850b69f72575ba6`.
+- Clean-commit evidence run: `fantasy-f6f311d72ccbea4a`.
+- Recorded Git commit: `362ddb7b97bd1e6c26192b7cc3a8a40003fe4331`.
 - Explicit cutoff: `2026-08-06T08:15:00Z`.
 - Seed: `20260813`.
 - Scenario policy SHA-256:
@@ -266,32 +267,33 @@ to derive P4 manual rules.
 7. Unknown Traits, malformed Coach evidence, Scenario-misaligned Coach candidates, invalid Group
    capacity and non-hex snapshot identities fail closed.
 8. All five P1-native Stats occur in the 42-row formal package only under exact provenance.
-9. Two consecutive complete production runs reused the same immutable artifact successfully and
-   reproduced every semantic hash above. Runtime-only measurements are intentionally kept outside
-   the deterministic evidence payload.
+9. Two consecutive complete validation runs reused the same immutable artifact successfully. A
+   third run from clean commit `362ddb7` reproduced every semantic/file hash above and recorded
+   that exact commit in `run.json`. Runtime-only measurements remain outside the deterministic
+   evidence payload.
 10. The focused P1/P2/P3 scoring/transition suite passes `26` tests. The complete offline suite
     collects `97`: `96 passed`, with only the opt-in cached-replay integration skipped. Ruff finds
     all `52` Python files formatted and clean.
 
 ## Runtime evidence
 
-Two consecutive full cached-snapshot runs on the implementation host measured:
+Two consecutive validation runs plus the clean-commit run on the implementation host measured:
 
-| Component | Run 1 | Run 2 |
-| --- | ---: | ---: |
-| Series-block build | 11.371s | 11.337s |
-| 8,192 common Scenarios | 0.079s | 0.079s |
-| 42 Stat Forecasts | 0.577s | 0.575s |
-| Terminal smoke | 0.034s | 0.034s |
-| 400×512 clustered bootstrap | 3.012s | 3.010s |
-| Total | 15.073s | 15.035s |
+| Component | Validation 1 | Validation 2 | Clean commit |
+| --- | ---: | ---: | ---: |
+| Series-block build | 11.371s | 11.337s | 11.399s |
+| 8,192 common Scenarios | 0.079s | 0.079s | 0.078s |
+| 42 Stat Forecasts | 0.577s | 0.575s | 0.564s |
+| Terminal smoke | 0.034s | 0.034s | 0.034s |
+| 400×512 clustered bootstrap | 3.012s | 3.010s | 3.002s |
+| Total | 15.073s | 15.035s | 15.076s |
 
 This is about `0.14%` of the three-hour target and far below the five-hour safety ceiling. It is a
 P3 foundation benchmark, not a claim about P4 40-Roll manual validation or P5 solver runtime.
 
 ## Audit and project review
 
-- `ti audit fantasy-f850b69f72575ba6` reports `publishable: true`, with only governed warnings for
+- `ti audit fantasy-f6f311d72ccbea4a` reports `publishable: true`, with only governed warnings for
   exact Swiss execution, cross-role correlation, unavailable Coach scenarios, known Coach First-
   Blood conflicts, excluded evidence tiers and rejected isotonic calibration.
 - No live network is used by tests or the P3 command. The reference run reads only captures locally

@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "package_id": "ti2026-group-roll-playbook-evidence-v1",
+  "period": "group",
+  "as_of": "2026-08-06T08:15:00Z",
+  "manual_route_independent_of_solver": true,
+  "release_status": {
+    "rate-agnostic": "draft",
+    "primary-model": "draft"
+  },
+  "release_reasons": {
+    "rate-agnostic": "P4 has five baseline-10-percent Common failures and P6 is partial",
+    "primary-model": "P4 rule ablations fail for ten of twelve published rules and P6 is partial"
+  },
+  "identities": {
+    "data_snapshot_sha256": "931cd7e06cefc5fbae44025d4b31c3e0f15c583740bc989e2fa09152d084e203",
+    "series_pool_sha256": "47bb84b129cb503dcf52ddec2bdd1312b24a3ed02f1fb8f63f532802b531786d",
+    "rule_snapshot_id": "20260806T081345Z-702ddf2a6953",
+    "rule_snapshot_sha256": "702ddf2a6953f383895efdfa3e45460c770e7c3c37e71d6a2b1d68e547a3235f",
+    "p3_source_scenario_sha256": "872533c3a40cb8a23bb90158234fca40294b940631805ae192d0813ec699e6a2",
+    "p3_evidence_sha256": "f42517fa5c0c596f2b15397ad2206136d48b0ff7fef578e131b4a919aa7fd9b8",
+    "p4_evidence_sha256": "a0361a228629c46663fe844387af7f71eea37113838b3036dc6181dd227ad857",
+    "p5_clean_evidence_sha256": "eb6a399d19653377ec20757e17c195cd3bac32e66b2dad2bddd411abb82e80d7",
+    "p6_evidence_sha256": "b500065b609bba0cdc99aead49ad16fdd8d90bc27803ce5977bee2b1acba580d"
+  },
+  "policies": {
+    "p3_sha256": "e28876f6573afcdd261c044c215ece5fbbf6bc9ff0cf02324defcf445b961065",
+    "p4_sha256": "19b505159bb7c42b93d952359932e26dd0434ff4ae9283738432784afe685865",
+    "p5_sha256": "9466049f426e10c03926152c9cf60ecd9a4b96c155c19389456f2a5b73e5d3d9",
+    "p6_sha256": "803ffeb46c1b340badeeb213a8b1229eba3b7e66dfe5160a643c04206c0e7b35"
+  },
+  "artifacts": [
+    {
+      "phase": "p3",
+      "run_id": "fantasy-2596f2831d0ba348",
+      "path": "artifacts/fantasy-2596f2831d0ba348/group-fantasy-evidence.json",
+      "file_sha256": "dfc07e05e8d3425cdd3d2a50eb58be28c031756be69f9ae79dc6e9fe7da89d80"
+    },
+    {
+      "phase": "p4",
+      "run_id": "fantasy-d9e35d3e81c5d466",
+      "path": "artifacts/fantasy-d9e35d3e81c5d466/group-playbook-evidence.json",
+      "file_sha256": "25e25d92649689cbd1201939a606950b30ff79286626dc08ec47b859e89da89d"
+    },
+    {
+      "phase": "p5-clean",
+      "run_id": "fantasy-afa5cb6f3b665fd1",
+      "path": "artifacts/fantasy-afa5cb6f3b665fd1/group-solver-evidence.json",
+      "file_sha256": "ee16553b2fbd109438c1b92a2102714437f0acb82d13006992a6cd8753264f20"
+    },
+    {
+      "phase": "p6",
+      "run_id": "fantasy-9dd6d0012634bda5",
+      "path": "artifacts/fantasy-9dd6d0012634bda5/group-playbook-cross-audit.json",
+      "file_sha256": "09a0f57e074eb9acd3a30a63f9889d470521401694e721230063b43d0dd57ccb"
+    }
+  ],
+  "tracked_files": [
+    {
+      "path": "config/models/fantasy-group-scenarios-v1.json",
+      "sha256": "e28876f6573afcdd261c044c215ece5fbbf6bc9ff0cf02324defcf445b961065"
+    },
+    {
+      "path": "config/models/fantasy-group-playbook-validation-v1.json",
+      "sha256": "efaf52c3b774bc412db07a324758b15bd61d1b956246e9ce6295bc2cd092db1b"
+    },
+    {
+      "path": "config/models/fantasy-group-branch-capped-solver-v1.json",
+      "sha256": "cb79f45fabe802930dc937dba9effc137be114453bd9b55d2d2a936b163ff5da"
+    },
+    {
+      "path": "config/models/fantasy-group-read-only-cross-audit-v1.json",
+      "sha256": "d37399ffd6d03f8aeee4e45f0717ed913b27a47dcd340f67a145a8bf96fa3050"
+    },
+    {
+      "path": "config/playbooks/group-rate-agnostic-v1.json",
+      "sha256": "c472e65c35837f54ee32dcf171ff7ccf6f53257bf276c855669ad95c37688cfa"
+    },
+    {
+      "path": "config/playbooks/group-primary-model-v1.json",
+      "sha256": "b11e398b44c512bc34ef55d087a0afd7c08bb8287909df1d7aa26c405d439b93"
+    },
+    {
+      "path": "docs/playbooks/group-roll/playbook-rate-agnostic-v1.md",
+      "sha256": "5db6e0ee6458701b6af0e6ed0d14ca7a7698372f18f96fab752af04bfce3f758"
+    },
+    {
+      "path": "docs/playbooks/group-roll/playbook-primary-model-v1.md",
+      "sha256": "9f00b5fabad27195e87c1c76535c1bcabf50780cd81ab6f6e3a0e9b92623fe1b"
+    },
+    {
+      "path": "docs/playbooks/group-roll/stat-quality-trait-evidence-v1.md",
+      "sha256": "e97c421e4e8bd1cd1dd3e2c9626545c6649768f1c37f1cd7d7e2a26cb6bab5cd"
+    },
+    {
+      "path": "docs/reports/p3-group-scenarios-terminal-valuation-2026-08-06.md",
+      "sha256": "1596e0228d36b574e63c033a4b9c94dc069818ee5a855a7a3be3572ec52d78c8"
+    },
+    {
+      "path": "docs/reports/p4-independent-human-playbooks-2026-08-06.md",
+      "sha256": "e6589de2b86591f08ba1ea42759cec9d6b1568df325775cfa9022ffcf8c9a4e6"
+    },
+    {
+      "path": "docs/reports/p5-branch-capped-solver-2026-08-06.md",
+      "sha256": "35aaf504a6bef3e658a7f25a2b8e10588178d45f164b9abdbdebb73318f6dda6"
+    },
+    {
+      "path": "docs/reports/p6-read-only-playbook-cross-audit-2026-08-06.md",
+      "sha256": "0d55a68dbf0afab6d306615b0b7bbfffddf6604f7be61277ae60f6172a2ed727"
+    },
+    {
+      "path": "docs/plans/group-roll-playbook-v1-implementation.md",
+      "sha256": "5eb3d8da96da8a6662792f2a17f38536d294adcbaf9744fbdca0798a044bd2d1"
+    }
+  ],
+  "p6_audit": {
+    "status": "partial-draft",
+    "completed_rows": 9,
+    "planned_rows": 108,
+    "p4_p5_overlap_count": 5,
+    "p4_p6_overlap_count": 0,
+    "p5_p6_overlap_count": 0,
+    "baseline_10_percent_exception_count": 0,
+    "strict_5_percent_warning_count": 2
+  },
+  "limitations": [
+    "Both Human Roll playbooks remain draft under their independent P4 gates",
+    "P5 failed its effectiveness gate and its clean run has runtime-dependent completion coverage",
+    "P6 completed only 9 of 108 conditional rows",
+    "Main Roll policy and automatic Dota interaction remain unsupported"
+  ]
+}

@@ -13,6 +13,11 @@
 - [P5 求解器报告](../../reports/p5-branch-capped-solver-2026-08-06.md)：只读记录限枝 solver 的
   条件 oracle、7/216 完整配对、约 29.58 小时全量投影和失败 escalation review；它没有改写
   本目录的任何规则。
+- [P6 只读交叉审计](../../reports/p6-read-only-playbook-cross-audit-2026-08-06.md)：显式留出情景与
+  P4/P5 交集均为 0，但只完成 9/108 行；已完成行中有 2 个 5% strict 警告、0 个
+  10% 重大例外。审计状态是 `partial-draft`，不升级任何手册。
+- [v1 证据包清单](evidence-package-v1.json)：固定 P3/P4/P5/P6 产物、两份手册、数据/规则
+  身份与当前发布标签。
 
 `draft` 的含义不是“所有建议都错”，而是整版尚未达到预先约定的证明门槛。不要把通过的
 个别规则拼成一份未经验证的新手册；任何 v2 都必须在不看 P5 求解器输出的独立路线中重新

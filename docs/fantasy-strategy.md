@@ -14,6 +14,10 @@
 - P5 限枝 solver 已完成失败门禁审查，见
   [`reports/p5-branch-capped-solver-2026-08-06.md`](reports/p5-branch-capped-solver-2026-08-06.md)。
   它保留为实验性反例/本地 advisor 内核，不能覆盖人工手册，也不能称为可靠或全局最优。
+- P6 只读交叉审计见
+  [`reports/p6-read-only-playbook-cross-audit-2026-08-06.md`](reports/p6-read-only-playbook-cross-audit-2026-08-06.md)。
+  它的留出索引与 P4/P5 都不交，但只完成 9/108 行，因此只能披露两个 5% 严格警告，
+  不能补完手册或升级两个 `draft` 标签。
 
 ## 1. 参考作业做了什么
 

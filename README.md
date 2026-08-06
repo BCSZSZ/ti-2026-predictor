@@ -20,6 +20,7 @@ uv run ti forecast group --as-of 2026-08-12T23:00:00Z --profile all
 uv run ti fantasy recommend --as-of 2026-08-12T23:00:00Z --period group --profile all
 uv run ti fantasy group-evidence --as-of 2026-08-12T23:00:00Z --bootstrap
 uv run ti fantasy group-playbook-evidence --as-of 2026-08-06T08:15:00Z
+uv run ti fantasy group-cross-audit --as-of 2026-08-06T08:15:00Z
 uv run ti web
 ```
 
@@ -65,11 +66,15 @@ P4 的两版人工手册、完整 Stat/Quality/Trait 表和当前发布状态见
 [Group Roll 手册索引](docs/playbooks/group-roll/README.md)。两版 v1 都已完成独立 40-Roll
 验证，但目前均为 `draft`：主模型版通过 10% Common 损失线却未通过全部规则消融，生成率
 无关版另有 5 个 Common 失败。`group-playbook-evidence` 复现这项验证，不调用 P5 solver。
-P5 限枝参考求解器也已实装并按冻结的一小时门禁运行；它只完成 7/216 个完整配对单元，
+P5 限枝参考求解器也已实装并按冻结的一小时门禁运行；首次完成 7/216 个完整配对单元，
+clean 复现因运行时截断只完成 4/216，但共有行与 18 个 oracle 逐值一致。
 Common unresolved 为 100%，且这 7 条上不劣于 one-step greedy 的门禁失败，因此状态为
 `failed-escalation-review-required`，不会自动启用更复杂的全 planner。命令
 `fantasy group-solver-evidence` 只用于实验性审计，详见
 [P5 报告](docs/reports/p5-branch-capped-solver-2026-08-06.md)。
+P6 只读交叉审计明确排除 P4/P5 验证索引，但广分支 horizon=3 使 30 分钟目标内只完成
+9/108 行。已完成行没有 10% 重大例外，但有 2 个 5% strict 警告；两版手册仍是
+`draft`。详见 [P6 报告](docs/reports/p6-read-only-playbook-cross-audit-2026-08-06.md)。
 完整操作顺序、主赛事种子导入和状态含义见 [docs/runbook.md](docs/runbook.md)。模型的时间
 切分、覆盖门槛和三种目标见 [docs/modeling.md](docs/modeling.md)。
 

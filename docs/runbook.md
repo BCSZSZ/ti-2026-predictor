@@ -101,6 +101,18 @@ diagnostics but only 7/216 full-session units; its status is
 and do not enable the dormant Full configuration planner from this failure. See the
 [P5 report](reports/p5-branch-capped-solver-2026-08-06.md).
 
+The P6 read-only audit is a separate command and never rewrites either manual:
+
+```powershell
+uv run ti fantasy group-cross-audit --as-of 2026-08-06T08:15:00Z
+```
+
+It reconstructs P4/P5 validation indexes, draws a P6 Scenario subset explicitly disjoint from
+both, and compares the frozen manual, solver and conditional exact oracle. The v1 run completed
+9/108 rows before its 30-minute projection stop; both release labels remain `draft`. The artifact
+is a counterexample audit, not a replacement for P4 full-session validation. See the
+[P6 report](reports/p6-read-only-playbook-cross-audit-2026-08-06.md).
+
 The OpenDota `data sync` and `data fantasy-history` commands stop before exceeding their per-run
 `--request-limit` (default 5,000), and keyed
 attempts are reserved in `data/cache/opendota_api_usage.json` before the network call. A repeated

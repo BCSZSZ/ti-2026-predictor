@@ -7,6 +7,7 @@ not import, invoke, or inspect the Reference Roll solver.
 from __future__ import annotations
 
 import hashlib
+import json
 import random
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
@@ -125,6 +126,27 @@ class PlaybookValidationPolicy(StrictModel):
         return sha256_json(self.model_dump(mode="json"))
 
 
+class PlaybookValidationPolicyV2(PlaybookValidationPolicy):
+    risk_overlay_baseline: Literal["mean-first"]
+    risk_overlay_mean_retention_tolerances: dict[str, dict[str, float]]
+
+    @model_validator(mode="after")
+    def validate_v2_contract(self) -> PlaybookValidationPolicyV2:
+        if self.policy_id != "fantasy-group-playbook-validation-v2":
+            raise ValueError("v2 risk-overlay validation requires the v2 policy identity")
+        if self.risk_preference != "default-knee":
+            raise ValueError("v2 published-rule validation must use the default-knee preference")
+        expected_editions = {"rate-agnostic", "primary-model"}
+        if set(self.risk_overlay_mean_retention_tolerances) != expected_editions:
+            raise ValueError("v2 risk-overlay tolerances require both playbook editions")
+        for edition, tolerances in self.risk_overlay_mean_retention_tolerances.items():
+            if set(tolerances) != {"default-knee", "downside-first"}:
+                raise ValueError(f"{edition} requires default-knee and downside-first tolerances")
+            if any(value < 0.0 or value >= 1.0 for value in tolerances.values()):
+                raise ValueError("risk-overlay mean-retention tolerances must be in [0, 1)")
+        return self
+
+
 @dataclass(frozen=True)
 class RoleCoverageCell:
     role: str
@@ -240,7 +262,14 @@ class ScoredSession:
 
 
 def load_playbook_validation_policy(path) -> PlaybookValidationPolicy:
-    return PlaybookValidationPolicy.model_validate_json(path.read_text(encoding="utf-8"))
+    text = path.read_text(encoding="utf-8")
+    payload = json.loads(text)
+    policy_type = (
+        PlaybookValidationPolicyV2
+        if "risk_overlay_mean_retention_tolerances" in payload
+        else PlaybookValidationPolicy
+    )
+    return policy_type.model_validate_json(text)
 
 
 def _seed(base_seed: int, *parts: Any) -> int:
@@ -623,6 +652,86 @@ def _paired_vectors(
     return [left_map[key].score for key in keys], [right_map[key].score for key in keys]
 
 
+def classify_risk_overlay(
+    *,
+    active: bool,
+    mean_loss_upper95_fraction: float,
+    cvar10_improvement_lower95: float,
+    mean_retention_tolerance: float,
+) -> Literal["inactive", "supported", "failed"]:
+    """Classify a frozen modifier without treating an identical policy as proven improvement."""
+
+    if not active:
+        return "inactive"
+    if mean_loss_upper95_fraction <= mean_retention_tolerance and cvar10_improvement_lower95 > 0.0:
+        return "supported"
+    return "failed"
+
+
+def _risk_overlay_evidence(
+    overlay: Sequence[ScoredSession],
+    baseline: Sequence[ScoredSession],
+    *,
+    preference: str,
+    baseline_preference: str,
+    mean_retention_tolerance: float,
+    alpha: float,
+    confidence_level: float,
+    replicates: int,
+    seed: int,
+) -> dict[str, Any]:
+    overlay_map = _score_map(overlay)
+    baseline_map = _score_map(baseline)
+    if set(overlay_map) != set(baseline_map):
+        raise ValueError("risk-overlay validation requires identical paired session keys")
+    keys = sorted(overlay_map, key=lambda key: (key.model_id, key.case_id, key.replicate))
+    action_disagreements = sum(
+        overlay_map[key].action_sequence != baseline_map[key].action_sequence for key in keys
+    )
+    active = action_disagreements > 0
+    if not active and any(overlay_map[key].score != baseline_map[key].score for key in keys):
+        raise ValueError("inactive risk overlays must preserve paired terminal scores")
+    overlay_values = [overlay_map[key].score for key in keys]
+    baseline_values = [baseline_map[key].score for key in keys]
+    improvement = _bootstrap_difference_interval(
+        overlay_values,
+        baseline_values,
+        alpha=alpha,
+        confidence_level=confidence_level,
+        replicates=replicates,
+        seed=seed,
+    )
+    retention = _conditional_loss_bounds(
+        overlay_values,
+        baseline_values,
+        alpha=alpha,
+        confidence_level=confidence_level,
+        replicates=replicates,
+        seed=seed + 1,
+    )
+    status = classify_risk_overlay(
+        active=active,
+        mean_loss_upper95_fraction=retention["mean_loss_upper95_fraction"],
+        cvar10_improvement_lower95=improvement["cvar10_lower_one_sided"],
+        mean_retention_tolerance=mean_retention_tolerance,
+    )
+    return {
+        "risk_preference": preference,
+        "paired_baseline": baseline_preference,
+        "sample_count": len(keys),
+        "active": active,
+        "action_disagreement_frequency": action_disagreements / len(keys),
+        "mean_retention_tolerance": mean_retention_tolerance,
+        "mean_difference": improvement["mean_difference"],
+        "mean_lower_one_sided": improvement["mean_lower_one_sided"],
+        "mean_loss_fraction": retention["mean_loss_fraction"],
+        "mean_loss_upper95_fraction": retention["mean_loss_upper95_fraction"],
+        "cvar10_difference": improvement["cvar10_difference"],
+        "cvar10_lower_one_sided": improvement["cvar10_lower_one_sided"],
+        "status": status,
+    }
+
+
 def _trace_summary(traces: Sequence[SessionTrace]) -> dict[str, Any]:
     activations: Counter[str] = Counter()
     sessions_with: Counter[str] = Counter()
@@ -719,6 +828,72 @@ def validate_frozen_playbooks(
                         f"epsilon={epsilon:.2f}"
                     )
                     scores[(*key, epsilon)] = [scorer.score(trace, epsilon) for trace in confirmation]
+
+    risk_overlay_rows = []
+    if isinstance(validation, PlaybookValidationPolicyV2):
+        risk_scores: dict[tuple[str, str, str], list[ScoredSession]] = {}
+        confirmation_range = range(
+            validation.screening_replicates_per_stratum,
+            validation.full_session_replicates_per_stratum,
+        )
+        for edition, policy in policies.items():
+            for model_id in validation.release_scope[edition]:
+                risk_scores[(edition, model_id, validation.risk_preference)] = scores[
+                    (edition, 12, model_id, 0.0)
+                ]
+                preferences = {
+                    validation.risk_overlay_baseline,
+                    *validation.risk_overlay_mean_retention_tolerances[edition],
+                }
+                for preference in sorted(preferences - {validation.risk_preference}):
+                    notify(f"P4 risk overlay {edition} {model_id} preference={preference}")
+                    batch = [
+                        simulate_playbook_session(
+                            policy,
+                            case,
+                            model_id=model_id,
+                            replicate=replicate,
+                            seed=validation.seed,
+                            candidate_rule_count=12,
+                            risk_preference=preference,
+                        )
+                        for case in coverage
+                        for replicate in confirmation_range
+                    ]
+                    risk_scores[(edition, model_id, preference)] = [
+                        scorer.score(trace, 0.0) for trace in batch
+                    ]
+
+        for edition in policies:
+            baseline_preference = validation.risk_overlay_baseline
+            for model_id in validation.release_scope[edition]:
+                baseline = risk_scores[(edition, model_id, baseline_preference)]
+                for preference, tolerance in validation.risk_overlay_mean_retention_tolerances[
+                    edition
+                ].items():
+                    risk_overlay_rows.append(
+                        {
+                            "edition": edition,
+                            "model_id": model_id,
+                            **_risk_overlay_evidence(
+                                risk_scores[(edition, model_id, preference)],
+                                baseline,
+                                preference=preference,
+                                baseline_preference=baseline_preference,
+                                mean_retention_tolerance=tolerance,
+                                alpha=validation.cvar_alpha,
+                                confidence_level=validation.confidence_level,
+                                replicates=validation.bootstrap_replicates,
+                                seed=_seed(
+                                    validation.seed,
+                                    "risk-overlay",
+                                    edition,
+                                    model_id,
+                                    preference,
+                                ),
+                            ),
+                        }
+                    )
 
     summaries = []
     for (edition, candidate_count, model_id, epsilon), batch in scores.items():
@@ -932,15 +1107,18 @@ def validate_frozen_playbooks(
             for row in scoped_ablations
             if not (row["no_loss_supported"] and row["strict_point_improvement"])
         ]
+        risk_overlay_failures = [
+            row for row in risk_overlay_rows if row["edition"] == edition and row["status"] == "failed"
+        ]
         if not scoped_losses:
             status = "unresolved"
-        elif baseline_failures or ablation_failures:
+        elif baseline_failures or ablation_failures or risk_overlay_failures:
             status = "draft"
         elif strict_failures:
             status = "baseline-reliable"
         else:
             status = "strict-reliable"
-        gate[edition] = {
+        gate_row = {
             "p4_status": status,
             "common_situation_count": len(scoped_losses),
             "baseline_10_percent_failure_count": len(baseline_failures),
@@ -956,6 +1134,28 @@ def validate_frozen_playbooks(
             ],
             "ablation_failures": [row["rule_id"] for row in ablation_failures],
         }
+        if isinstance(validation, PlaybookValidationPolicyV2):
+            gate_row.update(
+                {
+                    "risk_overlay_failure_count": len(risk_overlay_failures),
+                    "risk_overlay_failures": [
+                        {
+                            "model_id": row["model_id"],
+                            "risk_preference": row["risk_preference"],
+                        }
+                        for row in risk_overlay_failures
+                    ],
+                    "inactive_risk_overlays": [
+                        {
+                            "model_id": row["model_id"],
+                            "risk_preference": row["risk_preference"],
+                        }
+                        for row in risk_overlay_rows
+                        if row["edition"] == edition and row["status"] == "inactive"
+                    ],
+                }
+            )
+        gate[edition] = gate_row
 
     coverage_payload = [
         {
@@ -1015,5 +1215,27 @@ def validate_frozen_playbooks(
             "Coach remains unavailable/excluded and is not interpreted as a zero-bonus title.",
         ],
     }
+    if isinstance(validation, PlaybookValidationPolicyV2):
+        payload.update(
+            {
+                "replicate_partitions": {
+                    "screening": [0, validation.screening_replicates_per_stratum - 1],
+                    "confirmation": [
+                        validation.screening_replicates_per_stratum,
+                        validation.full_session_replicates_per_stratum - 1,
+                    ],
+                    "ablation": [
+                        validation.full_session_replicates_per_stratum
+                        - validation.ablation_replicates_per_stratum,
+                        validation.full_session_replicates_per_stratum - 1,
+                    ],
+                },
+                "risk_overlay_validation": risk_overlay_rows,
+            }
+        )
+        payload["limitations"].append(
+            "An inactive risk preference is disclosed separately and is not claimed as a "
+            "CVaR-improving modifier."
+        )
     payload["evidence_sha256"] = sha256_json(payload)
     return payload

@@ -4,7 +4,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 import typer
 
@@ -514,8 +514,15 @@ def fantasy_group_playbook_evidence(
         str,
         typer.Option("--as-of", help="P4 冻结人工手册验证截止时间，必须带时区。"),
     ],
+    playbook_version: Annotated[
+        Literal["v1", "v2"],
+        typer.Option("--playbook-version", help="选择冻结的人工手册与验证策略版本。"),
+    ] = "v1",
 ) -> None:
-    result = generate_group_playbook_evidence(as_of=parse_as_of(as_of))
+    result = generate_group_playbook_evidence(
+        as_of=parse_as_of(as_of),
+        playbook_version=playbook_version,
+    )
     _echo(
         {
             "run_id": result.run.run_id,

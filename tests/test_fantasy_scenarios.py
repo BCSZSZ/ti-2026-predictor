@@ -516,6 +516,74 @@ def test_stat_forecasts_and_cluster_bootstrap_have_stable_hashes(project_paths, 
     assert all(row["point_relative_to_best"] <= 1.0 for row in first["rows"])
 
 
+def test_team_rank_bootstrap_is_optional_complete_and_deterministic(
+    project_paths,
+    rules_payload,
+) -> None:
+    _, policy, pools, scenarios, _, _, _ = _build_foundation(project_paths, rules_payload)
+    forecasts = build_stat_forecast_package(pools, scenarios, rules_payload)
+    legacy = cluster_bootstrap_stat_intervals(
+        pools,
+        scenarios,
+        forecasts,
+        rules_payload,
+        policy,
+        seed=901,
+    )
+    explicit_legacy = cluster_bootstrap_stat_intervals(
+        pools,
+        scenarios,
+        forecasts,
+        rules_payload,
+        policy,
+        seed=901,
+        include_team_rankings=False,
+    )
+    extended = cluster_bootstrap_stat_intervals(
+        pools,
+        scenarios,
+        forecasts,
+        rules_payload,
+        policy,
+        seed=901,
+        include_team_rankings=True,
+    )
+    repeated = cluster_bootstrap_stat_intervals(
+        pools,
+        scenarios,
+        forecasts,
+        rules_payload,
+        policy,
+        seed=901,
+        include_team_rankings=True,
+    )
+
+    assert legacy == explicit_legacy
+    assert "team_rankings" not in legacy
+    assert extended["bootstrap_sha256"] == repeated["bootstrap_sha256"]
+    rankings = extended["team_rankings"]
+    assert rankings["top_k"] == 3
+    assert rankings["point_order"] == "descending_mean_then_team_id"
+    assert rankings["bootstrap_order"] == "descending_mean_then_team_id"
+    assert (
+        rankings["probability_interpretation"]
+        == "series_resampling_frequency_not_calibrated_future_probability"
+    )
+    assert len(rankings["rows"]) == 42 * len(scenarios.team_ids)
+
+    grouped: dict[tuple[str, str], list[dict]] = {}
+    for row in rankings["rows"]:
+        grouped.setdefault((row["role"], row["stat_id"]), []).append(row)
+        assert 0.0 <= row["rank1_probability"] <= 1.0
+        assert 0.0 <= row["top3_probability"] <= 1.0
+        assert row["gap_to_point_best_fraction"] >= 0.0
+    assert len(grouped) == 42
+    for rows in grouped.values():
+        assert sorted(row["point_rank"] for row in rows) == list(range(1, len(scenarios.team_ids) + 1))
+        assert sum(row["rank1_probability"] for row in rows) == pytest.approx(1.0)
+        assert sum(row["top3_probability"] for row in rows) == pytest.approx(3.0)
+
+
 def test_policy_rejects_missing_category_or_unapproved_provenance(project_paths) -> None:
     path = project_paths.config / "models" / "fantasy-group-scenarios-v1.json"
     payload = pd.read_json(path, typ="series").to_dict()

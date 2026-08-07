@@ -29,6 +29,13 @@
   均值规则统一过风险档门槛；standalone 状态为 `draft`。
 - [v2 Stat、Quality、Trait 证据表](stat-quality-trait-evidence-v2.md)：新 `as_of` 下重新计算，
   42 行分档与边界不变，并逐项显示 `exact/derived` provenance。
+- [v2 Stat 队伍 Top 3 附表](stat-team-top3-evidence-v2.md)：为每个位置/颜色/Stat 列出点估计
+  前三、稳定队伍 ID、均值/CVaR10、Series 样本数及 `P1/P3` 重采样频率；它是描述性扩展，
+  不改变冻结的 v2 表、手册规则或 `draft` 标签。
+- [Top 3 扩展技术报告](../../reports/group-stat-team-top3-evidence-extension-2026-08-07.md)：记录
+  最小实现范围、兼容性哈希、正式重生成、确定性验收和可信度边界。
+- [Top 3 易懂总结](../../reports/group-stat-team-top3-easy-summary-2026-08-07.md)：说明新增字段、
+  为什么只列第一会误导，以及实际查表顺序。
 
 - [生成率无关版 v1](playbook-rate-agnostic-v1.md)：三模型下有 5 个 Common 情形超过 10%
   重大损失上界，并有跨模型规则消融失败。

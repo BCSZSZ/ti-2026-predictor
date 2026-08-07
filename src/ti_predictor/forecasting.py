@@ -21,6 +21,7 @@ from ti_predictor.fantasy.scenarios import (
     build_series_block_pools,
     load_group_scenario_policy,
 )
+from ti_predictor.fantasy.stat_reporting import render_group_stat_team_top3_markdown
 from ti_predictor.fantasy.valuation import (
     RiskConfiguration,
     TerminalValueCache,
@@ -54,6 +55,7 @@ class FantasyEvidenceResult:
     evidence_path: Path
     evidence: dict[str, Any]
     runtime_seconds: dict[str, float]
+    team_rank_report_path: Path | None = None
 
 
 def _profiles(profile: str | StrategyProfile) -> list[StrategyProfile]:
@@ -496,6 +498,7 @@ def generate_group_fantasy_evidence(
     as_of,
     seed: int = 20260813,
     include_bootstrap: bool = True,
+    include_team_rank_bootstrap: bool = False,
     paths: ProjectPaths = PATHS,
 ) -> FantasyEvidenceResult:
     """Create the governed P3 Group Scenario and Stat-evidence package."""
@@ -504,6 +507,8 @@ def generate_group_fantasy_evidence(
     cutoff = as_utc(as_of)
     if cutoff is None:
         raise ValueError("as_of is required")
+    if include_team_rank_bootstrap and not include_bootstrap:
+        raise ValueError("team-rank bootstrap requires the complete Series bootstrap")
     manifest = load_tournament_manifest(paths.tournament)
     rules = load_rules(paths.rules)
     scenario_policy_path = paths.config / "models" / "fantasy-group-scenarios-v1.json"
@@ -660,6 +665,7 @@ def generate_group_fantasy_evidence(
             rules,
             scenario_policy,
             seed=seed + 300_007,
+            include_team_rankings=include_team_rank_bootstrap,
         )
         if include_bootstrap
         else None
@@ -690,7 +696,7 @@ def generate_group_fantasy_evidence(
         "total": finished - started,
     }
     evidence_payload = {
-        "schema_version": 1,
+        "schema_version": 2 if include_team_rank_bootstrap else 1,
         "artifact_type": "group_fantasy_stat_evidence",
         "status": status,
         "as_of": cutoff.isoformat().replace("+00:00", "Z"),
@@ -730,6 +736,12 @@ def generate_group_fantasy_evidence(
             "target_patch_family": model_report.target_patch_family,
         },
     }
+    if include_team_rank_bootstrap:
+        parameters["team_rank_bootstrap"] = {
+            "enabled": True,
+            "top_k": 3,
+            "point_order": "descending_mean_then_team_id",
+        }
     run_id, hashes = make_run_id(
         kind="fantasy",
         as_of=cutoff,
@@ -741,6 +753,18 @@ def generate_group_fantasy_evidence(
     writer = ArtifactWriter(run_id, paths)
     evidence_path = writer.write_json("group-fantasy-evidence.json", evidence_payload)
     writer.write_json("model.json", {"model": model.as_dict(), "report": model_report.as_dict()})
+    team_rank_report_path = None
+    outputs = [evidence_path.name, "model.json"]
+    if include_team_rank_bootstrap:
+        team_rank_report_path = writer.write_text(
+            "group-stat-team-top3.md",
+            render_group_stat_team_top3_markdown(
+                evidence_payload,
+                team_names={team.team_id: team.name for team in manifest.teams},
+                run_id=run_id,
+            ),
+        )
+        outputs.append(team_rank_report_path.name)
     run = ForecastRun(
         run_id=run_id,
         kind="fantasy",
@@ -756,7 +780,7 @@ def generate_group_fantasy_evidence(
         git_commit=hashes["source"],
         model={"name": "fantasy_group_scenarios_v1", "parameters": parameters},
         profiles=[],
-        outputs=[evidence_path.name, "model.json"],
+        outputs=outputs,
         warnings=sorted(set(warnings)),
     )
     run_path = writer.write_run(run)
@@ -766,4 +790,5 @@ def generate_group_fantasy_evidence(
         evidence_path=evidence_path,
         evidence=evidence_payload,
         runtime_seconds=runtime_seconds,
+        team_rank_report_path=team_rank_report_path,
     )

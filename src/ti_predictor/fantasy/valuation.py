@@ -691,8 +691,9 @@ def cluster_bootstrap_stat_intervals(
     policy: GroupScenarioPolicy,
     *,
     seed: int,
+    include_team_rankings: bool = False,
 ) -> dict[str, Any]:
-    """Bootstrap whole Series blocks and return 95% relative-index intervals."""
+    """Bootstrap whole Series blocks and optionally retain team-rank probabilities."""
 
     if stat_forecasts.get("scenario_sha256") != scenario_set.semantic_hash:
         raise ValueError("Stat forecasts and bootstrap must use the same common Scenario set")
@@ -713,6 +714,20 @@ def cluster_bootstrap_stat_intervals(
                 if rule["color"] == color:
                     relative_samples[(role, color, stat_id)] = np.empty(replicates, dtype=float)
 
+    team_ids = np.asarray(scenario_set.team_ids, dtype=np.int64)
+    if include_team_rankings and len(team_ids) < 3:
+        raise ValueError("team-rank bootstrap requires at least three eligible teams")
+    rank1_counts = (
+        {key: np.zeros(len(team_ids), dtype=np.int64) for key in relative_samples}
+        if include_team_rankings
+        else None
+    )
+    top3_counts = (
+        {key: np.zeros(len(team_ids), dtype=np.int64) for key in relative_samples}
+        if include_team_rankings
+        else None
+    )
+
     group_rng = np.random.default_rng(seed)
     group_scenario_indexes = group_rng.integers(
         len(scenario_set.scenario_ids), size=(replicates, scenario_count), endpoint=False
@@ -721,6 +736,11 @@ def cluster_bootstrap_stat_intervals(
     for replicate in range(replicates):
         selected_scenarios = group_scenario_indexes[replicate]
         best_team_means = {role: np.full(len(stat_ids), -np.inf, dtype=float) for role in ROLE_IDS}
+        team_stat_means = (
+            {role: np.full((len(team_ids), len(stat_ids)), -np.inf, dtype=float) for role in ROLE_IDS}
+            if include_team_rankings
+            else None
+        )
         for team_id in scenario_set.team_ids:
             team_index = team_indexes[team_id]
             counts = scenario_set.series_counts[selected_scenarios, team_index]
@@ -740,6 +760,20 @@ def cluster_bootstrap_stat_intervals(
                 sampled[~used, :] = -np.inf
                 means = sampled.max(axis=1).mean(axis=0)
                 best_team_means[role] = np.maximum(best_team_means[role], means)
+                if team_stat_means is not None:
+                    team_stat_means[role][team_index] = means
+
+        if team_stat_means is not None:
+            assert rank1_counts is not None
+            assert top3_counts is not None
+            for key in relative_samples:
+                role, _, stat_id = key
+                values = team_stat_means[role][:, stat_index[stat_id]]
+                if not np.isfinite(values).all():
+                    raise ValueError(f"non-finite team-rank bootstrap values for {role}/{stat_id}")
+                order = np.lexsort((team_ids, -values))
+                rank1_counts[key][order[0]] += 1
+                top3_counts[key][order[:3]] += 1
 
         for role in ROLE_IDS:
             colors = tuple(dict.fromkeys(rules["fantasy"]["role_banners"][role][:3]))
@@ -776,22 +810,71 @@ def cluster_bootstrap_stat_intervals(
             }
         )
     rows.sort(key=lambda row: (ROLE_IDS.index(row["role"]), row["color"], row["stat_id"]))
-    result_hash = sha256_json(
-        {
-            "scenario_sha256": scenario_set.semantic_hash,
-            "pool_set_sha256": pool_result.semantic_hash,
-            "seed": seed,
-            "replicates": replicates,
-            "scenarios_per_replicate": scenario_count,
-            "rows": rows,
-        }
-    )
-    return {
+    result: dict[str, Any] = {
         "method": "weighted_full_series_cluster_bootstrap",
         "seed": seed,
         "replicates": replicates,
         "scenarios_per_replicate": scenario_count,
         "confidence_level": policy.bootstrap.confidence_level,
         "rows": rows,
-        "bootstrap_sha256": result_hash,
     }
+    hash_material: dict[str, Any] = {
+        "scenario_sha256": scenario_set.semantic_hash,
+        "pool_set_sha256": pool_result.semantic_hash,
+        "seed": seed,
+        "replicates": replicates,
+        "scenarios_per_replicate": scenario_count,
+        "rows": rows,
+    }
+    if include_team_rankings:
+        assert rank1_counts is not None
+        assert top3_counts is not None
+        team_index_by_id = {int(team_id): index for index, team_id in enumerate(team_ids)}
+        ranking_rows: list[dict[str, Any]] = []
+        for forecast in stat_forecasts["rows"]:
+            key = (str(forecast["role"]), str(forecast["color"]), str(forecast["stat_id"]))
+            point_values = sorted(
+                forecast["team_values"],
+                key=lambda row: (-float(row["mean"]), int(row["team_id"])),
+            )
+            best_mean = float(point_values[0]["mean"])
+            for point_rank, point in enumerate(point_values, start=1):
+                team_id = int(point["team_id"])
+                team_index = team_index_by_id[team_id]
+                gap = 0.0 if best_mean == 0.0 else (best_mean - float(point["mean"])) / best_mean
+                ranking_rows.append(
+                    {
+                        "role": key[0],
+                        "color": key[1],
+                        "stat_id": key[2],
+                        "provenance": forecast["provenance"],
+                        "team_id": team_id,
+                        "point_rank": point_rank,
+                        "point_mean": float(point["mean"]),
+                        "point_cvar10": float(point["cvar10"]),
+                        "series_blocks": int(point["series_blocks"]),
+                        "gap_to_point_best_fraction": max(0.0, float(gap)),
+                        "rank1_probability": float(rank1_counts[key][team_index] / replicates),
+                        "top3_probability": float(top3_counts[key][team_index] / replicates),
+                    }
+                )
+        ranking_rows.sort(
+            key=lambda row: (
+                ROLE_IDS.index(row["role"]),
+                row["color"],
+                row["stat_id"],
+                row["point_rank"],
+            )
+        )
+        team_rankings = {
+            "top_k": 3,
+            "point_order": "descending_mean_then_team_id",
+            "bootstrap_order": "descending_mean_then_team_id",
+            "probability_interpretation": ("series_resampling_frequency_not_calibrated_future_probability"),
+            "rank_probability_denominator": replicates,
+            "rows": ranking_rows,
+        }
+        result["team_rankings"] = team_rankings
+        hash_material["team_rankings"] = team_rankings
+    result["bootstrap_sha256"] = sha256_json(hash_material)
+    return result

@@ -110,6 +110,17 @@ class ArtifactWriter:
         path.write_text(content, encoding="utf-8")
         return path
 
+    def write_text(self, name: str, content: str) -> Path:
+        path = self.folder / name
+        normalized = content if content.endswith("\n") else content + "\n"
+        if path.exists():
+            existing = path.read_text(encoding="utf-8")
+            if existing != normalized:
+                raise RuntimeError(f"immutable artifact differs from existing file: {path}")
+            return path
+        path.write_text(normalized, encoding="utf-8")
+        return path
+
     def write_run(self, run: ForecastRun) -> Path:
         return self.write_json("run.json", run.model_dump(mode="json"))
 

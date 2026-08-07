@@ -76,6 +76,22 @@ recommendation. The implementation order and acceptance contract are in the
 coverage and performance are in the
 [P1 implementation report](reports/p1-native-replay-stats-implementation-2026-08-06.md).
 
+The Group Stat evidence and its optional team-ranking extension use the same cached snapshot and
+explicit cutoff:
+
+```powershell
+uv run ti fantasy group-evidence --as-of 2026-08-06T17:27:00Z --bootstrap
+uv run ti fantasy group-evidence --as-of 2026-08-06T17:27:00Z --bootstrap --team-rank-bootstrap
+```
+
+The first command remains the compatibility default and preserves the frozen v2 schema and
+semantic hash. The second adds 16 team rows to each of the 42 role/color/Stat groups and writes
+`group-stat-team-top3.md`. `P1` and `P3` are deterministic Series-cluster bootstrap frequencies,
+not calibrated future probabilities or confidence intervals; names are display-only and joins use
+stable team IDs. See the promoted
+[v2 Stat team Top 3 table](playbooks/group-roll/stat-team-top3-evidence-v2.md) and its
+[technical report](reports/group-stat-team-top3-evidence-extension-2026-08-07.md).
+
 The frozen Group manual validation is a separate cached-snapshot command:
 
 ```powershell

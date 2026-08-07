@@ -488,11 +488,19 @@ def fantasy_group_evidence(
             help="执行冻结的完整 Series 分组重采样；正式 P3/P4 证据必须开启。",
         ),
     ] = True,
+    team_rank_bootstrap: Annotated[
+        bool,
+        typer.Option(
+            "--team-rank-bootstrap/--no-team-rank-bootstrap",
+            help="额外计算每个位置/Stat 的队伍 P(rank=1)、P(top3) 并生成 Top 3 Markdown。",
+        ),
+    ] = False,
 ) -> None:
     result = generate_group_fantasy_evidence(
         as_of=parse_as_of(as_of),
         seed=seed,
         include_bootstrap=bootstrap,
+        include_team_rank_bootstrap=team_rank_bootstrap,
     )
     _echo(
         {
@@ -502,6 +510,9 @@ def fantasy_group_evidence(
             "evidence_path": str(result.evidence_path),
             "evidence_package_sha256": result.evidence["evidence_package_sha256"],
             "scenario_sha256": result.evidence["scenario_set"]["scenario_sha256"],
+            "team_rank_report_path": (
+                None if result.team_rank_report_path is None else str(result.team_rank_report_path)
+            ),
             "runtime_seconds": result.runtime_seconds,
         }
     )

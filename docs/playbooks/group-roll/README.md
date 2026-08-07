@@ -17,6 +17,11 @@
   确定性缺陷与最小修复、两次完整 P4 复跑、全项目回归、JAR 包装身份 warning 和清理判断。
 - [v2 易懂总结](../../reports/group-roll-playbook-v2-summary-2026-08-07.md)：面向实际查阅，说明
   应优先看什么、两版怎么选、真实提升与仍不能承诺的部分。
+- [v2 后续问题 memo](../../reports/group-roll-playbook-v2-follow-up-memo-2026-08-07.md)：登记
+  已确认的进步、退步、发布阻断、工程 warning 和当前处理决定，不修改冻结证据。
+- [v3 调研笔记](../../plans/group-roll-playbook-v3-investigation-notes.md)：把问题拆为失败分类、
+  构建身份、独立候选、全新 standalone/cross-audit 和发布集成工作包；目前只是 proposal，
+  不代表已授权实装。
 
 - [生成率无关版 v2 候选](playbook-rate-agnostic-v2.md)：保留三个跨模型支持原则，收窄
   v1 RA06，并把 RA10/RA12 移出发布序列；standalone 状态为 `draft`。

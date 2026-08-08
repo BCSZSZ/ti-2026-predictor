@@ -9,6 +9,12 @@
 
 LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统计模型和固定随机种子产生。
 
+梦幻挑战与赛事预测共同使用的数据基础、分析方法、证据等级、复现身份和可信边界，统一见
+[TI 2026 梦幻挑战与赛事预测：方法与证据权威性报告](docs/reports/ti2026-methodology-and-evidence-authority-report-2026-08-08.md)。
+它逐项区分 Valve/客户端事实、`exact`/`derived` 观测、模型推断和仍未闭合的草案，不把
+`publishable` 误写成“预测一定正确”；[实施、问题与验收记录](docs/reports/ti2026-methodology-authority-report-implementation-2026-08-08.md)
+保存本阶段的来源核验、数值反算、旧 run 审计边界和全项目检查。
+
 当前面向玩家的小组赛结论见
 [TI 2026 小组赛最终预测：综合实力排名与胜负关系](docs/reports/ti2026-group-forecast-publication-2026-08-08.md)。
 它以 16 队综合排名、实力带和两两胜负关系为主，明确披露正式模型在 TI 2025 留出集上只有

@@ -108,6 +108,9 @@ Common loss failure but does not pass every rule/risk gate; Rate has 23 such fai
 [manual index](playbooks/group-roll/README.md) and
 [v2 standalone report](reports/group-roll-playbook-v2-p3-standalone-validation-2026-08-07.md)
 before operational use. Omit `--playbook-version v2` only when intentionally reproducing v1.
+For a player-facing explanation ordered by evidence certainty rather than candidate rule identity,
+use the [Group 40 Roll publication manual](playbooks/group-roll/group-roll-publication-manual-v2.md).
+It preserves both frozen editions as `draft` and does not define a new validated policy.
 
 The bounded P5 Reference Roll solver has its own historical v1 cached-snapshot evidence command:
 

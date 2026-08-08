@@ -17,6 +17,12 @@
   确定性缺陷与最小修复、两次完整 P4 复跑、全项目回归、JAR 包装身份 warning 和清理判断。
 - [v2 易懂总结](../../reports/group-roll-playbook-v2-summary-2026-08-07.md)：面向实际查阅，说明
   应优先看什么、两版怎么选、真实提升与仍不能承诺的部分。
+- [Group 40 Roll 玩家手册（证据分层发布版）](group-roll-publication-manual-v2.md)：先解释
+  Roll 机制，再按 S/A/B/C/D 确定度分层整理当前可公开使用、条件参考和暂不采用的规则。
+- [玩家手册易懂总结](../../reports/group-roll-publication-manual-summary-2026-08-08.md)：用最短篇幅说明
+  Roll 怎么运作、四条最强规则、条件规则和当前不要机械执行的做法。
+- [玩家手册实现与验收记录](../../reports/group-roll-publication-manual-2026-08-08.md)：保存内部规则
+  映射、最小范围、测试、项目级审查和清理判断；发布正文不显示这些内部编号。
 - [v2 后续问题 memo](../../reports/group-roll-playbook-v2-follow-up-memo-2026-08-07.md)：登记
   已确认的进步、退步、发布阻断、工程 warning 和当前处理决定，不修改冻结证据。
 - [v3 调研笔记](../../plans/group-roll-playbook-v3-investigation-notes.md)：把问题拆为失败分类、

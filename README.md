@@ -76,6 +76,11 @@ Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策
 失败。最终结论见
 [易懂总结](docs/reports/group-roll-playbook-v2-summary-2026-08-07.md)。
 
+面向玩家直接查阅的保守版本见
+[Group 40 Roll 玩家手册（证据分层发布版）](docs/playbooks/group-roll/group-roll-publication-manual-v2.md)：
+它用易懂语言说明 Roll 机制，并按证据确定度排列规则，不把仍为 `draft` 的两本候选包装成
+可靠或全局最优策略。
+
 v2 没有新跑 full-session P5 solver。历史 v1 P5 仍是
 `failed-escalation-review-required`，只作为失败的诊断证据保留，不会自动启用更复杂的 full
 planner。v1 手册、P5/P6 产物和默认 CLI 路径继续作为不可变兼容证据保留。

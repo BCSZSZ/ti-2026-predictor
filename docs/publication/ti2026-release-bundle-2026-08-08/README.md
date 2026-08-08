@@ -12,15 +12,18 @@
    平均分和 Series 是怎样算的。
 2. [Fantasy Stat Top 3](playbooks/group-roll/stat-team-top3-publication-v2.md)：直接查各位置、颜色、
    Stat 的排名、建议和前三队伍。
-3. [Roll 手册易懂总结](reports/group-roll-publication-manual-summary-2026-08-08.md)：先看最短操作说明；
+3. [Title 分析与推荐](reports/ti2026-fantasy-title-recommendation-2026-08-08.md)：先设默认
+   `Cerulean + the Clutch`，战旗确定后再复查 Prefix。
+4. [Roll 手册易懂总结](reports/group-roll-publication-manual-summary-2026-08-08.md)：先看最短操作说明；
    需要完整依据时再看 [Roll 玩家手册](playbooks/group-roll/group-roll-publication-manual-v2.md)。
-4. [小组赛预测易懂总结](reports/ti2026-group-forecast-publication-summary-2026-08-08.md)：先看实力带和
+5. [小组赛预测易懂总结](reports/ti2026-group-forecast-publication-summary-2026-08-08.md)：先看实力带和
    关键对位；需要填写建议时再看 [完整预测](reports/ti2026-group-forecast-publication-2026-08-08.md)。
 
 ## Fantasy
 
 - [Stat Top 3 易懂说明](reports/group-stat-team-top3-publication-r4-summary-2026-08-08.md)
 - [Stat Top 3 完整发布表](playbooks/group-roll/stat-team-top3-publication-v2.md)
+- [Title 分析、排名与默认推荐](reports/ti2026-fantasy-title-recommendation-2026-08-08.md)
 - [Roll 玩家手册易懂总结](reports/group-roll-publication-manual-summary-2026-08-08.md)
 - [Roll 玩家手册完整发布版](playbooks/group-roll/group-roll-publication-manual-v2.md)
 - [v2 做了什么、进步与退步](reports/group-roll-playbook-v2-summary-2026-08-07.md)
@@ -43,5 +46,6 @@
 - `stat-team-top3-publication-v2.md` 虽保留 v2 文件名，内容已经是通过验收的最新 r4 展示口径；
   r2/r3 只是历史修订记录。
 - 两本完整 Roll v2 候选仍是草案；本包只放当前证据分层的玩家手册和诚实总结。
+- Title 已补入发布手册；默认组合是中等确定度建议，完整 P3 Coach 联合估值仍保持排除。
 - 小组赛预测正文已吸收 7.41 小版本、系列赛、赛事 Tier、奖金和名次补充。
 - Fantasy 与赛事预测的详细限制没有从发布稿中删除；“可发布”不等于“一定正确”。

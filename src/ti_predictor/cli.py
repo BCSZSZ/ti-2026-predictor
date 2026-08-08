@@ -15,6 +15,7 @@ from ti_predictor.fantasy.advisor_reporting import generate_group_advisor_eviden
 from ti_predictor.fantasy.cross_audit_reporting import generate_group_cross_audit_evidence
 from ti_predictor.fantasy.playbook_reporting import generate_group_playbook_evidence
 from ti_predictor.fantasy.solver_reporting import generate_group_solver_evidence
+from ti_predictor.fantasy.title_reporting import generate_group_title_evidence
 from ti_predictor.forecasting import (
     generate_bracket,
     generate_fantasy,
@@ -514,6 +515,44 @@ def fantasy_group_evidence(
                 None if result.team_rank_report_path is None else str(result.team_rank_report_path)
             ),
             "runtime_seconds": result.runtime_seconds,
+        }
+    )
+    _exit_for_status(result.run.status)
+
+
+@fantasy_app.command("title-evidence")
+def fantasy_title_evidence(
+    as_of: Annotated[str, typer.Option("--as-of", help="Title 证据可用截止时间，必须带时区。")],
+    hero_source: Annotated[
+        Path,
+        typer.Option(
+            "--hero-source",
+            exists=True,
+            dir_okay=False,
+            help="由当前 Dota 客户端解包的 scripts/npc/npc_heroes.txt。",
+        ),
+    ],
+    client_build: Annotated[
+        str | None,
+        typer.Option("--client-build", help="与 hero-source 对应的 ClientVersion:SourceRevision。"),
+    ] = None,
+    seed: Annotated[int, typer.Option("--seed", min=0)] = 20260808,
+) -> None:
+    result = generate_group_title_evidence(
+        as_of=parse_as_of(as_of),
+        hero_source_path=hero_source,
+        client_build=client_build,
+        seed=seed,
+    )
+    _echo(
+        {
+            "run_id": result.run.run_id,
+            "status": result.run.status,
+            "run_path": str(result.run_path),
+            "evidence_path": str(result.evidence_path),
+            "report_path": str(result.report_path),
+            "evidence_sha256": result.evidence["evidence_sha256"],
+            "default_title": result.evidence["analysis"]["recommendation"],
         }
     )
     _exit_for_status(result.run.status)

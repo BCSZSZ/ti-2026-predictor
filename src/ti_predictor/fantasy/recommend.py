@@ -68,47 +68,6 @@ def _matching_provenance_values(
     return numeric.where(rows[provenance_column].eq(expected_provenance))
 
 
-def _last_possible_game_flags(rows: pd.DataFrame) -> pd.Series:
-    """Mark BO1 game 1, BO2 game 2, BO3 game 3, and BO5 game 5."""
-    result = pd.Series(pd.NA, index=rows.index, dtype="boolean")
-    required = {0: 1, 1: 3, 2: 5, 3: 2}
-    needed = {"match_id", "series_id", "series_type", "start_time"}
-    if rows.empty or not needed.issubset(rows.columns):
-        return result
-    games = rows[list(needed)].drop_duplicates("match_id").copy()
-    games["series_type"] = pd.to_numeric(games["series_type"], errors="coerce")
-    known = games["series_type"].isin(required)
-    if not known.any():
-        return result
-    games = games.loc[known].copy()
-    games["series_key"] = games["series_id"].astype("string")
-    single = games["series_type"].eq(0) | games["series_id"].isna()
-    games.loc[single, "series_key"] = "match:" + games.loc[single, "match_id"].astype("string")
-    games = games.sort_values(["series_key", "start_time", "match_id"])
-    games["game_number"] = games.groupby("series_key", sort=False).cumcount() + 1
-    games["last_possible_game"] = games["game_number"].eq(games["series_type"].astype(int).map(required))
-    by_match = games.set_index("match_id")["last_possible_game"]
-    mapped = rows["match_id"].map(by_match)
-    result.loc[mapped.notna()] = mapped.loc[mapped.notna()].astype(bool)
-    return result
-
-
-def _suffix_activation_values(rows: pd.DataFrame, condition: str) -> pd.Series:
-    if condition == "player_team_loses_game" and "team_win" in rows:
-        values = rows["team_win"].astype("boolean")
-        return (~values).astype("Float64")
-    if condition == "duration_under_25_minutes" and "duration" in rows:
-        duration = pd.to_numeric(rows["duration"], errors="coerce")
-        return duration.lt(1500).where(duration.notna()).astype("Float64")
-    if condition == "displayed_match_time_ends_in_8" and "duration" in rows:
-        duration = pd.to_numeric(rows["duration"], errors="coerce")
-        integer_duration = duration.round().astype("Int64")
-        return integer_duration.mod(10).eq(8).where(duration.notna()).astype("Float64")
-    if condition == "last_possible_game_of_series" and "last_possible_game" in rows:
-        return rows["last_possible_game"].astype("boolean").astype("Float64")
-    return pd.Series(np.nan, index=rows.index, dtype=float)
-
-
 class FantasyRecommender:
     def __init__(
         self,
@@ -135,7 +94,6 @@ class FantasyRecommender:
                     self.observations["evidence_weight"], errors="coerce"
                 ).fillna(0.0)
                 self.observations = self.observations.loc[self.observations["evidence_weight"].gt(0.0)].copy()
-            self.observations["last_possible_game"] = _last_possible_game_flags(self.observations)
         self.player_roles = {
             player.account_id: role
             for team in manifest.teams
@@ -493,71 +451,6 @@ class FantasyRecommender:
             "roles": role_guides,
         }
 
-    def _coach_recommendations(self, selections: dict[str, dict[str, Any] | None]) -> list[dict[str, Any]]:
-        suffixes = self.rules["fantasy"]["coach"]["suffixes"]
-        results: list[dict[str, Any]] = []
-        for suffix in suffixes:
-            if not suffix.get("verified", False):
-                results.append(
-                    {
-                        "suffix": suffix["id"],
-                        "label": suffix["label"],
-                        "status": "unverified",
-                        "expected_bonus_percent": None,
-                    }
-                )
-                continue
-            condition = suffix["condition"]
-            role_estimates: list[tuple[float, float]] = []
-            observations = 0
-            for selection in selections.values():
-                if not selection:
-                    continue
-                account_ids = [int(item["account_id"]) for item in selection.get("players", [])]
-                role_rows = self.observations.loc[self.observations["account_id"].isin(account_ids)]
-                values = _suffix_activation_values(role_rows, condition)
-                estimate = _weighted_estimate(
-                    values,
-                    role_rows["start_time"],
-                    self.as_of,
-                    evidence_weights=role_rows.get("evidence_weight"),
-                )
-                if estimate.mean is None:
-                    continue
-                role_weight = max(float(selection.get("expected_raw_points", 0.0)), 1.0)
-                role_estimates.append((role_weight, float(estimate.mean)))
-                observations += estimate.observations
-            if not role_estimates:
-                results.append(
-                    {
-                        "suffix": suffix["id"],
-                        "name": suffix.get("name", suffix["id"]),
-                        "label": suffix["label"],
-                        "status": "unavailable",
-                        "expected_bonus_percent": None,
-                    }
-                )
-            else:
-                weight_sum = sum(weight for weight, _ in role_estimates)
-                activation = sum(weight * value for weight, value in role_estimates) / weight_sum
-                results.append(
-                    {
-                        "suffix": suffix["id"],
-                        "name": suffix.get("name", suffix["id"]),
-                        "label": suffix["label"],
-                        "status": "estimated",
-                        "activation_probability": round(activation, 4),
-                        "expected_bonus_percent": round(activation * float(suffix["bonus_percent"]), 4),
-                        "observations": observations,
-                    }
-                )
-        return sorted(
-            results,
-            key=lambda row: (
-                -(row["expected_bonus_percent"] if row["expected_bonus_percent"] is not None else -1)
-            ),
-        )
-
     def recommend(self, *, period: str, profile: StrategyProfile) -> Recommendation:
         periods = {item["id"]: item for item in self.rules["fantasy"]["periods"]}
         if period not in periods:
@@ -584,7 +477,7 @@ class FantasyRecommender:
         warnings = [
             "默认推荐只使用 exact/derived 且覆盖率至少 50% 的统计；proxy 字段仅显示在覆盖审计中。",
             "当前为通用战旗推荐，尚未读取个人徽标库存与重选选项。",
-            "教练前缀依赖英雄外观分类映射，首版只列规则，不作无数据推断。",
+            "本通用入口未加载客户端英雄分类；Title 请使用独立的 title-evidence 入口。",
         ]
         if profile != StrategyProfile.EXPECTED_POINTS:
             warnings.append("总体 Fantasy 分位表尚未由服务器确认，尾部目标为低置信代理。")
@@ -613,18 +506,11 @@ class FantasyRecommender:
                 "banner_slots": banner_slots,
                 "recommended": top_selection,
                 "role_rankings": {role: rows[:8] for role, rows in rankings.items()},
-                "coach_suffixes": self._coach_recommendations(top_selection),
-                "coach_prefixes": [
-                    {
-                        "prefix": item["id"],
-                        "name": item.get("name", item["id"]),
-                        "label": item["label"],
-                        "bonus_percent": item["bonus_percent"],
-                        "status": "unavailable",
-                        "reason": "缺少逐局 hero_id 与客户端英雄分类映射，不能可靠估计触发率。",
-                    }
-                    for item in self.rules["fantasy"]["coach"]["prefixes"]
-                ],
+                "title": {
+                    "status": "standalone_evidence_required",
+                    "command": "ti fantasy title-evidence",
+                    "reason": "Title 统一由客户端英雄分类与原始比赛详情入口计算。",
+                },
                 "coverage": self.coverage(),
             },
             warnings=warnings,

@@ -29,14 +29,18 @@
   均值规则统一过风险档门槛；standalone 状态为 `draft`。
 - [v2 Stat、Quality、Trait 证据表](stat-quality-trait-evidence-v2.md)：新 `as_of` 下重新计算，
   42 行分档与边界不变，并逐项显示 `exact/derived` provenance。
-- [v2 Stat 队伍 Top 3 发布版](stat-team-top3-publication-v2.md)：面向直接查阅，以“平均分、
-  低迷分、样本、落后第一、第一稳定率、前三稳定率”展示全部前三候选；不显示内部队伍 ID。
-- [发布版易懂说明](../../reports/group-stat-team-top3-publication-summary-2026-08-08.md)：逐项解释
-  单元格，并说明稳定率可以和不可以代表什么。
+- [v2 Stat 队伍 Top 3 发布版](stat-team-top3-publication-v2.md)：面向直接查阅；每张表明确显示
+  1–6 的 Stat 排名、基础建议和相对强度，再以中文字段展示三支候选队伍；不显示内部队伍 ID。
+- [发布版 r4 易懂总结](../../reports/group-stat-team-top3-publication-r4-summary-2026-08-08.md)：
+  用核心位红色示例解释 Stat 排名、四档建议、分档边界与队伍前三应如何一起阅读。
+- [发布版基础字段说明](../../reports/group-stat-team-top3-publication-summary-2026-08-08.md)：逐项解释
+  平均分、低迷分、样本和稳定率可以及不可以代表什么。
 - [发布版 r2 修订说明](../../reports/group-stat-team-top3-publication-r2-2026-08-08.md)：记录移除
   队伍 ID 显示后的不可变重生成、数值一致性、审计与测试。
 - [发布版 r3 修订说明](../../reports/group-stat-team-top3-publication-r3-2026-08-08.md)：记录移除
   来源显示、保留内部 provenance 与分档状态后的重生成和验收。
+- [发布版 r4 实施与验收](../../reports/group-stat-team-top3-publication-r4-2026-08-08.md)：记录新增
+  Stat 排名与基础建议的权威规则复用、正式哈希、冻结清单回归和全项目验收。
 - [发布版实施与验收](../../reports/group-stat-team-top3-publication-revision-2026-08-08.md)：记录
   新旧数值逐字节一致、不可变 run、正式哈希、审计和项目回归。
 - [v2 Stat 队伍 Top 3 技术版](stat-team-top3-evidence-v2.md)：为每个位置/颜色/Stat 列出点估计

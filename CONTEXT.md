@@ -41,10 +41,30 @@ OpenDota's league classification (`premium`, `professional`, `amateur`, `exclude
 It is not an invented Tier 1/2/3 ranking.
 _Avoid_: Match type, patch
 
+**Event nature / 赛事性质**:
+Whether an event is a completed Main tournament or a Qualifier whose result is advancement rather
+than a championship placement.
+_Avoid_: League tier, tournament prestige
+
+**Tournament placement bin / 赛事最终名次档**:
+A mutually exclusive final-place range earned by one stable Team identity in one completed Main
+tournament, such as champion, runner-up, 3–4 or 5–8.
+_Avoid_: Qualifier advancement, Series record, power ranking
+
+**Qualification outcome / 资格赛结果**:
+Whether one stable Team identity advanced from a completed Qualifier to its named Main tournament.
+It is not a Tournament placement bin.
+_Avoid_: Qualifier champion, tournament title, final placement
+
 **Patch / 游戏版本**:
 The Dota gameplay version active when a Game started, derived from OpenDota's patch timeline when
 the match response does not provide it directly.
 _Avoid_: API version, replay parser version
+
+**Exact gameplay patch / 精确游戏小版本**:
+The literal gameplay Patch active when a Game started, preserving any letter suffix such as `7.41a`
+or `7.41e`.
+_Avoid_: Major gameplay patch, report version, calendar period
 
 **Major gameplay patch / 游戏大版本**:
 The normalized Patch family used to compare model evidence: lettered hotfixes share their numeric

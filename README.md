@@ -13,7 +13,9 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 [TI 2026 梦幻挑战与赛事预测：方法与证据权威性报告](docs/reports/ti2026-methodology-and-evidence-authority-report-2026-08-08.md)。
 它逐项区分 Valve/客户端事实、`exact`/`derived` 观测、模型推断和仍未闭合的草案，不把
 `publishable` 误写成“预测一定正确”；[实施、问题与验收记录](docs/reports/ti2026-methodology-authority-report-implementation-2026-08-08.md)
-保存本阶段的来源核验、数值反算、旧 run 审计边界和全项目检查。
+保存本阶段的来源核验、数值反算、旧 run 审计边界和全项目检查；
+[易懂总结](docs/reports/ti2026-methodology-and-evidence-summary-2026-08-08.md)用玩家语言说明用了什么、
+怎么算、能信到什么程度以及下一步最值得补什么。
 
 当前面向玩家的小组赛结论见
 [TI 2026 小组赛最终预测：综合实力排名与胜负关系](docs/reports/ti2026-group-forecast-publication-2026-08-08.md)。

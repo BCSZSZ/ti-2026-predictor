@@ -30,9 +30,11 @@
 - [v2 Stat、Quality、Trait 证据表](stat-quality-trait-evidence-v2.md)：新 `as_of` 下重新计算，
   42 行分档与边界不变，并逐项显示 `exact/derived` provenance。
 - [v2 Stat 队伍 Top 3 发布版](stat-team-top3-publication-v2.md)：面向直接查阅，以“平均分、
-  低迷分、样本、落后第一、第一稳定率、前三稳定率”和明确的“队伍 ID”展示全部前三候选。
+  低迷分、样本、落后第一、第一稳定率、前三稳定率”展示全部前三候选；不显示内部队伍 ID。
 - [发布版易懂说明](../../reports/group-stat-team-top3-publication-summary-2026-08-08.md)：逐项解释
-  单元格和 Iron Wing 编号，并说明稳定率可以和不可以代表什么。
+  单元格，并说明稳定率可以和不可以代表什么。
+- [发布版 r2 修订说明](../../reports/group-stat-team-top3-publication-r2-2026-08-08.md)：记录移除
+  队伍 ID 显示后的不可变重生成、数值一致性、审计与测试。
 - [发布版实施与验收](../../reports/group-stat-team-top3-publication-revision-2026-08-08.md)：记录
   新旧数值逐字节一致、不可变 run、正式哈希、审计和项目回归。
 - [v2 Stat 队伍 Top 3 技术版](stat-team-top3-evidence-v2.md)：为每个位置/颜色/Stat 列出点估计

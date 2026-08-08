@@ -576,6 +576,11 @@ boundaries are best-with-runner-up-below-44%, at least 84.6%, 44–84.6%, and be
 applies only to the stat attribute and is separate from evidence provenance.
 _Avoid_: Complete Emblem grade, Quality grade, Trait grade, data quality, top-three label
 
+**Published Stat handling guidance / 发布版统计项操作建议**:
+The player-facing mapping of Baseline Stat grades as `一定保留`, `可以保留`, `可以改善` and
+`优先改善`, in that order. It is baseline priority guidance rather than a state-specific Roll action.
+_Avoid_: 一定改善, unconditional reroll instruction, final Banner decision, evidence provenance
+
 **Stat grade stability / 统计项分档稳定性**:
 A `stable` or `boundary` label from full-Series resampling that preserves Core and Support pair
 observations and reports whether sampling variation crosses a Baseline Stat grade boundary. It

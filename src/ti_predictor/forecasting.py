@@ -479,6 +479,11 @@ def generate_fantasy(
             "fantasy_evidence_policy_id": (f"{policy.policy_id}-fantasy-player-history"),
             "fantasy_evidence_scope": "all_positive_weight_games_for_target_player_ids",
             "patch_weights": policy.patch_weights.model_dump(mode="json"),
+            "current_exact_patch_weight": (
+                None
+                if policy.current_exact_patch_weight is None
+                else policy.current_exact_patch_weight.model_dump(mode="json")
+            ),
             "tier_weights": policy.tier_weights,
             "time_half_life_days": policy.time_half_life_days,
             "shrinkage_prior_n": 8,
@@ -558,6 +563,7 @@ def generate_group_fantasy_evidence(
             "manifest_sha256": sha256_file(paths.tournament),
             "scenario_policy_sha256": sha256_file(scenario_policy_path),
             "selected_match_ids_sha256": evidence.audit["selected_match_ids_sha256"],
+            "weight_policy_sha256": evidence.audit["weight_policy_sha256"],
             "target_patch_family": evidence.target_patch_family,
         }
     )

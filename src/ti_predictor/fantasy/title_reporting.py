@@ -129,6 +129,7 @@ def _load_match_features(
 
 def render_title_evidence_markdown(payload: dict[str, Any]) -> str:
     analysis = payload["analysis"]
+    exact_patch_weight = payload["evidence_weight_audit"]["current_exact_patch_weight"]
     prefix_rows = analysis["prefixes"]
     suffix_rows = analysis["suffixes"]
     prefix_default = next(
@@ -163,9 +164,7 @@ def render_title_evidence_markdown(payload: dict[str, Any]) -> str:
     ]
     for row in prefix_rows:
         judgment = (
-            "默认首选"
-            if row["rank"] == 1
-            else ("接近，可按阵容反超" if row["rank"] <= 5 else "通常不优先")
+            "默认首选" if row["rank"] == 1 else ("接近，可按阵容反超" if row["rank"] <= 5 else "通常不优先")
         )
         lines.append(
             f"| {row['rank']} | **{row['name']}** | {row['label']} | "
@@ -248,7 +247,11 @@ def render_title_evidence_markdown(payload: dict[str, Any]) -> str:
             f"{break_even:.1%} 时，纸面值才可能超过 Clutch；本手册本来就优先选择强队，所以默认仍是 Clutch。",
             "",
             "一血早/晚两个选项保留了可见规则下的历史观察值，但客户端内部条件与玩家可见文案冲突，",
-            "因此不能把这些数字当成发布级最优依据。泉水击杀缺少可靠的逐事件位置证据，保持不可用。",
+            "因此不能把这些数字当成发布级最优依据。所谓内部字段，是客户端 vdata 交给结算系统的",
+            "统计项 ID 和阈值配置，不是可见的服务器计算函数。准备阶段为负数倒计时，所以号角前是",
+            "一血时刻 < 0；号角后从 0:00 正计时，0:00–0:59 不属于号角前。当前没有代码证据能确认",
+            "`before_1_minute` 是否把后一段也算入，也不能仅凭 `after_6_minutes` 这个名字推翻界面的",
+            "10 分钟文字。泉水击杀缺少可靠的逐事件位置证据，保持不可用。",
             "",
             "## 可信度与使用方法",
             "",
@@ -256,6 +259,9 @@ def render_title_evidence_markdown(payload: dict[str, Any]) -> str:
             "这是当前客户端直接证据。",
             f"- 历史样本：{payload['raw_detail_audit']['raw_match_count']} 场原始比赛详情、"
             f"{analysis['complete_series_blocks_across_pools']} 个队伍×位置完整 Series blocks。",
+            f"- 版本权重：当前精确版本 {exact_patch_weight['patch_name']} 的单局权重为同条件其他"
+            f"当前大版本小版本的 {exact_patch_weight['multiplier']:g} 倍；上一大版本、赛事级别和"
+            "60 天时间半衰期保持原值。",
             "- Prefix 默认答案：中等偏低确定度，最终队伍和位置会改变排名。",
             "- Suffix 默认答案：中等确定度；Clutch 的方向较稳，但纸面加成不是客户端最终结算增幅。",
             "- 最佳实践：先完成三面战旗与队伍选择，再免费调整 Title；若没有重新计算条件，就使用默认组合。",
@@ -373,9 +379,7 @@ def generate_group_title_evidence(
         team_names=team_names,
     )
     mean_bo3_reaches_game3 = sum(
-        float(row["bo3_reaches_game3"])
-        for row in analysis["pools"]
-        if row["bo3_reaches_game3"] is not None
+        float(row["bo3_reaches_game3"]) for row in analysis["pools"] if row["bo3_reaches_game3"] is not None
     ) / len(analysis["pools"])
     data_snapshot_sha256 = sha256_json(
         {
@@ -387,6 +391,7 @@ def generate_group_title_evidence(
             "manifest_sha256": sha256_file(paths.tournament),
             "scenario_policy_sha256": sha256_file(scenario_policy_path),
             "selected_match_ids_sha256": evidence.audit["selected_match_ids_sha256"],
+            "weight_policy_sha256": evidence.audit["weight_policy_sha256"],
             "raw_source_hash_set_sha256": raw_audit["source_hash_set_sha256"],
             "hero_source_sha256": hero_source_hash,
             "target_patch_family": target_patch_family,
@@ -398,9 +403,10 @@ def generate_group_title_evidence(
     }
     payload: dict[str, Any] = {
         "artifact_type": "ti2026_group_fantasy_title_evidence",
-        "schema_version": 1,
+        "schema_version": 2,
         "as_of": cutoff.isoformat().replace("+00:00", "Z"),
         "target_patch_family": target_patch_family,
+        "evidence_weight_audit": evidence.audit,
         "data_snapshot_sha256": data_snapshot_sha256,
         "hero_source": {
             "resource": "scripts/npc/npc_heroes.txt",
@@ -430,6 +436,7 @@ def generate_group_title_evidence(
     parameters = {
         "phase": "standalone_group_fantasy_title_evidence_v1",
         "target_patch_family": target_patch_family,
+        "weight_policy_sha256": evidence.audit["weight_policy_sha256"],
         "hero_source_sha256": hero_source_hash,
         "data_snapshot_sha256": data_snapshot_sha256,
         "paper_bonus_only": True,

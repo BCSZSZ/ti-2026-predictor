@@ -440,7 +440,7 @@ def _model_from_weighted_matches(
         increase_per_30_days=policy.glicko.deviation_increase_per_30_days,
         weighted=True,
     )
-    name = "patch_tier_time_weighted_elo_glicko"
+    name = "patch_exact_tier_time_weighted_elo_glicko"
     if calibrator is not None:
         name += "_isotonic"
     return TeamStrengthModel(
@@ -749,7 +749,7 @@ def fit_team_strengths(
         )
         empty = TeamStrengthModel(
             {},
-            model_name="patch_tier_time_weighted_elo_glicko",
+            model_name="patch_exact_tier_time_weighted_elo_glicko",
             default_rating=policy.elo.initial_rating,
             scale=policy.elo.scale,
             policy_id=policy.policy_id,

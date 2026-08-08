@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 
 class _PolicyModel(BaseModel):
@@ -13,6 +13,12 @@ class PatchWeights(_PolicyModel):
     target: float = Field(ge=0.0, le=1.0)
     immediate_prior: float = Field(ge=0.0, le=1.0)
     earlier: float = Field(ge=0.0, le=1.0)
+
+
+class CurrentExactPatchWeight(_PolicyModel):
+    patch_name: str = Field(pattern=r"^\d+\.\d+[a-z]+$")
+    active_from: AwareDatetime
+    multiplier: float = Field(gt=0.0, le=10.0)
 
 
 class EloPolicy(_PolicyModel):
@@ -81,6 +87,7 @@ class TeamStrengthPolicy(_PolicyModel):
     decision_record: str = Field(min_length=1)
     evidence_scope: EvidenceScopePolicy = Field(default_factory=EvidenceScopePolicy)
     patch_weights: PatchWeights
+    current_exact_patch_weight: CurrentExactPatchWeight | None = None
     tier_weights: dict[str, float]
     time_half_life_days: float = Field(gt=0.0)
     elo: EloPolicy

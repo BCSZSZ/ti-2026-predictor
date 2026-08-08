@@ -131,12 +131,10 @@ def test_committed_ti2026_prize_report_matches_governed_ledger() -> None:
     ]
     assert payload["declared_total_usd"] == "8204268.51"
     assert any(
-        award["team_id"] == 7119388 and award["event_id"] == "dreamleague-28"
-        for award in payload["awards"]
+        award["team_id"] == 7119388 and award["event_id"] == "dreamleague-28" for award in payload["awards"]
     )
     assert any(
-        award["team_id"] == 9964962 and award["event_id"] == "pgl-wallachia-8"
-        for award in payload["awards"]
+        award["team_id"] == 9964962 and award["event_id"] == "pgl-wallachia-8" for award in payload["awards"]
     )
     assert not any(
         award["team_id"] == 10150538 and award["event_id"] == "games-of-future-2026"

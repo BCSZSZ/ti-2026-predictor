@@ -11,10 +11,12 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from ti_predictor.hashing import sha256_json
 from ti_predictor.models.policy import TeamStrengthPolicy
 from ti_predictor.schemas import AuditIssue, as_utc
 
 _PATCH_FAMILY = re.compile(r"^(\d+)\.(\d+)(?:[a-z]+)?$", re.IGNORECASE)
+_EXACT_PATCH = re.compile(r"^(\d+)\.(\d+)([a-z]+)?$", re.IGNORECASE)
 _UNKNOWN = "<unknown>"
 
 
@@ -34,6 +36,16 @@ def normalize_patch_family(value: object) -> str | None:
     if match is None:
         return None
     return f"{int(match.group(1))}.{int(match.group(2))}"
+
+
+def normalize_exact_patch(value: object) -> str | None:
+    if value is None or pd.isna(value):
+        return None
+    match = _EXACT_PATCH.fullmatch(str(value).strip())
+    if match is None:
+        return None
+    suffix = (match.group(3) or "").lower()
+    return f"{int(match.group(1))}.{int(match.group(2))}{suffix}"
 
 
 def ordered_patch_families(patches: pd.DataFrame, *, as_of: datetime) -> list[str]:
@@ -215,6 +227,7 @@ def build_evidence_set(
     known_earlier = set(sequence[:target_index])
     known_later = set(sequence[target_index + 1 :])
     frame["patch_family"] = frame["patch_name"].map(normalize_patch_family)
+    frame["exact_patch_name"] = frame["patch_name"].map(normalize_exact_patch)
     frame["normalized_league_tier"] = frame["league_tier"].map(
         lambda value: None if value is None or pd.isna(value) else str(value).strip().lower()
     )
@@ -228,7 +241,37 @@ def build_evidence_set(
             return policy.patch_weights.earlier
         return 0.0
 
-    frame["patch_weight"] = frame["patch_family"].map(patch_weight).astype(float)
+    frame["patch_family_weight"] = frame["patch_family"].map(patch_weight).astype(float)
+    frame["current_exact_patch"] = False
+    frame["exact_patch_multiplier"] = 1.0
+    exact_patch_conflict = pd.Series(False, index=frame.index, dtype=bool)
+    exact_policy = policy.current_exact_patch_weight
+    exact_policy_active = False
+    if exact_policy is not None:
+        exact_patch_name = normalize_exact_patch(exact_policy.patch_name)
+        exact_patch_family = normalize_patch_family(exact_policy.patch_name)
+        exact_patch_start = pd.Timestamp(exact_policy.active_from)
+        exact_policy_active = bool(
+            exact_patch_name is not None
+            and exact_patch_family == target
+            and exact_patch_start <= pd.Timestamp(cutoff)
+        )
+        if exact_policy_active:
+            compatible_name = frame["exact_patch_name"].isin({target, exact_patch_name})
+            current_exact_patch = (
+                frame["patch_family"].eq(target) & frame["start_time"].ge(exact_patch_start) & compatible_name
+            )
+            frame.loc[current_exact_patch, "current_exact_patch"] = True
+            frame.loc[current_exact_patch, "exact_patch_multiplier"] = exact_policy.multiplier
+            exact_patch_conflict = frame["patch_family"].eq(target) & (
+                (
+                    frame["start_time"].ge(exact_patch_start)
+                    & frame["exact_patch_name"].notna()
+                    & ~compatible_name
+                )
+                | (frame["start_time"].lt(exact_patch_start) & frame["exact_patch_name"].eq(exact_patch_name))
+            )
+    frame["patch_weight"] = (frame["patch_family_weight"] * frame["exact_patch_multiplier"]).astype(float)
     frame["tier_weight"] = frame["normalized_league_tier"].map(policy.tier_weights).fillna(0.0).astype(float)
     age_days = (pd.Timestamp(cutoff) - frame["start_time"]).dt.total_seconds() / 86400.0
     frame["age_days"] = age_days.astype(float)
@@ -283,6 +326,19 @@ def build_evidence_set(
                 )
             )
 
+    if exact_patch_conflict.any():
+        issues.append(
+            AuditIssue(
+                code="model-evidence-exact-patch-conflict",
+                severity="warning",
+                message=(
+                    "Games whose explicit exact Patch conflicts with the configured current-Patch "
+                    "UTC boundary kept their ordinary family weight"
+                ),
+                context={"games": int(exact_patch_conflict.sum())},
+            )
+        )
+
     eligible = frame.loc[frame["evidence_weight"] > 0.0].copy().reset_index(drop=True)
     scope_audit: dict[str, Any] = {
         "evidence_scope_mode": policy.evidence_scope.mode,
@@ -331,6 +387,8 @@ def build_evidence_set(
             )
         )
     audit: dict[str, Any] = {
+        "weight_formula_version": "major_exact_tier_time_v3",
+        "weight_policy_sha256": sha256_json(policy.model_dump(mode="json")),
         "policy_id": policy.policy_id,
         "as_of": cutoff.isoformat().replace("+00:00", "Z"),
         "target_patch_family": target,
@@ -345,9 +403,19 @@ def build_evidence_set(
         "later_patch_games": int(later_patch.sum()),
         "unknown_tier_games": int(unknown_tier.sum()),
         "unsupported_tier_games": int((unsupported_tier & ~unknown_tier).sum()),
+        "current_exact_patch_weight": (
+            None if exact_policy is None else exact_policy.model_dump(mode="json")
+        ),
+        "current_exact_patch_weight_active": exact_policy_active,
+        "current_exact_patch_games": int(included["current_exact_patch"].sum()),
+        "current_exact_patch_effective_weight": float(
+            included.loc[included["current_exact_patch"], "evidence_weight"].sum()
+        ),
         "by_patch_family": _breakdown(frame, "patch_family"),
+        "by_exact_patch_multiplier": _breakdown(frame, "exact_patch_multiplier"),
         "by_league_tier": _breakdown(frame, "normalized_league_tier"),
         "selected_by_patch_family": _breakdown(included, "patch_family"),
+        "selected_by_exact_patch_multiplier": _breakdown(included, "exact_patch_multiplier"),
         "selected_by_league_tier": _breakdown(included, "normalized_league_tier"),
     }
     return EvidenceSet(

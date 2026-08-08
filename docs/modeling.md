@@ -2,21 +2,24 @@
 
 ## Team strength
 
-The current operational policy is `team-strength-adr-0002-v2`, recorded in
-[ADR-0002](adr/0002-target-team-evidence-network-and-rule-based-audit.md) and implemented by the
-versioned configuration at `config/models/team-strength-v2.json`. The tournament manifest selects
-the active policy. A run records its policy ID, policy hash, data snapshot hash and selected
-match-ID hash.
+The current operational policy is `team-strength-adr-0005-v3`. [ADR-0002](adr/0002-target-team-evidence-network-and-rule-based-audit.md)
+continues to govern evidence scope, while [ADR-0005](adr/0005-double-current-exact-patch-evidence.md)
+adds the Current exact gameplay patch factor. The versioned configuration remains at
+`config/models/team-strength-v2.json`; its internal schema and policy IDs are `v3`. The tournament
+manifest selects the active file. A run records its policy ID, policy hash, data snapshot hash and
+selected match-ID hash.
 
 For a Game `d` days before the run's explicit UTC `as_of`:
 
 \[
-w = w_{patch}\,w_{tier}\,2^{-d/60}
+w = w_{major\ patch}\,m_{current\ exact\ patch}\,w_{tier}\,2^{-d/60}
 \]
 
 The target Major gameplay patch has patch weight `1.00`, its chronological predecessor `0.15`,
-and older versions zero. OpenDota `premium` has tier weight `1.00`, `professional` has `0.75`, and
-all other or unknown values are excluded and audited. Letter hotfixes share their numeric family.
+and older versions zero. Within the target family, the reviewed Current exact gameplay patch has
+multiplier `2.00`; all other exact patches have multiplier `1.00`. For the current policy this is
+`7.41e`, active from `2026-07-30T23:58:15Z`. OpenDota `premium` has tier weight `1.00`,
+`professional` has `0.75`, and all other or unknown values are excluded and audited.
 
 After weighting, the model builds an undirected stable-team-ID graph from positive-weight Games
 and retains the union of connected components containing the declared Forecast target teams. This
@@ -63,8 +66,9 @@ blocking condition.
 
 ## Fantasy
 
-Player/stat estimates use the same preregistered evidence policy as team strength: target Major
-gameplay Patch `1.00`, immediately previous Major gameplay Patch `0.15`, older Patches `0`;
+Player/stat estimates use the same governed evidence policy as team strength: target Major
+gameplay Patch `1.00`, current Exact gameplay patch multiplier `2.00`, immediately previous Major
+gameplay Patch `0.15`, older Patches `0`;
 OpenDota `premium` `1.00`, `professional` `0.75`, other tiers `0`; and a 60-day time half-life.
 Production generation fails closed if that patch/tier evidence set cannot be built. An
 eight-observation hierarchical prior remains for sparse players. Core and Support combine the two

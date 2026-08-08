@@ -132,6 +132,7 @@ def generate_group_playbook_evidence(
             "manifest_sha256": sha256_file(paths.tournament),
             "scenario_policy_sha256": sha256_file(scenario_policy_path),
             "selected_match_ids_sha256": evidence.audit["selected_match_ids_sha256"],
+            "weight_policy_sha256": evidence.audit["weight_policy_sha256"],
             "target_patch_family": evidence.target_patch_family,
         }
     )

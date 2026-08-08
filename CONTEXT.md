@@ -83,6 +83,11 @@ The literal gameplay Patch active when a Game started, preserving any letter suf
 or `7.41e`.
 _Avoid_: Major gameplay patch, report version, calendar period
 
+**Current exact gameplay patch / 当前精确游戏小版本**:
+The latest declared Exact gameplay patch active at a Forecast run's fixed `as_of`, identified by
+its reviewed UTC activation boundary.
+_Avoid_: Major gameplay patch, latest Patch seen in match data, current calendar period
+
 **Major gameplay patch / 游戏大版本**:
 The normalized Patch family used to compare model evidence: lettered hotfixes share their numeric
 family (`7.41d` and `7.41e` are `7.41`), while `7.41` and `7.42` are different families.
@@ -90,7 +95,8 @@ _Avoid_: Exact hotfix Patch, calendar year, API version
 
 **Game evidence weight / 单局证据权重**:
 A preregistered non-negative measure of how much one historical Game informs a Forecast, based
-only on its Major gameplay patch, League tier and age at the run's `as_of`.
+only on its Major gameplay patch, whether it is on the Current exact gameplay patch, League tier
+and age at the run's `as_of`.
 _Avoid_: Sampling probability, confidence score, post-hoc performance adjustment
 
 **Target-team evidence network / 目标队证据网络**:

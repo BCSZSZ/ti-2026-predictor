@@ -53,7 +53,7 @@ def _title_rules() -> dict:
 
 
 def test_parse_title_categories_keeps_repeated_client_chunks_and_masked() -> None:
-    text = r'''
+    text = r"""
     "DOTAHeroes"
     {
       "npc_dota_hero_alpha"
@@ -74,7 +74,7 @@ def test_parse_title_categories_keeps_repeated_client_chunks_and_masked() -> Non
         "Adjectives" { "Brown" "1" "Fiery" "1" "Demon" "1" "Masked" "1" }
       }
     }
-    '''
+    """
 
     result = parse_title_hero_categories(text)
 

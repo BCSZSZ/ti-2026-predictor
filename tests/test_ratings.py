@@ -5,7 +5,11 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from ti_predictor.models.evidence import build_evidence_set, normalize_patch_family
+from ti_predictor.models.evidence import (
+    build_evidence_set,
+    normalize_exact_patch,
+    normalize_patch_family,
+)
 from ti_predictor.models.policy import TeamStrengthPolicy
 from ti_predictor.models.ratings import fit_team_strengths, glicko_probability
 
@@ -43,6 +47,8 @@ def test_patch_family_normalizes_letter_hotfixes() -> None:
     assert normalize_patch_family("7.41d") == "7.41"
     assert normalize_patch_family("7.41E") == "7.41"
     assert normalize_patch_family("unknown") is None
+    assert normalize_exact_patch("7.41E") == "7.41e"
+    assert normalize_exact_patch("7.41") == "7.41"
 
 
 def test_evidence_weight_multiplies_patch_tier_and_time() -> None:
@@ -72,6 +78,51 @@ def test_evidence_weight_multiplies_patch_tier_and_time() -> None:
     assert set(weights) == {1, 2}
     assert evidence.audit["unknown_patch_games"] == 1
     assert evidence.audit["unsupported_tier_games"] == 1
+
+
+def test_current_exact_patch_multiplier_uses_reviewed_utc_boundary() -> None:
+    frame = pd.DataFrame(
+        [
+            _game(match_id=1, start_time="2026-07-30T23:58:14Z"),
+            _game(match_id=2, start_time="2026-07-30T23:58:15Z"),
+            _game(
+                match_id=3,
+                start_time="2026-07-31T00:00:00Z",
+                patch_name="7.41e",
+            ),
+            _game(
+                match_id=4,
+                start_time="2026-07-31T00:00:00Z",
+                patch_name="7.41d",
+            ),
+            _game(
+                match_id=5,
+                start_time="2026-07-31T00:00:00Z",
+                patch_name="7.40",
+            ),
+        ]
+    )
+    evidence = build_evidence_set(
+        frame,
+        _patches(),
+        as_of="2026-08-01T00:00:00Z",
+        policy=_policy(),
+        target_team_ids={1, 2},
+    )
+    weighted = evidence.matches.set_index("match_id")
+
+    assert weighted.loc[1, "patch_weight"] == pytest.approx(1.0)
+    assert weighted.loc[2, "patch_weight"] == pytest.approx(2.0)
+    assert weighted.loc[3, "patch_weight"] == pytest.approx(2.0)
+    assert weighted.loc[4, "patch_weight"] == pytest.approx(1.0)
+    assert weighted.loc[5, "patch_weight"] == pytest.approx(0.15)
+    assert weighted.loc[2, "current_exact_patch"]
+    assert weighted.loc[3, "current_exact_patch"]
+    assert not weighted.loc[4, "current_exact_patch"]
+    assert evidence.audit["current_exact_patch_games"] == 2
+    assert evidence.audit["current_exact_patch_weight_active"] is True
+    assert evidence.audit["selected_by_exact_patch_multiplier"]["2.0"]["games"] == 2
+    assert any(issue.code == "model-evidence-exact-patch-conflict" for issue in evidence.issues)
 
 
 def test_weighted_elo_uses_game_weight_and_filters_future() -> None:

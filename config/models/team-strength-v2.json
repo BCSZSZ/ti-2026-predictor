@@ -1,7 +1,7 @@
 {
-  "schema_version": 2,
-  "policy_id": "team-strength-adr-0002-v2",
-  "decision_record": "docs/adr/0002-target-team-evidence-network-and-rule-based-audit.md",
+  "schema_version": 3,
+  "policy_id": "team-strength-adr-0005-v3",
+  "decision_record": "docs/adr/0005-double-current-exact-patch-evidence.md",
   "evidence_scope": {
     "mode": "target_connected_component"
   },
@@ -9,6 +9,11 @@
     "target": 1.0,
     "immediate_prior": 0.15,
     "earlier": 0.0
+  },
+  "current_exact_patch_weight": {
+    "patch_name": "7.41e",
+    "active_from": "2026-07-30T23:58:15Z",
+    "multiplier": 2.0
   },
   "tier_weights": {
     "premium": 1.0,

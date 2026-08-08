@@ -91,10 +91,7 @@ def parse_title_hero_categories(text: str) -> dict[int, tuple[str, ...]]:
         categories = tuple(
             prefix_id
             for prefix_id, keys in PREFIX_ADJECTIVES.items()
-            if any(
-                re.search(rf'"{re.escape(key)}"\s*"([1-9]\d*)"', adjectives)
-                for key in keys
-            )
+            if any(re.search(rf'"{re.escape(key)}"\s*"([1-9]\d*)"', adjectives) for key in keys)
         )
         hero_id = int(hero_id_match.group(1))
         previous = result.get(hero_id)
@@ -318,9 +315,7 @@ def build_title_analysis(
                 suffix_rates[suffix_id] = (
                     suffix_triggered[suffix_id] / denominator if denominator > 0.0 else None
                 )
-                total_game_weight = sum(
-                    block.evidence_weight for block in pool.blocks
-                )
+                total_game_weight = sum(block.evidence_weight for block in pool.blocks)
                 suffix_coverage[suffix_id] = (
                     denominator / total_game_weight if total_game_weight > 0.0 else 0.0
                 )
@@ -358,9 +353,7 @@ def build_title_analysis(
                 "suffix_paper_bonus_percent": suffix_lifts,
                 "best_recommendable_suffix": best_suffix,
                 "bo3_complete_series_blocks": bo3_blocks,
-                "bo3_reaches_game3": (
-                    bo3_game3_weight / bo3_weight if bo3_weight > 0.0 else None
-                ),
+                "bo3_reaches_game3": (bo3_game3_weight / bo3_weight if bo3_weight > 0.0 else None),
             }
         )
 
@@ -413,18 +406,13 @@ def build_title_analysis(
                     "trigger_rate": sum(rates) / len(rates) if rates else None,
                     "paper_expected_bonus_percent": sum(lifts) / len(lifts) if lifts else None,
                     "mean_observation_coverage": (
-                        sum(float(row["suffix_observation_coverage"][suffix_id]) for row in rows)
-                        / len(rows)
+                        sum(float(row["suffix_observation_coverage"][suffix_id]) for row in rows) / len(rows)
                     ),
-                    "best_pool_count": sum(
-                        row["best_recommendable_suffix"] == suffix_id for row in rows
-                    ),
+                    "best_pool_count": sum(row["best_recommendable_suffix"] == suffix_id for row in rows),
                     "pool_count": len(rows),
                     "status": status,
                     "provenance": (
-                        "unavailable"
-                        if suffix_id == "fountain"
-                        else "opendota_parsed_match_detail"
+                        "unavailable" if suffix_id == "fountain" else "opendota_parsed_match_detail"
                     ),
                 }
             )
@@ -446,8 +434,7 @@ def build_title_analysis(
     default_suffix = next(row for row in suffix_summary if row["status"] == "estimated")
     underdog = next(row for row in suffix_summary if row["id"] == "loser")
     break_even = (
-        float(default_suffix["paper_expected_bonus_percent"])
-        / float(underdog["bonus_percent"])
+        float(default_suffix["paper_expected_bonus_percent"]) / float(underdog["bonus_percent"])
         if default_suffix["id"] == "clutch"
         else None
     )
@@ -460,9 +447,7 @@ def build_title_analysis(
             "period_selection_effects_included": False,
         },
         "pool_count": len(pool_rows),
-        "complete_series_blocks_across_pools": sum(
-            int(row["complete_series_blocks"]) for row in pool_rows
-        ),
+        "complete_series_blocks_across_pools": sum(int(row["complete_series_blocks"]) for row in pool_rows),
         "player_game_rows_across_pools": sum(int(row["player_game_rows"]) for row in pool_rows),
         "prefixes": prefix_summary,
         "prefixes_by_role": prefix_by_role,

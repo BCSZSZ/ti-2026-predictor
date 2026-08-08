@@ -56,7 +56,7 @@ def audit_run(run_id: str, paths: ProjectPaths = PATHS, *, write: bool = True) -
     model_parameters = run.model.get("parameters", {})
     strength_parameters = model_parameters.get("team_strength", model_parameters)
     recorded_policy_sha256 = strength_parameters.get("policy_sha256")
-    if run.model.get("name", "").startswith("patch_tier_time_weighted"):
+    if run.model.get("name", "").startswith(("patch_tier_time_weighted", "patch_exact_tier_time_weighted")):
         if not recorded_policy_sha256:
             issues.append(
                 AuditIssue(

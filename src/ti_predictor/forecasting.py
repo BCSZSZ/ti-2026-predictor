@@ -21,7 +21,11 @@ from ti_predictor.fantasy.scenarios import (
     build_series_block_pools,
     load_group_scenario_policy,
 )
-from ti_predictor.fantasy.stat_reporting import render_group_stat_team_top3_markdown
+from ti_predictor.fantasy.stat_reporting import (
+    TEAM_RANK_REPORT_FILENAME,
+    TEAM_RANK_REPORT_VERSION,
+    render_group_stat_team_top3_markdown,
+)
 from ti_predictor.fantasy.valuation import (
     RiskConfiguration,
     TerminalValueCache,
@@ -741,6 +745,7 @@ def generate_group_fantasy_evidence(
             "enabled": True,
             "top_k": 3,
             "point_order": "descending_mean_then_team_id",
+            "report_version": TEAM_RANK_REPORT_VERSION,
         }
     run_id, hashes = make_run_id(
         kind="fantasy",
@@ -757,11 +762,10 @@ def generate_group_fantasy_evidence(
     outputs = [evidence_path.name, "model.json"]
     if include_team_rank_bootstrap:
         team_rank_report_path = writer.write_text(
-            "group-stat-team-top3.md",
+            TEAM_RANK_REPORT_FILENAME,
             render_group_stat_team_top3_markdown(
                 evidence_payload,
                 team_names={team.team_id: team.name for team in manifest.teams},
-                run_id=run_id,
             ),
         )
         outputs.append(team_rank_report_path.name)

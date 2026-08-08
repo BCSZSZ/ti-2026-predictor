@@ -41,6 +41,16 @@ OpenDota's league classification (`premium`, `professional`, `amateur`, `exclude
 It is not an invented Tier 1/2/3 ranking.
 _Avoid_: Match type, patch
 
+**Community tournament tier / 社区赛事档位**:
+A time-bounded Tier 1/2/3/4 classification published by a named community source for a Main
+tournament. A Qualifier may display its destination tier, but does not thereby become a Main event.
+_Avoid_: League tier, prize pool, model weight
+
+**Event prize pool / 赛事总奖金**:
+The announced monetary award pool scoped to one event. A Qualifier never inherits its Main
+tournament's pool; an unannounced value remains unknown rather than becoming zero.
+_Avoid_: Community tournament tier, team winnings, parent-event prize
+
 **Event nature / 赛事性质**:
 Whether an event is a completed Main tournament or a Qualifier whose result is advancement rather
 than a championship placement.

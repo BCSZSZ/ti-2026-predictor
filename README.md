@@ -15,10 +15,10 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 56.25% 的胜负准确率；游戏内 16 槽填写放在报告末尾，不把微弱模型优势包装成确定答案。
 [易懂总结](docs/reports/ti2026-group-forecast-publication-summary-2026-08-08.md)提供一页速读，
 [7.41 系列赛证据展开](docs/reports/ti2026-group-current-patch-series-evidence-2026-08-08.md)列出
-每队汇总、精确小版本、赛事级别、最终名次、关键直接交手和当前版本全部完整系列赛，
+每队汇总、精确小版本、社区赛事档位、赛事总奖金、最终名次、关键直接交手和当前版本全部完整系列赛，
 [生成与验收记录](docs/reports/ti2026-group-forecast-publication-implementation-2026-08-08.md)保存运行、
-失败门禁、数值追溯与项目级审查；[系列赛证据 v2 实施记录](docs/reports/ti2026-group-series-evidence-v2-implementation-2026-08-08.md)
-单独保存这次发布增强的边界、限制和验收。
+失败门禁、数值追溯与项目级审查；[系列赛证据 v3 实施记录](docs/reports/ti2026-group-series-evidence-v3-implementation-2026-08-08.md)
+单独保存赛事档位、奖金、资格赛缺失值语义及这次发布增强的验收。
 
 ## 快速开始
 

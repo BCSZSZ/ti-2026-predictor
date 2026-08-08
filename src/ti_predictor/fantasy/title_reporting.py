@@ -434,7 +434,7 @@ def generate_group_title_evidence(
     }
     payload["evidence_sha256"] = sha256_json(payload)
     parameters = {
-        "phase": "standalone_group_fantasy_title_evidence_v1",
+        "phase": "standalone_group_fantasy_title_evidence_v2",
         "target_patch_family": target_patch_family,
         "weight_policy_sha256": evidence.audit["weight_policy_sha256"],
         "hero_source_sha256": hero_source_hash,
@@ -467,7 +467,7 @@ def generate_group_title_evidence(
         data_sha256=hashes["data"],
         config_sha256=hashes["config"],
         git_commit=hashes["source"],
-        model={"name": "standalone_group_fantasy_title_evidence_v1", "parameters": parameters},
+        model={"name": "standalone_group_fantasy_title_evidence_v2", "parameters": parameters},
         profiles=[],
         outputs=[evidence_path.name, report_path.name],
         warnings=list(payload["warnings"]),

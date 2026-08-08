@@ -7,7 +7,7 @@ from typing import Any
 
 from ti_predictor.fantasy.playbook import build_stat_priorities
 
-TEAM_RANK_REPORT_VERSION = "publication-v4"
+TEAM_RANK_REPORT_VERSION = "publication-v5"
 TEAM_RANK_REPORT_FILENAME = "group-stat-team-top3-publication.md"
 
 _ROLE_LABELS = {"core": "核心位", "mid": "中单", "support": "辅助位"}
@@ -98,6 +98,11 @@ def render_group_stat_team_top3_markdown(
         (row.role, row.color, row.stat_id): row for row in build_stat_priorities(forecasts, bootstrap)
     }
 
+    evidence_audit = evidence.get("fantasy_evidence_audit", {})
+    exact_patch_weight = (
+        evidence_audit.get("current_exact_patch_weight") if isinstance(evidence_audit, Mapping) else None
+    )
+
     lines = [
         "# Group Fantasy 各 Stat 推荐队伍 Top 3",
         "",
@@ -129,6 +134,12 @@ def render_group_stat_team_top3_markdown(
         "- “分档边界”表示该 Stat 的优先级可能随样本变化跨档，不等于数据错误。",
         "",
     ]
+    if isinstance(exact_patch_weight, Mapping):
+        lines[4:4] = [
+            f"版本权重：当前精确版本 {exact_patch_weight['patch_name']} 为同条件其他当前大版本"
+            f"小版本的 {float(exact_patch_weight['multiplier']):g} 倍；其余权重不变。",
+            "",
+        ]
 
     ordered_forecasts = sorted(
         forecast_rows,
@@ -176,7 +187,8 @@ def render_group_stat_team_top3_markdown(
             "",
             "本表基于数据截止日前的历史比赛和当前赛制近似；阵容、版本与赛程变化都可能改变排名。",
             "完整三格仍须重新进行同队匹配，不能把三行的第一名直接拼成一个选择。",
-            "本表不改变 Stat 指数、Quality、Trait、v2 手册规则或 `draft` 状态。",
+            "本表不改变 Quality、Trait、既有手册规则或 `draft` 状态；手册若要采用本表的新数值，"
+            "仍须单独复验。",
             "",
         ]
     )

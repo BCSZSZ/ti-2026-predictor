@@ -36,10 +36,12 @@
 ## 这次删掉了什么
 
 发布版把 `μ/C10/n/Δ/P1/P3` 换成中文字段，把 Core/Mid/Support 及颜色标题改成中文，并删除
-队伍 ID、重复差距列、页首长哈希和逐条工程 warning。必要的可信度提示、数据截止、赛制近似
-和同队匹配限制仍在；完整工程细节见
+队伍 ID、来源显示、重复差距列、页首长哈希和逐条工程 warning。内部 provenance 继续保留在
+机器证据中；玩家仍能看到直接影响选择的分档状态。必要的可信度提示、数据截止、赛制近似和
+同队匹配限制仍在；完整工程细节见
 [首次发布验收](group-stat-team-top3-publication-revision-2026-08-08.md)和
-[r2 修订说明](group-stat-team-top3-publication-r2-2026-08-08.md)。
+[r2 修订说明](group-stat-team-top3-publication-r2-2026-08-08.md)、
+[r3 修订说明](group-stat-team-top3-publication-r3-2026-08-08.md)。
 
 本表用于缩小候选范围。真正选择三个 Stat 时，仍要重新检查它们能否由同一支队伍同时兑现，
 不能简单把三行的第一名拼在一起。

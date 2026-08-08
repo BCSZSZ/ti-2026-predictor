@@ -2,6 +2,9 @@
 
 状态：**玩家版已移除全部队伍 ID；计算、机器证据和历史版本均未改变**
 
+> 后续修订：`publication-v3` 又移除了玩家表中的来源显示。以下内容记录 `publication-v2`
+> 阶段；当前版本见 [r3 修订说明](group-stat-team-top3-publication-r3-2026-08-08.md)。
+
 - 日期：2026-08-08
 - 显式 `as_of`：`2026-08-06T17:27:00Z`
 - 实现提交：`cdde501`
@@ -42,7 +45,7 @@ uv run ti fantasy group-evidence --as-of 2026-08-06T17:27:00Z --bootstrap --team
 
 - 发布渲染红测试先失败，最小修改后转绿；相关测试 17/17 通过；
 - 完整离线测试 155 passed、1 skipped；Ruff、format、依赖、规则与 diff 检查通过；
-- [当前发布表](../playbooks/group-roll/stat-team-top3-publication-v2.md)与正式 artifact 规范化内容一致；
+- 该阶段发布表与正式 artifact 规范化内容一致，后来由 `publication-v3` 更新规范路径；
 - 未修改排名算法、Forecast、replay/parser、规则、Main、手册、Quality、Trait 或发布 gate。
 
 清理审查没有删除内部 `team_id`：它是项目稳定连接键，仍是机器证据所必需。上一版

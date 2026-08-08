@@ -51,6 +51,13 @@ The announced monetary award pool scoped to one event. A Qualifier never inherit
 tournament's pool; an unannounced value remains unknown rather than becoming zero.
 _Avoid_: Community tournament tier, team winnings, parent-event prize
 
+**Team year-to-date prize winnings / 战队年度已获奖金**:
+At a fixed `as_of`, the sum of publicly confirmed gross USD awards assigned to one stable Team
+identity by completed prize-bearing events in the UTC calendar year, including published club or
+team rewards. Individual awards, unknown payouts and another organization's results before a
+roster transfer are excluded.
+_Avoid_: Event prize pool, player career earnings, roster-lineage winnings, estimated payout
+
 **Event nature / 赛事性质**:
 Whether an event is a completed Main tournament or a Qualifier whose result is advancement rather
 than a championship placement.

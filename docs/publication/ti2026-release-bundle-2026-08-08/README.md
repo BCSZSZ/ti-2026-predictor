@@ -18,6 +18,8 @@
    需要完整依据时再看 [Roll 玩家手册](playbooks/group-roll/group-roll-publication-manual-v2.md)。
 5. [小组赛预测易懂总结](reports/ti2026-group-forecast-publication-summary-2026-08-08.md)：先看实力带和
    关键对位；需要填写建议时再看 [完整预测](reports/ti2026-group-forecast-publication-2026-08-08.md)。
+6. [2026 年战队已获奖金累计](reports/ti2026-team-prize-ytd-2026-08-08.md)：查看 16 队的年度奖金
+   排名，以及每一笔奖金来自哪项赛事。
 
 ## Fantasy
 
@@ -33,7 +35,8 @@
 - [最终预测易懂总结](reports/ti2026-group-forecast-publication-summary-2026-08-08.md)
 - [综合实力排名、胜负关系与填写建议](reports/ti2026-group-forecast-publication-2026-08-08.md)
 - [7.41 完整系列赛证据展开](reports/ti2026-group-current-patch-series-evidence-2026-08-08.md)
-- [7.41 赛事 Tier 与奖金易懂总结](reports/ti2026-group-event-tier-prize-summary-2026-08-08.md)
+- [2026 年战队已获奖金累计与逐赛事明细](reports/ti2026-team-prize-ytd-2026-08-08.md)
+- [7.41 赛事 Tier 与赛事总奖池易懂总结](reports/ti2026-group-event-tier-prize-summary-2026-08-08.md)
 
 ## 方法与可信度
 
@@ -48,4 +51,5 @@
 - 两本完整 Roll v2 候选仍是草案；本包只放当前证据分层的玩家手册和诚实总结。
 - Title 已补入发布手册；默认组合是中等确定度建议，完整 P3 Coach 联合估值仍保持排除。
 - 小组赛预测正文已吸收 7.41 小版本、系列赛、赛事 Tier、奖金和名次补充。
+- “赛事总奖池”和“战队年度已获奖金”已经拆成两份表，避免把赛事规模误读成战队收入。
 - Fantasy 与赛事预测的详细限制没有从发布稿中删除；“可发布”不等于“一定正确”。

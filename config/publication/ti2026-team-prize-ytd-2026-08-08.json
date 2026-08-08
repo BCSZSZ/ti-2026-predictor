@@ -1,0 +1,2788 @@
+{
+  "artifact_type": "ti2026_team_prize_ytd_ledger",
+  "schema_version": 1,
+  "as_of": "2026-08-08T14:37:14Z",
+  "calendar_year": 2026,
+  "currency": "USD",
+  "amount_semantics": "published_gross_team_award",
+  "scope": {
+    "accounting_unit": "current_team_organization_identity",
+    "completed_events_only": true,
+    "include_player_prize_and_club_reward": true,
+    "include_cash_qualifiers": true,
+    "exclude_personal_awards": true,
+    "exclude_pre_transfer_other_organizations": true,
+    "payment_status": "nominal_public_award_not_confirmed_bank_receipt"
+  },
+  "research_snapshot_sha256": "ac2d62d48f9851e08abff422ff6eb14d42e0dae2ea71fcfa4372d1b41f5d212d",
+  "teams": [
+    {
+      "team_id": 2163,
+      "display_name": "Team Liquid",
+      "source_names": [
+        "Team Liquid"
+      ]
+    },
+    {
+      "team_id": 8255888,
+      "display_name": "BoomBoys",
+      "source_names": [
+        "BetBoom Team",
+        "BoomBoys"
+      ],
+      "identity_note": "同一组织在来源中使用 BetBoom Team；发布名沿用 BoomBoys。"
+    },
+    {
+      "team_id": 8261500,
+      "display_name": "Xtreme Gaming",
+      "source_names": [
+        "Xtreme Gaming"
+      ]
+    },
+    {
+      "team_id": 9247354,
+      "display_name": "Team Falcons",
+      "source_names": [
+        "Team Falcons"
+      ]
+    },
+    {
+      "team_id": 9467224,
+      "display_name": "Aurora Gaming",
+      "source_names": [
+        "Aurora Gaming"
+      ]
+    },
+    {
+      "team_id": 9823272,
+      "display_name": "Team Yandex",
+      "source_names": [
+        "Team Yandex"
+      ]
+    },
+    {
+      "team_id": 10150413,
+      "display_name": "Iron Wing",
+      "source_names": [
+        "1w Team",
+        "Iron Wing"
+      ],
+      "identity_note": "纳入经核实属于同一 1w 组织的奖金；不纳入当前阵容转会前代表 Tundra Esports 取得的奖金。"
+    },
+    {
+      "team_id": 726228,
+      "display_name": "Vici Gaming",
+      "source_names": [
+        "Vici Gaming"
+      ]
+    },
+    {
+      "team_id": 5017210,
+      "display_name": "Team Resilience",
+      "source_names": [
+        "Team Resilience"
+      ]
+    },
+    {
+      "team_id": 10150538,
+      "display_name": "LGD Gaming",
+      "source_names": [
+        "LGD Gaming"
+      ],
+      "identity_note": "只纳入当前 LGD Gaming 组织；排除阵容此前代表 HEROIC/ex-HEROIC 的奖金，也排除不同稳定 ID 的 LGD.Pinghu。"
+    },
+    {
+      "team_id": 2586976,
+      "display_name": "OG",
+      "source_names": [
+        "OG"
+      ]
+    },
+    {
+      "team_id": 9964962,
+      "display_name": "GamerLegion",
+      "source_names": [
+        "GamerLegion"
+      ]
+    },
+    {
+      "team_id": 10136357,
+      "display_name": "Nigma Galaxy",
+      "source_names": [
+        "Nigma Galaxy"
+      ]
+    },
+    {
+      "team_id": 10149530,
+      "display_name": "HULIGANI",
+      "source_names": [
+        "HULIGANI",
+        "L1GA TEAM"
+      ],
+      "identity_note": "同一组织在来源中使用 L1GA TEAM；发布名沿用 HULIGANI。"
+    },
+    {
+      "team_id": 9572001,
+      "display_name": "TEAM VISION",
+      "source_names": [
+        "PARIVISION",
+        "TEAM VISION"
+      ],
+      "identity_note": "同一组织在来源中使用 PARIVISION；发布名沿用 TEAM VISION。"
+    },
+    {
+      "team_id": 7119388,
+      "display_name": "Team Spirit",
+      "source_names": [
+        "Team Spirit"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "source-001",
+      "url": "https://assets.blast.tv/rulebook/2026_BLAST_DOTA_SLAM_Rulebook.pdf",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "BLAST",
+      "evidence_class": "official"
+    },
+    {
+      "source_id": "source-002",
+      "url": "https://blast.tv/dota/tournaments/blast-slam-vi/match?view=results",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "BLAST",
+      "evidence_class": "official"
+    },
+    {
+      "source_id": "source-003",
+      "url": "https://cdn.esportsworldcup.com/resources/uploads/Dota_2_at_2026_Esports_World_Cup_Rulebook_dec2d6e169.pdf",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Esports World Cup",
+      "evidence_class": "official"
+    },
+    {
+      "source_id": "source-004",
+      "url": "https://gofuture.games/page/games-of-the-future-2026/",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Games of the Future",
+      "evidence_class": "official"
+    },
+    {
+      "source_id": "source-005",
+      "url": "https://liquipedia.net/dota2/1win_Essence/1",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-006",
+      "url": "https://liquipedia.net/dota2/1win_Essence/2",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-007",
+      "url": "https://liquipedia.net/dota2/BLAST/Slam/6",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-008",
+      "url": "https://liquipedia.net/dota2/BLAST/Slam/7",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-009",
+      "url": "https://liquipedia.net/dota2/CCT/Season_2/Europe/7",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-010",
+      "url": "https://liquipedia.net/dota2/CCT/Season_2/Europe/8",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-011",
+      "url": "https://liquipedia.net/dota2/DreamLeague/28",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-012",
+      "url": "https://liquipedia.net/dota2/DreamLeague/29",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-013",
+      "url": "https://liquipedia.net/dota2/DreamLeague/Division_2/3",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-014",
+      "url": "https://liquipedia.net/dota2/DreamLeague/Division_2/4",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-015",
+      "url": "https://liquipedia.net/dota2/ESL/Challenger_China/2",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-016",
+      "url": "https://liquipedia.net/dota2/ESL/Challenger_China/3",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-017",
+      "url": "https://liquipedia.net/dota2/ESL/Challenger_China/3/Open_Qualifier_1",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-018",
+      "url": "https://liquipedia.net/dota2/ESL_One/Birmingham/2026",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-019",
+      "url": "https://liquipedia.net/dota2/Esports_League_Super_Cup/Pro_Division",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-020",
+      "url": "https://liquipedia.net/dota2/Esports_World_Cup/2026",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-021",
+      "url": "https://liquipedia.net/dota2/FISSURE/Universe/8",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-022",
+      "url": "https://liquipedia.net/dota2/Games_of_the_Future/2026",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-023",
+      "url": "https://liquipedia.net/dota2/NarodCast/PREMIER_SERIES/1",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-024",
+      "url": "https://liquipedia.net/dota2/PGL/Wallachia/7",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    },
+    {
+      "source_id": "source-025",
+      "url": "https://liquipedia.net/dota2/PGL/Wallachia/8",
+      "observed_at": "2026-08-08T14:37:14Z",
+      "publisher": "Liquipedia",
+      "evidence_class": "community"
+    }
+  ],
+  "awards": [
+    {
+      "award_id": "2163-fissure-universe-8",
+      "team_id": 2163,
+      "recorded_team_name": "Team Liquid",
+      "event_id": "fissure-universe-8",
+      "event_name": "FISSURE Universe: Episode 8",
+      "event_end_date": "2026-02-01",
+      "tier": "Tier 2",
+      "placement": "4th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "15000",
+      "source_ids": [
+        "source-021"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "2163-blast-slam-6",
+      "team_id": 2163,
+      "recorded_team_name": "Team Liquid",
+      "event_id": "blast-slam-6",
+      "event_name": "BLAST SLAM VI",
+      "event_end_date": "2026-02-15",
+      "tier": "Tier 1",
+      "placement": "1st",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "400000",
+      "source_ids": [
+        "source-007",
+        "source-002"
+      ],
+      "evidence_type": "official_result_plus_community_historical_payout",
+      "confidence": "medium-high",
+      "components_usd": {
+        "player_prize": "300000",
+        "club_reward": "100000"
+      }
+    },
+    {
+      "award_id": "2163-dreamleague-28",
+      "team_id": 2163,
+      "recorded_team_name": "Team Liquid",
+      "event_id": "dreamleague-28",
+      "event_name": "DreamLeague Season 28",
+      "event_end_date": "2026-03-01",
+      "tier": "Tier 1",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "105000",
+      "source_ids": [
+        "source-011"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "80000",
+        "club_reward": "25000"
+      }
+    },
+    {
+      "award_id": "2163-pgl-wallachia-7",
+      "team_id": 2163,
+      "recorded_team_name": "Team Liquid",
+      "event_id": "pgl-wallachia-7",
+      "event_name": "PGL Wallachia Season 7",
+      "event_end_date": "2026-03-15",
+      "tier": "Tier 1",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "175000",
+      "source_ids": [
+        "source-024"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "2163-premier-series-1",
+      "team_id": 2163,
+      "recorded_team_name": "Team Liquid",
+      "event_id": "premier-series-1",
+      "event_name": "PREMIER SERIES",
+      "event_end_date": "2026-04-11",
+      "tier": "Tier 2",
+      "placement": "5th-6th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "2500",
+      "source_ids": [
+        "source-023"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "2163-pgl-wallachia-8",
+      "team_id": 2163,
+      "recorded_team_name": "Team Liquid",
+      "event_id": "pgl-wallachia-8",
+      "event_name": "PGL Wallachia Season 8",
+      "event_end_date": "2026-04-26",
+      "tier": "Tier 1",
+      "placement": "4th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "80000",
+      "source_ids": [
+        "source-025"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "2163-dreamleague-29",
+      "team_id": 2163,
+      "recorded_team_name": "Team Liquid",
+      "event_id": "dreamleague-29",
+      "event_name": "DreamLeague Season 29",
+      "event_end_date": "2026-05-24",
+      "tier": "Tier 1",
+      "placement": "9th-12th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "30000",
+      "source_ids": [
+        "source-012"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "20000",
+        "club_reward": "10000"
+      }
+    },
+    {
+      "award_id": "2163-blast-slam-7",
+      "team_id": 2163,
+      "recorded_team_name": "Team Liquid",
+      "event_id": "blast-slam-7",
+      "event_name": "BLAST SLAM VII",
+      "event_end_date": "2026-06-07",
+      "tier": "Tier 1",
+      "placement": "5th-6th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "55000",
+      "source_ids": [
+        "source-008",
+        "source-001"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high",
+      "components_usd": {
+        "player_prize": "40000",
+        "club_reward": "15000"
+      }
+    },
+    {
+      "award_id": "2163-ewc-2026",
+      "team_id": 2163,
+      "recorded_team_name": "Team Liquid",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "9th-12th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "40000",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "2163-1win-essence-2",
+      "team_id": 2163,
+      "recorded_team_name": "Team Liquid",
+      "event_id": "1win-essence-2",
+      "event_name": "1win Essence II",
+      "event_end_date": "2026-08-05",
+      "tier": "Tier 1",
+      "placement": "1st",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "100000",
+      "source_ids": [
+        "source-006"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "726228-esl-challenger-china-2",
+      "team_id": 726228,
+      "recorded_team_name": "Vici Gaming",
+      "event_id": "esl-challenger-china-2",
+      "event_name": "ESL Challenger China Season 2",
+      "event_end_date": "2026-02-01",
+      "tier": "Tier 2",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "12000",
+      "source_ids": [
+        "source-015"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "726228-pgl-wallachia-7",
+      "team_id": 726228,
+      "recorded_team_name": "Vici Gaming",
+      "event_id": "pgl-wallachia-7",
+      "event_name": "PGL Wallachia Season 7",
+      "event_end_date": "2026-03-15",
+      "tier": "Tier 1",
+      "placement": "7th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "40000",
+      "source_ids": [
+        "source-024"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "726228-pgl-wallachia-8",
+      "team_id": 726228,
+      "recorded_team_name": "Vici Gaming",
+      "event_id": "pgl-wallachia-8",
+      "event_name": "PGL Wallachia Season 8",
+      "event_end_date": "2026-04-26",
+      "tier": "Tier 1",
+      "placement": "12th-14th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "15000",
+      "source_ids": [
+        "source-025"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "726228-esl-challenger-china-3",
+      "team_id": 726228,
+      "recorded_team_name": "Vici Gaming",
+      "event_id": "esl-challenger-china-3",
+      "event_name": "ESL Challenger China Season 3 x ACL 2026",
+      "event_end_date": "2026-05-03",
+      "tier": "Tier 2",
+      "placement": "1st",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "90000",
+      "source_ids": [
+        "source-016"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "726228-dreamleague-29",
+      "team_id": 726228,
+      "recorded_team_name": "Vici Gaming",
+      "event_id": "dreamleague-29",
+      "event_name": "DreamLeague Season 29",
+      "event_end_date": "2026-05-24",
+      "tier": "Tier 1",
+      "placement": "9th-12th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "30000",
+      "source_ids": [
+        "source-012"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "20000",
+        "club_reward": "10000"
+      }
+    },
+    {
+      "award_id": "726228-ewc-2026",
+      "team_id": 726228,
+      "recorded_team_name": "Vici Gaming",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "4th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "120000",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "726228-1win-essence-2",
+      "team_id": 726228,
+      "recorded_team_name": "Vici Gaming",
+      "event_id": "1win-essence-2",
+      "event_name": "1win Essence II",
+      "event_end_date": "2026-08-05",
+      "tier": "Tier 1",
+      "placement": "5th-6th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "5000",
+      "source_ids": [
+        "source-006"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "726228-games-of-future-2026",
+      "team_id": 726228,
+      "recorded_team_name": "Vici Gaming",
+      "event_id": "games-of-future-2026",
+      "event_name": "Games of the Future 2026",
+      "event_end_date": "2026-08-05",
+      "tier": "Tier 2",
+      "placement": "5th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "35000",
+      "source_ids": [
+        "source-022",
+        "source-004"
+      ],
+      "evidence_type": "official_event_plus_community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "2586976-blast-slam-6",
+      "team_id": 2586976,
+      "recorded_team_name": "OG",
+      "event_id": "blast-slam-6",
+      "event_name": "BLAST SLAM VI",
+      "event_end_date": "2026-02-15",
+      "tier": "Tier 1",
+      "placement": "3rd-4th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "80000",
+      "source_ids": [
+        "source-007",
+        "source-002"
+      ],
+      "evidence_type": "official_result_plus_community_historical_payout",
+      "confidence": "medium-high",
+      "components_usd": {
+        "player_prize": "60000",
+        "club_reward": "20000"
+      }
+    },
+    {
+      "award_id": "2586976-dreamleague-28",
+      "team_id": 2586976,
+      "recorded_team_name": "OG",
+      "event_id": "dreamleague-28",
+      "event_name": "DreamLeague Season 28",
+      "event_end_date": "2026-03-01",
+      "tier": "Tier 1",
+      "placement": "9th-10th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "30000",
+      "source_ids": [
+        "source-011"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "20000",
+        "club_reward": "10000"
+      }
+    },
+    {
+      "award_id": "2586976-pgl-wallachia-7",
+      "team_id": 2586976,
+      "recorded_team_name": "OG",
+      "event_id": "pgl-wallachia-7",
+      "event_name": "PGL Wallachia Season 7",
+      "event_end_date": "2026-03-15",
+      "tier": "Tier 1",
+      "placement": "12th-14th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "15000",
+      "source_ids": [
+        "source-024"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "2586976-esl-one-birmingham-2026",
+      "team_id": 2586976,
+      "recorded_team_name": "OG",
+      "event_id": "esl-one-birmingham-2026",
+      "event_name": "ESL One Birmingham 2026",
+      "event_end_date": "2026-03-29",
+      "tier": "Tier 1",
+      "placement": "13th-14th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "25000",
+      "source_ids": [
+        "source-018"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "15000",
+        "club_reward": "10000"
+      }
+    },
+    {
+      "award_id": "2586976-blast-slam-7",
+      "team_id": 2586976,
+      "recorded_team_name": "OG",
+      "event_id": "blast-slam-7",
+      "event_name": "BLAST SLAM VII",
+      "event_end_date": "2026-06-07",
+      "tier": "Tier 1",
+      "placement": "9th-10th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "20000",
+      "source_ids": [
+        "source-008",
+        "source-001"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high",
+      "components_usd": {
+        "player_prize": "15000",
+        "club_reward": "5000"
+      }
+    },
+    {
+      "award_id": "2586976-ewc-2026",
+      "team_id": 2586976,
+      "recorded_team_name": "OG",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "17th-20th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "10000",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "2586976-1win-essence-2",
+      "team_id": 2586976,
+      "recorded_team_name": "OG",
+      "event_id": "1win-essence-2",
+      "event_name": "1win Essence II",
+      "event_end_date": "2026-08-05",
+      "tier": "Tier 1",
+      "placement": "5th-6th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "5000",
+      "source_ids": [
+        "source-006"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "5017210-esl-challenger-china-3-open-qualifier-1",
+      "team_id": 5017210,
+      "recorded_team_name": "Team Resilience",
+      "event_id": "esl-challenger-china-3-open-qualifier-1",
+      "event_name": "ESL Challenger China Season 3 x ACL 2026: Open Qualifier 1",
+      "event_end_date": "2026-04-19",
+      "tier": "Qualifier (Tier 2 destination)",
+      "placement": "1st",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "6000",
+      "source_ids": [
+        "source-017"
+      ],
+      "evidence_type": "community_explicit_cash_qualifier_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "5017210-esl-challenger-china-3",
+      "team_id": 5017210,
+      "recorded_team_name": "Team Resilience",
+      "event_id": "esl-challenger-china-3",
+      "event_name": "ESL Challenger China Season 3 x ACL 2026",
+      "event_end_date": "2026-05-03",
+      "tier": "Tier 2",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "40000",
+      "source_ids": [
+        "source-016"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "5017210-games-of-future-2026",
+      "team_id": 5017210,
+      "recorded_team_name": "Team Resilience",
+      "event_id": "games-of-future-2026",
+      "event_name": "Games of the Future 2026",
+      "event_end_date": "2026-08-05",
+      "tier": "Tier 2",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "120000",
+      "source_ids": [
+        "source-022",
+        "source-004"
+      ],
+      "evidence_type": "official_event_plus_community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "7119388-fissure-universe-8",
+      "team_id": 7119388,
+      "recorded_team_name": "Team Spirit",
+      "event_id": "fissure-universe-8",
+      "event_name": "FISSURE Universe: Episode 8",
+      "event_end_date": "2026-02-01",
+      "tier": "Tier 2",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "60000",
+      "source_ids": [
+        "source-021"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "7119388-blast-slam-6",
+      "team_id": 7119388,
+      "recorded_team_name": "Team Spirit",
+      "event_id": "blast-slam-6",
+      "event_name": "BLAST SLAM VI",
+      "event_end_date": "2026-02-15",
+      "tier": "Tier 1",
+      "placement": "7th-10th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "28750",
+      "source_ids": [
+        "source-007",
+        "source-002"
+      ],
+      "evidence_type": "official_result_plus_community_historical_payout",
+      "confidence": "medium-high",
+      "components_usd": {
+        "player_prize": "22500",
+        "club_reward": "6250"
+      }
+    },
+    {
+      "award_id": "7119388-dreamleague-28",
+      "team_id": 7119388,
+      "recorded_team_name": "Team Spirit",
+      "event_id": "dreamleague-28",
+      "event_name": "DreamLeague Season 28",
+      "event_end_date": "2026-03-01",
+      "tier": "Tier 1",
+      "placement": "11th-12th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "27500",
+      "source_ids": [
+        "source-011"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "17500",
+        "club_reward": "10000"
+      }
+    },
+    {
+      "award_id": "7119388-pgl-wallachia-7",
+      "team_id": 7119388,
+      "recorded_team_name": "Team Spirit",
+      "event_id": "pgl-wallachia-7",
+      "event_name": "PGL Wallachia Season 7",
+      "event_end_date": "2026-03-15",
+      "tier": "Tier 1",
+      "placement": "4th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "80000",
+      "source_ids": [
+        "source-024"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "7119388-esl-one-birmingham-2026",
+      "team_id": 7119388,
+      "recorded_team_name": "Team Spirit",
+      "event_id": "esl-one-birmingham-2026",
+      "event_name": "ESL One Birmingham 2026",
+      "event_end_date": "2026-03-29",
+      "tier": "Tier 1",
+      "placement": "5th-6th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "55000",
+      "source_ids": [
+        "source-018"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "40000",
+        "club_reward": "15000"
+      }
+    },
+    {
+      "award_id": "7119388-pgl-wallachia-8",
+      "team_id": 7119388,
+      "recorded_team_name": "Team Spirit",
+      "event_id": "pgl-wallachia-8",
+      "event_name": "PGL Wallachia Season 8",
+      "event_end_date": "2026-04-26",
+      "tier": "Tier 1",
+      "placement": "7th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "40000",
+      "source_ids": [
+        "source-025"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "7119388-dreamleague-29",
+      "team_id": 7119388,
+      "recorded_team_name": "Team Spirit",
+      "event_id": "dreamleague-29",
+      "event_name": "DreamLeague Season 29",
+      "event_end_date": "2026-05-24",
+      "tier": "Tier 1",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "105000",
+      "source_ids": [
+        "source-012"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "80000",
+        "club_reward": "25000"
+      }
+    },
+    {
+      "award_id": "7119388-blast-slam-7",
+      "team_id": 7119388,
+      "recorded_team_name": "Team Spirit",
+      "event_id": "blast-slam-7",
+      "event_name": "BLAST SLAM VII",
+      "event_end_date": "2026-06-07",
+      "tier": "Tier 1",
+      "placement": "7th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "35000",
+      "source_ids": [
+        "source-008",
+        "source-001"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high",
+      "components_usd": {
+        "player_prize": "25000",
+        "club_reward": "10000"
+      }
+    },
+    {
+      "award_id": "7119388-ewc-2026",
+      "team_id": 7119388,
+      "recorded_team_name": "Team Spirit",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "5th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "70000",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "8255888-fissure-universe-8",
+      "team_id": 8255888,
+      "recorded_team_name": "BetBoom Team",
+      "event_id": "fissure-universe-8",
+      "event_name": "FISSURE Universe: Episode 8",
+      "event_end_date": "2026-02-01",
+      "tier": "Tier 2",
+      "placement": "5th-6th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "10000",
+      "source_ids": [
+        "source-021"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "8255888-dreamleague-28",
+      "team_id": 8255888,
+      "recorded_team_name": "BetBoom Team",
+      "event_id": "dreamleague-28",
+      "event_name": "DreamLeague Season 28",
+      "event_end_date": "2026-03-01",
+      "tier": "Tier 1",
+      "placement": "7th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "42500",
+      "source_ids": [
+        "source-011"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "30000",
+        "club_reward": "12500"
+      }
+    },
+    {
+      "award_id": "8255888-pgl-wallachia-7",
+      "team_id": 8255888,
+      "recorded_team_name": "BetBoom Team",
+      "event_id": "pgl-wallachia-7",
+      "event_name": "PGL Wallachia Season 7",
+      "event_end_date": "2026-03-15",
+      "tier": "Tier 1",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "120000",
+      "source_ids": [
+        "source-024"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "8255888-esl-one-birmingham-2026",
+      "team_id": 8255888,
+      "recorded_team_name": "BetBoom Team",
+      "event_id": "esl-one-birmingham-2026",
+      "event_name": "ESL One Birmingham 2026",
+      "event_end_date": "2026-03-29",
+      "tier": "Tier 1",
+      "placement": "11th-12th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "27500",
+      "source_ids": [
+        "source-018"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "17500",
+        "club_reward": "10000"
+      }
+    },
+    {
+      "award_id": "8255888-pgl-wallachia-8",
+      "team_id": 8255888,
+      "recorded_team_name": "BetBoom Team",
+      "event_id": "pgl-wallachia-8",
+      "event_name": "PGL Wallachia Season 8",
+      "event_end_date": "2026-04-26",
+      "tier": "Tier 1",
+      "placement": "1st",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "300000",
+      "source_ids": [
+        "source-025"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "8255888-dreamleague-29",
+      "team_id": 8255888,
+      "recorded_team_name": "BetBoom Team",
+      "event_id": "dreamleague-29",
+      "event_name": "DreamLeague Season 29",
+      "event_end_date": "2026-05-24",
+      "tier": "Tier 1",
+      "placement": "7th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "40000",
+      "source_ids": [
+        "source-012"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "27500",
+        "club_reward": "12500"
+      }
+    },
+    {
+      "award_id": "8255888-blast-slam-7",
+      "team_id": 8255888,
+      "recorded_team_name": "BetBoom Team",
+      "event_id": "blast-slam-7",
+      "event_name": "BLAST SLAM VII",
+      "event_end_date": "2026-06-07",
+      "tier": "Tier 1",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "93000",
+      "source_ids": [
+        "source-008",
+        "source-001"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high",
+      "components_usd": {
+        "player_prize": "70000",
+        "club_reward": "23000"
+      }
+    },
+    {
+      "award_id": "8255888-ewc-2026",
+      "team_id": 8255888,
+      "recorded_team_name": "BetBoom Team",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "340000",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "8255888-1win-essence-2",
+      "team_id": 8255888,
+      "recorded_team_name": "BetBoom Team",
+      "event_id": "1win-essence-2",
+      "event_name": "1win Essence II",
+      "event_end_date": "2026-08-05",
+      "tier": "Tier 1",
+      "placement": "4th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "12500",
+      "source_ids": [
+        "source-006"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "8261500-esl-challenger-china-2",
+      "team_id": 8261500,
+      "recorded_team_name": "Xtreme Gaming",
+      "event_id": "esl-challenger-china-2",
+      "event_name": "ESL Challenger China Season 2",
+      "event_end_date": "2026-02-01",
+      "tier": "Tier 2",
+      "placement": "1st",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "80000",
+      "source_ids": [
+        "source-015"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "8261500-blast-slam-6",
+      "team_id": 8261500,
+      "recorded_team_name": "Xtreme Gaming",
+      "event_id": "blast-slam-6",
+      "event_name": "BLAST SLAM VI",
+      "event_end_date": "2026-02-15",
+      "tier": "Tier 1",
+      "placement": "7th-10th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "28750",
+      "source_ids": [
+        "source-007",
+        "source-002"
+      ],
+      "evidence_type": "official_result_plus_community_historical_payout",
+      "confidence": "medium-high",
+      "components_usd": {
+        "player_prize": "22500",
+        "club_reward": "6250"
+      }
+    },
+    {
+      "award_id": "8261500-dreamleague-28",
+      "team_id": 8261500,
+      "recorded_team_name": "Xtreme Gaming",
+      "event_id": "dreamleague-28",
+      "event_name": "DreamLeague Season 28",
+      "event_end_date": "2026-03-01",
+      "tier": "Tier 1",
+      "placement": "4th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "80000",
+      "source_ids": [
+        "source-011"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "60000",
+        "club_reward": "20000"
+      }
+    },
+    {
+      "award_id": "8261500-pgl-wallachia-7",
+      "team_id": 8261500,
+      "recorded_team_name": "Xtreme Gaming",
+      "event_id": "pgl-wallachia-7",
+      "event_name": "PGL Wallachia Season 7",
+      "event_end_date": "2026-03-15",
+      "tier": "Tier 1",
+      "placement": "9th-11th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "20000",
+      "source_ids": [
+        "source-024"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "8261500-esl-one-birmingham-2026",
+      "team_id": 8261500,
+      "recorded_team_name": "Xtreme Gaming",
+      "event_id": "esl-one-birmingham-2026",
+      "event_name": "ESL One Birmingham 2026",
+      "event_end_date": "2026-03-29",
+      "tier": "Tier 1",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "105000",
+      "source_ids": [
+        "source-018"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "80000",
+        "club_reward": "25000"
+      }
+    },
+    {
+      "award_id": "8261500-pgl-wallachia-8",
+      "team_id": 8261500,
+      "recorded_team_name": "Xtreme Gaming",
+      "event_id": "pgl-wallachia-8",
+      "event_name": "PGL Wallachia Season 8",
+      "event_end_date": "2026-04-26",
+      "tier": "Tier 1",
+      "placement": "9th-11th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "20000",
+      "source_ids": [
+        "source-025"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "8261500-esl-challenger-china-3",
+      "team_id": 8261500,
+      "recorded_team_name": "Xtreme Gaming",
+      "event_id": "esl-challenger-china-3",
+      "event_name": "ESL Challenger China Season 3 x ACL 2026",
+      "event_end_date": "2026-05-03",
+      "tier": "Tier 2",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "20000",
+      "source_ids": [
+        "source-016"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "8261500-dreamleague-29",
+      "team_id": 8261500,
+      "recorded_team_name": "Xtreme Gaming",
+      "event_id": "dreamleague-29",
+      "event_name": "DreamLeague Season 29",
+      "event_end_date": "2026-05-24",
+      "tier": "Tier 1",
+      "placement": "7th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "40000",
+      "source_ids": [
+        "source-012"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "27500",
+        "club_reward": "12500"
+      }
+    },
+    {
+      "award_id": "8261500-blast-slam-7",
+      "team_id": 8261500,
+      "recorded_team_name": "Xtreme Gaming",
+      "event_id": "blast-slam-7",
+      "event_name": "BLAST SLAM VII",
+      "event_end_date": "2026-06-07",
+      "tier": "Tier 1",
+      "placement": "11th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "12500",
+      "source_ids": [
+        "source-008",
+        "source-001"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high",
+      "components_usd": {
+        "player_prize": "10000",
+        "club_reward": "2500"
+      }
+    },
+    {
+      "award_id": "8261500-ewc-2026",
+      "team_id": 8261500,
+      "recorded_team_name": "Xtreme Gaming",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "13th-16th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "20000",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "8261500-games-of-future-2026",
+      "team_id": 8261500,
+      "recorded_team_name": "Xtreme Gaming",
+      "event_id": "games-of-future-2026",
+      "event_name": "Games of the Future 2026",
+      "event_end_date": "2026-08-05",
+      "tier": "Tier 2",
+      "placement": "5th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "35000",
+      "source_ids": [
+        "source-022",
+        "source-004"
+      ],
+      "evidence_type": "official_event_plus_community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9247354-blast-slam-6",
+      "team_id": 9247354,
+      "recorded_team_name": "Team Falcons",
+      "event_id": "blast-slam-6",
+      "event_name": "BLAST SLAM VI",
+      "event_end_date": "2026-02-15",
+      "tier": "Tier 1",
+      "placement": "5th-6th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "50000",
+      "source_ids": [
+        "source-007",
+        "source-002"
+      ],
+      "evidence_type": "official_result_plus_community_historical_payout",
+      "confidence": "medium-high",
+      "components_usd": {
+        "player_prize": "35000",
+        "club_reward": "15000"
+      }
+    },
+    {
+      "award_id": "9247354-dreamleague-28",
+      "team_id": 9247354,
+      "recorded_team_name": "Team Falcons",
+      "event_id": "dreamleague-28",
+      "event_name": "DreamLeague Season 28",
+      "event_end_date": "2026-03-01",
+      "tier": "Tier 1",
+      "placement": "5th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "60000",
+      "source_ids": [
+        "source-011"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "45000",
+        "club_reward": "15000"
+      }
+    },
+    {
+      "award_id": "9247354-pgl-wallachia-7",
+      "team_id": 9247354,
+      "recorded_team_name": "Team Falcons",
+      "event_id": "pgl-wallachia-7",
+      "event_name": "PGL Wallachia Season 7",
+      "event_end_date": "2026-03-15",
+      "tier": "Tier 1",
+      "placement": "12th-14th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "15000",
+      "source_ids": [
+        "source-024"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9247354-esl-one-birmingham-2026",
+      "team_id": 9247354,
+      "recorded_team_name": "Team Falcons",
+      "event_id": "esl-one-birmingham-2026",
+      "event_name": "ESL One Birmingham 2026",
+      "event_end_date": "2026-03-29",
+      "tier": "Tier 1",
+      "placement": "7th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "40000",
+      "source_ids": [
+        "source-018"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "27500",
+        "club_reward": "12500"
+      }
+    },
+    {
+      "award_id": "9247354-pgl-wallachia-8",
+      "team_id": 9247354,
+      "recorded_team_name": "Team Falcons",
+      "event_id": "pgl-wallachia-8",
+      "event_name": "PGL Wallachia Season 8",
+      "event_end_date": "2026-04-26",
+      "tier": "Tier 1",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "120000",
+      "source_ids": [
+        "source-025"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9247354-dreamleague-29",
+      "team_id": 9247354,
+      "recorded_team_name": "Team Falcons",
+      "event_id": "dreamleague-29",
+      "event_name": "DreamLeague Season 29",
+      "event_end_date": "2026-05-24",
+      "tier": "Tier 1",
+      "placement": "4th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "80000",
+      "source_ids": [
+        "source-012"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "60000",
+        "club_reward": "20000"
+      }
+    },
+    {
+      "award_id": "9247354-blast-slam-7",
+      "team_id": 9247354,
+      "recorded_team_name": "Team Falcons",
+      "event_id": "blast-slam-7",
+      "event_name": "BLAST SLAM VII",
+      "event_end_date": "2026-06-07",
+      "tier": "Tier 1",
+      "placement": "5th-6th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "55000",
+      "source_ids": [
+        "source-008",
+        "source-001"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high",
+      "components_usd": {
+        "player_prize": "40000",
+        "club_reward": "15000"
+      }
+    },
+    {
+      "award_id": "9247354-ewc-2026",
+      "team_id": 9247354,
+      "recorded_team_name": "Team Falcons",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "5th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "70000",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "9247354-1win-essence-2",
+      "team_id": 9247354,
+      "recorded_team_name": "Team Falcons",
+      "event_id": "1win-essence-2",
+      "event_name": "1win Essence II",
+      "event_end_date": "2026-08-05",
+      "tier": "Tier 1",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "50000",
+      "source_ids": [
+        "source-006"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9467224-fissure-universe-8",
+      "team_id": 9467224,
+      "recorded_team_name": "Aurora Gaming",
+      "event_id": "fissure-universe-8",
+      "event_name": "FISSURE Universe: Episode 8",
+      "event_end_date": "2026-02-01",
+      "tier": "Tier 2",
+      "placement": "1st",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "125000",
+      "source_ids": [
+        "source-021"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9467224-dreamleague-division-2-3",
+      "team_id": 9467224,
+      "recorded_team_name": "Aurora Gaming",
+      "event_id": "dreamleague-division-2-3",
+      "event_name": "DreamLeague Division 2 Season 3",
+      "event_end_date": "2026-02-12",
+      "tier": "Tier 2",
+      "placement": "1st",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "15000",
+      "source_ids": [
+        "source-013"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9467224-dreamleague-28",
+      "team_id": 9467224,
+      "recorded_team_name": "Aurora Gaming",
+      "event_id": "dreamleague-28",
+      "event_name": "DreamLeague Season 28",
+      "event_end_date": "2026-03-01",
+      "tier": "Tier 1",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "130000",
+      "source_ids": [
+        "source-011"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "100000",
+        "club_reward": "30000"
+      }
+    },
+    {
+      "award_id": "9467224-pgl-wallachia-7",
+      "team_id": 9467224,
+      "recorded_team_name": "Aurora Gaming",
+      "event_id": "pgl-wallachia-7",
+      "event_name": "PGL Wallachia Season 7",
+      "event_end_date": "2026-03-15",
+      "tier": "Tier 1",
+      "placement": "7th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "40000",
+      "source_ids": [
+        "source-024"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9467224-esl-one-birmingham-2026",
+      "team_id": 9467224,
+      "recorded_team_name": "Aurora Gaming",
+      "event_id": "esl-one-birmingham-2026",
+      "event_name": "ESL One Birmingham 2026",
+      "event_end_date": "2026-03-29",
+      "tier": "Tier 1",
+      "placement": "5th-6th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "55000",
+      "source_ids": [
+        "source-018"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "40000",
+        "club_reward": "15000"
+      }
+    },
+    {
+      "award_id": "9467224-pgl-wallachia-8",
+      "team_id": 9467224,
+      "recorded_team_name": "Aurora Gaming",
+      "event_id": "pgl-wallachia-8",
+      "event_name": "PGL Wallachia Season 8",
+      "event_end_date": "2026-04-26",
+      "tier": "Tier 1",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "175000",
+      "source_ids": [
+        "source-025"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9467224-dreamleague-29",
+      "team_id": 9467224,
+      "recorded_team_name": "Aurora Gaming",
+      "event_id": "dreamleague-29",
+      "event_name": "DreamLeague Season 29",
+      "event_end_date": "2026-05-24",
+      "tier": "Tier 1",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "130000",
+      "source_ids": [
+        "source-012"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "100000",
+        "club_reward": "30000"
+      }
+    },
+    {
+      "award_id": "9467224-blast-slam-7",
+      "team_id": 9467224,
+      "recorded_team_name": "Aurora Gaming",
+      "event_id": "blast-slam-7",
+      "event_name": "BLAST SLAM VII",
+      "event_end_date": "2026-06-07",
+      "tier": "Tier 1",
+      "placement": "4th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "67000",
+      "source_ids": [
+        "source-008",
+        "source-001"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high",
+      "components_usd": {
+        "player_prize": "50000",
+        "club_reward": "17000"
+      }
+    },
+    {
+      "award_id": "9467224-ewc-2026",
+      "team_id": 9467224,
+      "recorded_team_name": "Aurora Gaming",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "9th-12th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "40000",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "9572001-dreamleague-28",
+      "team_id": 9572001,
+      "recorded_team_name": "PARIVISION",
+      "event_id": "dreamleague-28",
+      "event_name": "DreamLeague Season 28",
+      "event_end_date": "2026-03-01",
+      "tier": "Tier 1",
+      "placement": "6th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "50000",
+      "source_ids": [
+        "source-011"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "35000",
+        "club_reward": "15000"
+      }
+    },
+    {
+      "award_id": "9572001-esl-one-birmingham-2026",
+      "team_id": 9572001,
+      "recorded_team_name": "PARIVISION",
+      "event_id": "esl-one-birmingham-2026",
+      "event_name": "ESL One Birmingham 2026",
+      "event_end_date": "2026-03-29",
+      "tier": "Tier 1",
+      "placement": "4th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "80000",
+      "source_ids": [
+        "source-018"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "60000",
+        "club_reward": "20000"
+      }
+    },
+    {
+      "award_id": "9572001-premier-series-1",
+      "team_id": 9572001,
+      "recorded_team_name": "PARIVISION",
+      "event_id": "premier-series-1",
+      "event_name": "PREMIER SERIES",
+      "event_end_date": "2026-04-11",
+      "tier": "Tier 2",
+      "placement": "1st",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "50000",
+      "source_ids": [
+        "source-023"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9572001-pgl-wallachia-8",
+      "team_id": 9572001,
+      "recorded_team_name": "PARIVISION",
+      "event_id": "pgl-wallachia-8",
+      "event_name": "PGL Wallachia Season 8",
+      "event_end_date": "2026-04-26",
+      "tier": "Tier 1",
+      "placement": "5th-6th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "60000",
+      "source_ids": [
+        "source-025"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9572001-1win-essence-1",
+      "team_id": 9572001,
+      "recorded_team_name": "PARIVISION",
+      "event_id": "1win-essence-1",
+      "event_name": "1win Essence I",
+      "event_end_date": "2026-05-11",
+      "tier": "Tier 2",
+      "placement": "1st",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "50000",
+      "source_ids": [
+        "source-005"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9572001-dreamleague-29",
+      "team_id": 9572001,
+      "recorded_team_name": "PARIVISION",
+      "event_id": "dreamleague-29",
+      "event_name": "DreamLeague Season 29",
+      "event_end_date": "2026-05-24",
+      "tier": "Tier 1",
+      "placement": "1st",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "290000",
+      "source_ids": [
+        "source-012"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "250000",
+        "club_reward": "40000"
+      }
+    },
+    {
+      "award_id": "9572001-blast-slam-7",
+      "team_id": 9572001,
+      "recorded_team_name": "PARIVISION",
+      "event_id": "blast-slam-7",
+      "event_name": "BLAST SLAM VII",
+      "event_end_date": "2026-06-07",
+      "tier": "Tier 1",
+      "placement": "7th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "35000",
+      "source_ids": [
+        "source-008",
+        "source-001"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high",
+      "components_usd": {
+        "player_prize": "25000",
+        "club_reward": "10000"
+      }
+    },
+    {
+      "award_id": "9572001-ewc-2026",
+      "team_id": 9572001,
+      "recorded_team_name": "PARIVISION",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "1st",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "750000",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "9823272-fissure-universe-8",
+      "team_id": 9823272,
+      "recorded_team_name": "Team Yandex",
+      "event_id": "fissure-universe-8",
+      "event_name": "FISSURE Universe: Episode 8",
+      "event_end_date": "2026-02-01",
+      "tier": "Tier 2",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "30000",
+      "source_ids": [
+        "source-021"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9823272-blast-slam-6",
+      "team_id": 9823272,
+      "recorded_team_name": "Team Yandex",
+      "event_id": "blast-slam-6",
+      "event_name": "BLAST SLAM VI",
+      "event_end_date": "2026-02-15",
+      "tier": "Tier 1",
+      "placement": "3rd-4th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "80000",
+      "source_ids": [
+        "source-007",
+        "source-002"
+      ],
+      "evidence_type": "official_result_plus_community_historical_payout",
+      "confidence": "medium-high",
+      "components_usd": {
+        "player_prize": "60000",
+        "club_reward": "20000"
+      }
+    },
+    {
+      "award_id": "9823272-dreamleague-28",
+      "team_id": 9823272,
+      "recorded_team_name": "Team Yandex",
+      "event_id": "dreamleague-28",
+      "event_name": "DreamLeague Season 28",
+      "event_end_date": "2026-03-01",
+      "tier": "Tier 1",
+      "placement": "11th-12th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "27500",
+      "source_ids": [
+        "source-011"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "17500",
+        "club_reward": "10000"
+      }
+    },
+    {
+      "award_id": "9823272-pgl-wallachia-7",
+      "team_id": 9823272,
+      "recorded_team_name": "Team Yandex",
+      "event_id": "pgl-wallachia-7",
+      "event_name": "PGL Wallachia Season 7",
+      "event_end_date": "2026-03-15",
+      "tier": "Tier 1",
+      "placement": "1st",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "300000",
+      "source_ids": [
+        "source-024"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9823272-esl-one-birmingham-2026",
+      "team_id": 9823272,
+      "recorded_team_name": "Team Yandex",
+      "event_id": "esl-one-birmingham-2026",
+      "event_name": "ESL One Birmingham 2026",
+      "event_end_date": "2026-03-29",
+      "tier": "Tier 1",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "130000",
+      "source_ids": [
+        "source-018"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "100000",
+        "club_reward": "30000"
+      }
+    },
+    {
+      "award_id": "9823272-pgl-wallachia-8",
+      "team_id": 9823272,
+      "recorded_team_name": "Team Yandex",
+      "event_id": "pgl-wallachia-8",
+      "event_name": "PGL Wallachia Season 8",
+      "event_end_date": "2026-04-26",
+      "tier": "Tier 1",
+      "placement": "15th-16th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "10000",
+      "source_ids": [
+        "source-025"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9823272-blast-slam-7",
+      "team_id": 9823272,
+      "recorded_team_name": "Team Yandex",
+      "event_id": "blast-slam-7",
+      "event_name": "BLAST SLAM VII",
+      "event_end_date": "2026-06-07",
+      "tier": "Tier 1",
+      "placement": "1st",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "400000",
+      "source_ids": [
+        "source-008",
+        "source-001"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high",
+      "components_usd": {
+        "player_prize": "300000",
+        "club_reward": "100000"
+      }
+    },
+    {
+      "award_id": "9823272-ewc-2026",
+      "team_id": 9823272,
+      "recorded_team_name": "Team Yandex",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "200000",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "9964962-blast-slam-6",
+      "team_id": 9964962,
+      "recorded_team_name": "GamerLegion",
+      "event_id": "blast-slam-6",
+      "event_name": "BLAST SLAM VI",
+      "event_end_date": "2026-02-15",
+      "tier": "Tier 1",
+      "placement": "7th-10th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "28750",
+      "source_ids": [
+        "source-007",
+        "source-002"
+      ],
+      "evidence_type": "official_result_plus_community_historical_payout",
+      "confidence": "medium-high",
+      "components_usd": {
+        "player_prize": "22500",
+        "club_reward": "6250"
+      }
+    },
+    {
+      "award_id": "9964962-dreamleague-28",
+      "team_id": 9964962,
+      "recorded_team_name": "GamerLegion",
+      "event_id": "dreamleague-28",
+      "event_name": "DreamLeague Season 28",
+      "event_end_date": "2026-03-01",
+      "tier": "Tier 1",
+      "placement": "13th-14th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "25000",
+      "source_ids": [
+        "source-011"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "15000",
+        "club_reward": "10000"
+      }
+    },
+    {
+      "award_id": "9964962-esl-one-birmingham-2026",
+      "team_id": 9964962,
+      "recorded_team_name": "GamerLegion",
+      "event_id": "esl-one-birmingham-2026",
+      "event_name": "ESL One Birmingham 2026",
+      "event_end_date": "2026-03-29",
+      "tier": "Tier 1",
+      "placement": "9th-10th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "30000",
+      "source_ids": [
+        "source-018"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "20000",
+        "club_reward": "10000"
+      }
+    },
+    {
+      "award_id": "9964962-premier-series-1",
+      "team_id": 9964962,
+      "recorded_team_name": "GamerLegion",
+      "event_id": "premier-series-1",
+      "event_name": "PREMIER SERIES",
+      "event_end_date": "2026-04-11",
+      "tier": "Tier 2",
+      "placement": "4th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "7000",
+      "source_ids": [
+        "source-023"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9964962-pgl-wallachia-8",
+      "team_id": 9964962,
+      "recorded_team_name": "GamerLegion",
+      "event_id": "pgl-wallachia-8",
+      "event_name": "PGL Wallachia Season 8",
+      "event_end_date": "2026-04-26",
+      "tier": "Tier 1",
+      "placement": "9th-11th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "20000",
+      "source_ids": [
+        "source-025"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "9964962-dreamleague-29",
+      "team_id": 9964962,
+      "recorded_team_name": "GamerLegion",
+      "event_id": "dreamleague-29",
+      "event_name": "DreamLeague Season 29",
+      "event_end_date": "2026-05-24",
+      "tier": "Tier 1",
+      "placement": "15th-16th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "20000",
+      "source_ids": [
+        "source-012"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "10000",
+        "club_reward": "10000"
+      }
+    },
+    {
+      "award_id": "9964962-ewc-2026",
+      "team_id": 9964962,
+      "recorded_team_name": "GamerLegion",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "17th-20th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "10000",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "9964962-1win-essence-2",
+      "team_id": 9964962,
+      "recorded_team_name": "GamerLegion",
+      "event_id": "1win-essence-2",
+      "event_name": "1win Essence II",
+      "event_end_date": "2026-08-05",
+      "tier": "Tier 1",
+      "placement": "7th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "2500",
+      "source_ids": [
+        "source-006"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10136357-dreamleague-division-2-3",
+      "team_id": 10136357,
+      "recorded_team_name": "Nigma Galaxy",
+      "event_id": "dreamleague-division-2-3",
+      "event_name": "DreamLeague Division 2 Season 3",
+      "event_end_date": "2026-02-12",
+      "tier": "Tier 2",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "10000",
+      "source_ids": [
+        "source-013"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10136357-esl-one-birmingham-2026",
+      "team_id": 10136357,
+      "recorded_team_name": "Nigma Galaxy",
+      "event_id": "esl-one-birmingham-2026",
+      "event_name": "ESL One Birmingham 2026",
+      "event_end_date": "2026-03-29",
+      "tier": "Tier 1",
+      "placement": "15th-16th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "20000",
+      "source_ids": [
+        "source-018"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "10000",
+        "club_reward": "10000"
+      }
+    },
+    {
+      "award_id": "10136357-premier-series-1",
+      "team_id": 10136357,
+      "recorded_team_name": "Nigma Galaxy",
+      "event_id": "premier-series-1",
+      "event_name": "PREMIER SERIES",
+      "event_end_date": "2026-04-11",
+      "tier": "Tier 2",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "25000",
+      "source_ids": [
+        "source-023"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10136357-dreamleague-division-2-4",
+      "team_id": 10136357,
+      "recorded_team_name": "Nigma Galaxy",
+      "event_id": "dreamleague-division-2-4",
+      "event_name": "DreamLeague Division 2 Season 4",
+      "event_end_date": "2026-05-01",
+      "tier": "Tier 2",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "10000",
+      "source_ids": [
+        "source-014"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10136357-1win-essence-1",
+      "team_id": 10136357,
+      "recorded_team_name": "Nigma Galaxy",
+      "event_id": "1win-essence-1",
+      "event_name": "1win Essence I",
+      "event_end_date": "2026-05-11",
+      "tier": "Tier 2",
+      "placement": "4th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "7500",
+      "source_ids": [
+        "source-005"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10136357-dreamleague-29",
+      "team_id": 10136357,
+      "recorded_team_name": "Nigma Galaxy",
+      "event_id": "dreamleague-29",
+      "event_name": "DreamLeague Season 29",
+      "event_end_date": "2026-05-24",
+      "tier": "Tier 1",
+      "placement": "13th-14th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "22500",
+      "source_ids": [
+        "source-012"
+      ],
+      "evidence_type": "community_explicit_player_and_club_payout",
+      "confidence": "medium",
+      "components_usd": {
+        "player_prize": "12500",
+        "club_reward": "10000"
+      }
+    },
+    {
+      "award_id": "10136357-ewc-2026",
+      "team_id": 10136357,
+      "recorded_team_name": "Nigma Galaxy",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "5th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "70000",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "10149530-cct-s2-series-7",
+      "team_id": 10149530,
+      "recorded_team_name": "L1GA TEAM",
+      "event_id": "cct-s2-series-7",
+      "event_name": "CCT Season 2 Series 7",
+      "event_end_date": "2026-02-20",
+      "tier": "Tier 3",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "5000",
+      "source_ids": [
+        "source-009"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10149530-cct-s2-series-8",
+      "team_id": 10149530,
+      "recorded_team_name": "L1GA TEAM",
+      "event_id": "cct-s2-series-8",
+      "event_name": "CCT Season 2 Series 8",
+      "event_end_date": "2026-03-20",
+      "tier": "Tier 3",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "5000",
+      "source_ids": [
+        "source-010"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10149530-esports-league-super-cup-pro",
+      "team_id": 10149530,
+      "recorded_team_name": "L1GA TEAM",
+      "event_id": "esports-league-super-cup-pro",
+      "event_name": "Esports League Super Cup Pro Division",
+      "event_end_date": "2026-03-21",
+      "tier": "Tier 3",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "3018.51",
+      "source_ids": [
+        "source-019"
+      ],
+      "evidence_type": "community_explicit_native_payout_plus_fx_conversion",
+      "confidence": "medium-low",
+      "native_amount": "250000 RUB",
+      "fx_note": "USD conversion published on event page using 2026-03-21 rate; not an organizer USD award."
+    },
+    {
+      "award_id": "10149530-premier-series-1",
+      "team_id": 10149530,
+      "recorded_team_name": "L1GA TEAM",
+      "event_id": "premier-series-1",
+      "event_name": "PREMIER SERIES",
+      "event_end_date": "2026-04-11",
+      "tier": "Tier 2",
+      "placement": "5th-6th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "2500",
+      "source_ids": [
+        "source-023"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10149530-dreamleague-division-2-4",
+      "team_id": 10149530,
+      "recorded_team_name": "L1GA TEAM",
+      "event_id": "dreamleague-division-2-4",
+      "event_name": "DreamLeague Division 2 Season 4",
+      "event_end_date": "2026-05-01",
+      "tier": "Tier 2",
+      "placement": "5th-6th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "4000",
+      "source_ids": [
+        "source-014"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10149530-ewc-2026",
+      "team_id": 10149530,
+      "recorded_team_name": "L1GA TEAM",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "21st-24th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "7500",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "10149530-games-of-future-2026",
+      "team_id": 10149530,
+      "recorded_team_name": "L1GA TEAM",
+      "event_id": "games-of-future-2026",
+      "event_name": "Games of the Future 2026",
+      "event_end_date": "2026-08-05",
+      "tier": "Tier 2",
+      "placement": "13th-16th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "15000",
+      "source_ids": [
+        "source-022",
+        "source-004"
+      ],
+      "evidence_type": "official_event_plus_community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10150413-dreamleague-division-2-3",
+      "team_id": 10150413,
+      "recorded_team_name": "1w Team",
+      "event_id": "dreamleague-division-2-3",
+      "event_name": "DreamLeague Division 2 Season 3",
+      "event_end_date": "2026-02-12",
+      "tier": "Tier 2",
+      "placement": "5th-6th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "5000",
+      "source_ids": [
+        "source-013"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10150413-cct-s2-series-8",
+      "team_id": 10150413,
+      "recorded_team_name": "1w Team",
+      "event_id": "cct-s2-series-8",
+      "event_name": "CCT Season 2 Series 8",
+      "event_end_date": "2026-03-20",
+      "tier": "Tier 3",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "8000",
+      "source_ids": [
+        "source-010"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10150413-dreamleague-division-2-4",
+      "team_id": 10150413,
+      "recorded_team_name": "1w Team",
+      "event_id": "dreamleague-division-2-4",
+      "event_name": "DreamLeague Division 2 Season 4",
+      "event_end_date": "2026-05-01",
+      "tier": "Tier 2",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "8000",
+      "source_ids": [
+        "source-014"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10150413-1win-essence-1",
+      "team_id": 10150413,
+      "recorded_team_name": "1w Team",
+      "event_id": "1win-essence-1",
+      "event_name": "1win Essence I",
+      "event_end_date": "2026-05-11",
+      "tier": "Tier 2",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "25000",
+      "source_ids": [
+        "source-005"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10150413-ewc-2026",
+      "team_id": 10150413,
+      "recorded_team_name": "1w Team",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "9th-12th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "40000",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "10150413-1win-essence-2",
+      "team_id": 10150413,
+      "recorded_team_name": "1w Team",
+      "event_id": "1win-essence-2",
+      "event_name": "1win Essence II",
+      "event_end_date": "2026-08-05",
+      "tier": "Tier 1",
+      "placement": "3rd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "22500",
+      "source_ids": [
+        "source-006"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    },
+    {
+      "award_id": "10150538-blast-slam-7",
+      "team_id": 10150538,
+      "recorded_team_name": "LGD Gaming",
+      "event_id": "blast-slam-7",
+      "event_name": "BLAST SLAM VII",
+      "event_end_date": "2026-06-07",
+      "tier": "Tier 1",
+      "placement": "2nd",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "195000",
+      "source_ids": [
+        "source-008",
+        "source-001"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high",
+      "components_usd": {
+        "player_prize": "150000",
+        "club_reward": "45000"
+      }
+    },
+    {
+      "award_id": "10150538-ewc-2026",
+      "team_id": 10150538,
+      "recorded_team_name": "LGD Gaming",
+      "event_id": "ewc-2026",
+      "event_name": "Esports World Cup 2026",
+      "event_end_date": "2026-07-19",
+      "tier": "Tier 1",
+      "placement": "9th-12th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "40000",
+      "source_ids": [
+        "source-020",
+        "source-003"
+      ],
+      "evidence_type": "official_payout_rulebook_plus_community_placement",
+      "confidence": "high"
+    },
+    {
+      "award_id": "10150538-1win-essence-2",
+      "team_id": 10150538,
+      "recorded_team_name": "LGD Gaming",
+      "event_id": "1win-essence-2",
+      "event_name": "1win Essence II",
+      "event_end_date": "2026-08-05",
+      "tier": "Tier 1",
+      "placement": "7th-8th",
+      "award_scope": "team",
+      "status": "confirmed",
+      "amount_usd": "2500",
+      "source_ids": [
+        "source-006"
+      ],
+      "evidence_type": "community_explicit_payout",
+      "confidence": "medium"
+    }
+  ],
+  "declared_team_totals_usd": {
+    "2163": "1002500",
+    "726228": "347000",
+    "2586976": "185000",
+    "5017210": "166000",
+    "7119388": "501250",
+    "8255888": "985500",
+    "8261500": "461250",
+    "9247354": "540000",
+    "9467224": "777000",
+    "9572001": "1365000",
+    "9823272": "1177500",
+    "9964962": "143250",
+    "10136357": "165000",
+    "10149530": "42018.51",
+    "10150413": "108500",
+    "10150538": "237500"
+  },
+  "declared_total_usd": "8204268.51",
+  "excluded_or_unknown": [
+    {
+      "item": "EWC 2026 MVP award",
+      "amount_usd": 25000,
+      "reason": "Individual award to Noticed, not a team placement award."
+    },
+    {
+      "item": "Zero-cash qualifiers",
+      "reason": "Advancement only; no participant cash award."
+    },
+    {
+      "item": "Tundra Esports awards before the 1w transfer",
+      "reason": "Excluded from Iron Wing's current-organization total; shown only in identity sensitivity notes."
+    },
+    {
+      "item": "HEROIC/ex-HEROIC awards before the LGD signing",
+      "reason": "Excluded from LGD's current-organization total; shown only in identity sensitivity notes."
+    },
+    {
+      "item": "Games of the Future 2026: LGD.Pinghu 5th-8th, $35,000",
+      "reason": "Participant stable team_id is 10208068, not current LGD Gaming 10150538; same-name family is insufficient for identity joining."
+    },
+    {
+      "item": "Payment settlement status",
+      "reason": "Public sources establish nominal awards, not bank receipt or whether an organizer has already paid."
+    }
+  ]
+}

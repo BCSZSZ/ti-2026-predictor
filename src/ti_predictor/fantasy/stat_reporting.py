@@ -5,8 +5,17 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-_ROLE_LABELS = {"core": "Core", "mid": "Mid", "support": "Support"}
-_COLOR_LABELS = {"red": "Red", "blue": "Blue", "green": "Green"}
+TEAM_RANK_REPORT_VERSION = "publication-v1"
+TEAM_RANK_REPORT_FILENAME = "group-stat-team-top3-publication.md"
+
+_ROLE_LABELS = {"core": "核心位", "mid": "中单", "support": "辅助位"}
+_COLOR_LABELS = {"red": "红色", "blue": "蓝色", "green": "绿色"}
+_PROVENANCE_LABELS = {
+    "exact": "精确数据",
+    "derived": "推导数据",
+    "proxy": "代理数据",
+    "unavailable": "不可用",
+}
 _ROLE_COLOR_ORDER = {
     ("core", "red"): 0,
     ("core", "green"): 1,
@@ -26,11 +35,12 @@ def _team_cell(row: Mapping[str, Any], team_names: Mapping[int, str]) -> str:
     team_id = int(row["team_id"])
     name = _escape_cell(team_names.get(team_id, str(team_id)))
     return (
-        f"{name} (`{team_id}`)<br>"
-        f"μ/C10={float(row['point_mean']):.1f} / {float(row['point_cvar10']):.1f}<br>"
-        f"n={int(row['series_blocks'])} · Δ={100.0 * float(row['gap_to_point_best_fraction']):.2f}%<br>"
-        f"P1={100.0 * float(row['rank1_probability']):.1f}% · "
-        f"P3={100.0 * float(row['top3_probability']):.1f}%"
+        f"{name}<br>队伍 ID：`{team_id}`<br>"
+        f"平均分 {float(row['point_mean']):.1f} · 低迷分 {float(row['point_cvar10']):.1f}<br>"
+        f"样本 {int(row['series_blocks'])} 个完整系列赛 · "
+        f"落后第一 {100.0 * float(row['gap_to_point_best_fraction']):.2f}%<br>"
+        f"第一稳定率 {100.0 * float(row['rank1_probability']):.1f}% · "
+        f"前三稳定率 {100.0 * float(row['top3_probability']):.1f}%"
     )
 
 
@@ -38,7 +48,6 @@ def render_group_stat_team_top3_markdown(
     evidence: Mapping[str, Any],
     *,
     team_names: Mapping[int, str],
-    run_id: str,
 ) -> str:
     """Render point-estimate Top 3 with team-rank bootstrap probabilities."""
 
@@ -84,30 +93,23 @@ def render_group_stat_team_top3_markdown(
     tight_top3 = sum(float(row["gap_to_point_best_fraction"]) < 0.02 for row in point_thirds)
 
     lines = [
-        "# Group Stat 队伍 Top 3 证据表",
+        "# Group Fantasy 各 Stat 推荐队伍 Top 3",
         "",
-        "状态：**点估计前三与队伍排名 bootstrap 的描述性扩展；不改变 v2 手册或发布标签**",
+        f"数据截止：`{evidence['as_of']}` · "
+        f"排名稳定性检查：{int(bootstrap['replicates'])} 次完整系列赛重采样",
         "",
-        f"- 显式 `as_of`：`{evidence['as_of']}`",
-        f"- run：`{run_id}`",
-        f"- evidence SHA-256：`{evidence['evidence_package_sha256']}`",
-        f"- Series cluster bootstrap：{int(bootstrap['replicates'])} 次，"
-        f"置信水平 {100.0 * float(bootstrap['confidence_level']):.0f}%",
-        "- 排名：点估计与每次 bootstrap 均按 Expected mean 降序、稳定 `team_id` 升序打破平手",
+        "每项 Stat 按预测平均分列出前三队伍。平均分表示常规预期；低迷分表示最差 10% 情形的平均分，"
+        "越高越抗风险；样本表示该队该位置可用的完整系列赛数量；落后第一表示与本行第一名的平均分差距。",
         "",
-        "`P1` 是该队在完整 Series 重采样中排名第一的比例；`P3` 是进入前三的比例。"
-        "它们是诊断性重采样频率，不是经校准的未来真实排名概率或置信区间。"
-        "`exact/derived` 只描述 Stat 来源，不表示队伍未来排名确定。队名仅用于显示，连接使用稳定 ID。",
+        "第一稳定率表示重采样后仍排第一的比例，前三稳定率表示仍在前三的比例。"
+        "稳定率不是未来比赛的真实概率。队名用于阅读，数据连接使用队伍 ID。",
         "",
-        "## 可信度提示",
+        "## 使用提示",
         "",
         f"- {len(forecast_by_key)} 个位置/颜色/Stat 行中，{boundary_count} 个 Stat 分档区间跨线；",
-        f"- {tight_top2} 项的点估计第一与第二差距小于 1%；",
-        f"- {tight_top3} 项的点估计第一与第三差距小于 2%；",
-        "- 点估计前三是描述性候选，不是自动锁队规则；完整三格仍须重新执行同队 Team matching。",
-        "",
-        "单元格格式：`μ/C10` 为 Expected mean / CVaR10，`n` 为该队该位置的完整 Series blocks，"
-        "`Δ` 为相对点估计第一的均值差距。",
+        f"- {tight_top2} 项前两名差距小于 1%，{tight_top3} 项第一与第三差距小于 2%。"
+        "差距较小时，应把前三都视为候选。",
+        "- “分档边界”表示该 Stat 的优先级可能随样本变化跨档，不等于数据错误。",
         "",
     ]
 
@@ -130,28 +132,28 @@ def render_group_stat_team_top3_markdown(
                 [
                     f"## {_ROLE_LABELS[group[0]]} · {_COLOR_LABELS[group[1]]}",
                     "",
-                    "| Stat | 来源/分档稳定性 | #1 | #2 | #3 | #1–#3 差距 |",
-                    "| --- | --- | --- | --- | --- | ---: |",
+                    "| Stat | 数据来源 / 分档 | 第 1 | 第 2 | 第 3 |",
+                    "| --- | --- | --- | --- | --- |",
                 ]
             )
             current_group = group
         top3 = sorted(grouped[key], key=lambda row: int(row["point_rank"]))[:3]
-        stability = "边界" if boundary_by_key.get(key, False) else "稳定"
-        gap13 = 100.0 * float(top3[2]["gap_to_point_best_fraction"])
+        stability = "分档边界" if boundary_by_key.get(key, False) else "分档稳定"
+        provenance = _PROVENANCE_LABELS.get(str(forecast["provenance"]), str(forecast["provenance"]))
         lines.append(
-            f"| `{key[2]}` | `{forecast['provenance']}` / {stability} | "
+            f"| `{key[2]}` | {provenance} / {stability} | "
             f"{_team_cell(top3[0], team_names)} | {_team_cell(top3[1], team_names)} | "
-            f"{_team_cell(top3[2], team_names)} | {gap13:.2f}% |"
+            f"{_team_cell(top3[2], team_names)} |"
         )
 
-    warnings = evidence.get("warnings", ())
-    if warnings:
-        lines.extend(["", "## 模型与数据限制", ""])
-        lines.extend(f"- {warning}" for warning in warnings)
     lines.extend(
         [
             "",
-            "该附表只扩展队伍匹配透明度。Stat 指数、Quality、Trait、手册规则和 `draft` 标签均未修改。",
+            "## 使用边界",
+            "",
+            "本表基于数据截止日前的历史比赛和当前赛制近似；阵容、版本与赛程变化都可能改变排名。",
+            "完整三格仍须重新进行同队匹配，不能把三行的第一名直接拼成一个选择。",
+            "本表不改变 Stat 指数、Quality、Trait、v2 手册规则或 `draft` 状态。",
             "",
         ]
     )

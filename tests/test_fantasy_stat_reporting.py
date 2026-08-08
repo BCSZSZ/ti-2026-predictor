@@ -64,7 +64,8 @@ def test_top3_markdown_reports_plain_language_risk_samples_and_rank_stability() 
     assert "平均分 100.0 · 低迷分 80.0" in report
     assert "样本 10 个完整系列赛 · 落后第一 0.00%" in report
     assert "第一稳定率 55.0% · 前三稳定率 90.0%" in report
-    assert "精确数据 / 分档稳定" in report
+    assert "| Stat | 分档状态 | 第 1 | 第 2 | 第 3 |" in report
+    assert "| `kills` | 分档稳定 |" in report
     assert "Delta" not in report
     assert "稳定率不是未来比赛的真实概率" in report
     assert "μ/C10" not in report
@@ -74,6 +75,10 @@ def test_top3_markdown_reports_plain_language_risk_samples_and_rank_stability() 
     assert "P3=" not in report
     assert "队伍 ID" not in report
     assert "`11`" not in report
+    assert "数据来源" not in report
+    assert "精确数据" not in report
+    assert "推导数据" not in report
+    assert "exact" not in report
     assert "fixture warning" not in report
     assert "evidence SHA-256" not in report
     assert report.endswith("\n")

@@ -89,9 +89,11 @@ semantic hash. The second adds 16 team rows to each of the 42 role/color/Stat gr
 `group-stat-team-top3-publication.md`. The publication table labels the internal `P1` and `P3`
 fields as first-place and Top-3 stability rates; they remain deterministic Series-cluster bootstrap
 frequencies, not calibrated future probabilities or confidence intervals. Names are display-only
-and joins use stable team IDs. See the promoted
+and joins use stable team IDs. Each role/color table also ranks its six Stats from 1 through 6 and
+renders the frozen Baseline Stat grade as a player-facing handling suggestion with its relative
+strength; that suggestion is not an unconditional Roll action. See the promoted
 [v2 Stat team Top 3 publication table](playbooks/group-roll/stat-team-top3-publication-v2.md) and its
-[publication revision report](reports/group-stat-team-top3-publication-revision-2026-08-08.md).
+[r4 publication report](reports/group-stat-team-top3-publication-r4-2026-08-08.md).
 
 The frozen Group manual validation is a separate cached-snapshot command:
 

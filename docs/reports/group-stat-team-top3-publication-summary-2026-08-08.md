@@ -1,5 +1,8 @@
 # Group Stat 队伍 Top 3 发布版：易懂说明
 
+> 本文保留首版单元格说明。新增的 Stat 排名与基础建议请直接看
+> [r4 易懂总结](group-stat-team-top3-publication-r4-summary-2026-08-08.md)。
+
 ## 新版在哪里
 
 直接查阅 [Group Fantasy 各 Stat 推荐队伍 Top 3](../playbooks/group-roll/stat-team-top3-publication-v2.md)。

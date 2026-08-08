@@ -14,6 +14,8 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 它以 16 队综合排名、实力带和两两胜负关系为主，明确披露正式模型在 TI 2025 留出集上只有
 56.25% 的胜负准确率；游戏内 16 槽填写放在报告末尾，不把微弱模型优势包装成确定答案。
 [易懂总结](docs/reports/ti2026-group-forecast-publication-summary-2026-08-08.md)提供一页速读，
+[赛事档位与奖金易懂总结](docs/reports/ti2026-group-event-tier-prize-summary-2026-08-08.md)单独说明
+当前 7.41 赛事的社区 Tier、总奖金和资格赛缺失值该怎样理解，
 [7.41 系列赛证据展开](docs/reports/ti2026-group-current-patch-series-evidence-2026-08-08.md)列出
 每队汇总、精确小版本、社区赛事档位、赛事总奖金、最终名次、关键直接交手和当前版本全部完整系列赛，
 [生成与验收记录](docs/reports/ti2026-group-forecast-publication-implementation-2026-08-08.md)保存运行、

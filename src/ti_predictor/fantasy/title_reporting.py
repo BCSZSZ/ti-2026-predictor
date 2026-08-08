@@ -261,7 +261,7 @@ def render_title_evidence_markdown(payload: dict[str, Any]) -> str:
             f"{analysis['complete_series_blocks_across_pools']} 个队伍×位置完整 Series blocks。",
             f"- 版本权重：当前精确版本 {exact_patch_weight['patch_name']} 的单局权重为同条件其他"
             f"当前大版本小版本的 {exact_patch_weight['multiplier']:g} 倍；上一大版本、赛事级别和"
-            "60 天时间半衰期保持原值。",
+            " 60 天时间半衰期保持原值。",
             "- Prefix 默认答案：中等偏低确定度，最终队伍和位置会改变排名。",
             "- Suffix 默认答案：中等确定度；Clutch 的方向较稳，但纸面加成不是客户端最终结算增幅。",
             "- 最佳实践：先完成三面战旗与队伍选择，再免费调整 Title；若没有重新计算条件，就使用默认组合。",

@@ -26,6 +26,23 @@
 
 这是一种按证据强弱整理的保守查阅顺序，不是已经证明全局最优的 40 步策略。
 
+## Roll 之外先选 Title
+
+Title 不属于 40 次 Roll：它单独选择 1 个 Prefix 和 1 个 Suffix，对三面 Fantasy 战旗生效，
+更换不消耗 Roll。没有三面最终战旗信息时，当前默认选择是：
+
+- **Prefix：Cerulean**；
+- **Suffix：the Clutch**。
+
+Cerulean 是 48 个“队伍×位置”池的中性平均第一，但只在 15 个池里单独第一，因此它是默认答案，
+不是任何阵容都固定最优。the Clutch 在 31/48 个池里是 Suffix 第一，方向更稳定。截图中的
+Otherworldly 综合排第 3，尚可继续使用；the Flayed Twins Acolyte 的客户端条件存在冲突，应优先
+换成 the Clutch。
+
+完整触发率、八个 Prefix、八个 Suffix 和可信度说明见
+[Title 分析与推荐](../../reports/ti2026-fantasy-title-recommendation-2026-08-08.md)。最佳顺序是先完成
+三面战旗与队伍匹配，再利用免费更换机会复查 Title；无法个性化重算时才直接使用默认组合。
+
 ## 确定度怎么读
 
 | 层级 | 含义 | 能否直接当操作规则 |

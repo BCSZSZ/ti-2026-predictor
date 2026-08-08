@@ -73,6 +73,9 @@ The visible final leaderboard rewards and prediction point tables are transcribe
   top-two Games and best-Series aggregation; a different Team may not be selected for each Emblem.
 - Production Coach effects are unavailable/excluded until a complete validated prefix-plus-suffix
   future Scenario exists. This is not equivalent to asserting that a zero-bonus Coach is selected.
+- A standalone descriptive Title layer may rank observable conditions for manual use without changing
+  that production gate. Its current neutral default is `Cerulean + the Clutch`; Prefix must be
+  revisited once the three final Banner teams are known.
 
 ## Known uncertainties
 

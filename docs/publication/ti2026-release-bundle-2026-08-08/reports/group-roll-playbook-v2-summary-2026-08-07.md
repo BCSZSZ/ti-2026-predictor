@@ -82,4 +82,4 @@ v2 已经完整做完、可以复现，而且不需要再跑 15 小时；但两�
 
 需要全部技术细节时，查看
 [P5 项目审计](../../../reports/group-roll-playbook-v2-p5-project-audit-2026-08-07.md)和
-[v2 最终证据包](../playbooks/group-roll/evidence-package-v2.json)。
+[v2 最终证据包](../../../playbooks/group-roll/evidence-package-v2.json)。

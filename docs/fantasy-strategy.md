@@ -169,6 +169,11 @@ expected title gain
 
 同一个 title 作用于整个 Fantasy 阵容，故必须用所选三个 role 的英雄/比赛联合分布评价。条件触发频繁的小加成可能胜过几乎不触发的大加成。
 
+当前独立证据层已经补齐客户端 128 名英雄的 Prefix 分类，并用完整 Series 历史计算逐图纸面值。
+未知最终三面战旗时的默认是 **Cerulean + the Clutch**；Cerulean 仍会随最终队伍/位置改变，两个
+一血 Suffix 因客户端内部条件和可见文案冲突而排除。这个人工默认没有升级为完整阵容联合最优，
+详见 [TI 2026 Title 分析](reports/ti2026-fantasy-title-recommendation-2026-08-08.md)。
+
 ### 3.6 重随是一项在线决策
 
 客户端同一时刻给出三个全战旗共享的选项；实际动作是选择：

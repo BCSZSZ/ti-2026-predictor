@@ -7,6 +7,13 @@
 它不是把原来的两本草案硬说成“可靠”，而是把已经确认的机制、查表结论、较强规则、条件规则和
 失败规则分开写。阅读顺序就是确定度从高到低：S → A → B → C → D。
 
+## 先处理 Roll 之外的 Title
+
+Title 免费更换，不占 40 次 Roll；一个 Prefix 和一个 Suffix 同时服务三面战旗。没有最终阵容信息
+时，默认选 **Cerulean + the Clutch**。截图中的 Otherworldly 排第 3，仍可用；Flayed Twins
+Acolyte 有客户端条件冲突，应优先换成 the Clutch。Cerulean 会受三面最终队伍影响，所以战旗完成
+后最好再复查。完整数字见 [Title 分析与推荐](ti2026-fantasy-title-recommendation-2026-08-08.md)。
+
 ## Roll 到底怎样运作
 
 你有核心位、中单、辅助位三面战旗，每面三格，共 40 次 Roll。屏幕上的三个选项是三面战旗共享

@@ -3,7 +3,7 @@ from __future__ import annotations
 from ti_predictor.fantasy.stat_reporting import render_group_stat_team_top3_markdown
 
 
-def test_top3_markdown_reports_ids_risk_samples_and_rank_probabilities() -> None:
+def test_top3_markdown_reports_plain_language_risk_samples_and_rank_stability() -> None:
     rankings = [
         {
             "role": "core",
@@ -60,7 +60,7 @@ def test_top3_markdown_reports_ids_risk_samples_and_rank_probabilities() -> None
 
     assert "# Group Fantasy 各 Stat 推荐队伍 Top 3" in report
     assert "## 核心位 · 红色" in report
-    assert "Alpha<br>队伍 ID：`11`" in report
+    assert "Alpha<br>平均分 100.0" in report
     assert "平均分 100.0 · 低迷分 80.0" in report
     assert "样本 10 个完整系列赛 · 落后第一 0.00%" in report
     assert "第一稳定率 55.0% · 前三稳定率 90.0%" in report
@@ -72,6 +72,8 @@ def test_top3_markdown_reports_ids_risk_samples_and_rank_probabilities() -> None
     assert "Δ=" not in report
     assert "P1=" not in report
     assert "P3=" not in report
+    assert "队伍 ID" not in report
+    assert "`11`" not in report
     assert "fixture warning" not in report
     assert "evidence SHA-256" not in report
     assert report.endswith("\n")

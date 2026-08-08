@@ -2,6 +2,10 @@
 
 状态：**发布呈现已完成并正式重生成；排名数值、证据与 v2 状态均未改变**
 
+> 后续修订：`publication-v2` 已从面向玩家的表格中完全移除队伍 ID。以下 run、哈希和呈现说明
+> 记录首次 `publication-v1` 阶段；当前版本见
+> [r2 修订说明](group-stat-team-top3-publication-r2-2026-08-08.md)。
+
 - 日期：2026-08-08
 - 显式 `as_of`：`2026-08-06T17:27:00Z`
 - 发布版实现提交：`5137e68a87542fad50f00ffa141680884d2dc000`
@@ -62,9 +66,9 @@ uv run ti fantasy group-evidence --as-of 2026-08-06T17:27:00Z --bootstrap --team
 | `group-stat-team-top3-publication.md` | `203866c561e6205d31cad1074214774b7af4a8c84534d49988879e1c6cc140f3` |
 | `run.json` | `d4ba3e2e8eaff36fed5bc484c49416904faf8a93e20318d68c4d12ec09f0aa4d` |
 
-生成 Markdown 与被提升的
-[发布版速查表](../playbooks/group-roll/stat-team-top3-publication-v2.md)规范化内容一致。发布表
-包含 126 个明确标注的队伍 ID，旧缩写命中为 0。
+该 Markdown 曾在提交 `0ea8372` 被提升为首次发布版，包含 126 个明确标注的队伍 ID，旧缩写
+命中为 0。当前规范路径后来升级到不显示 ID 的 `publication-v2`；首次生成文件仍保留在不可变
+artifact 和 Git 历史中。
 
 ## 审计、回归与清理
 

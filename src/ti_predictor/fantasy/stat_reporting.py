@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-TEAM_RANK_REPORT_VERSION = "publication-v1"
+TEAM_RANK_REPORT_VERSION = "publication-v2"
 TEAM_RANK_REPORT_FILENAME = "group-stat-team-top3-publication.md"
 
 _ROLE_LABELS = {"core": "核心位", "mid": "中单", "support": "辅助位"}
@@ -35,7 +35,7 @@ def _team_cell(row: Mapping[str, Any], team_names: Mapping[int, str]) -> str:
     team_id = int(row["team_id"])
     name = _escape_cell(team_names.get(team_id, str(team_id)))
     return (
-        f"{name}<br>队伍 ID：`{team_id}`<br>"
+        f"{name}<br>"
         f"平均分 {float(row['point_mean']):.1f} · 低迷分 {float(row['point_cvar10']):.1f}<br>"
         f"样本 {int(row['series_blocks'])} 个完整系列赛 · "
         f"落后第一 {100.0 * float(row['gap_to_point_best_fraction']):.2f}%<br>"
@@ -101,8 +101,7 @@ def render_group_stat_team_top3_markdown(
         "每项 Stat 按预测平均分列出前三队伍。平均分表示常规预期；低迷分表示最差 10% 情形的平均分，"
         "越高越抗风险；样本表示该队该位置可用的完整系列赛数量；落后第一表示与本行第一名的平均分差距。",
         "",
-        "第一稳定率表示重采样后仍排第一的比例，前三稳定率表示仍在前三的比例。"
-        "稳定率不是未来比赛的真实概率。队名用于阅读，数据连接使用队伍 ID。",
+        "第一稳定率表示重采样后仍排第一的比例，前三稳定率表示仍在前三的比例。稳定率不是未来比赛的真实概率。",
         "",
         "## 使用提示",
         "",

@@ -65,9 +65,9 @@ Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策
 `fantasy group-evidence` 是 P3 的 Group 专用证据入口：它用完整 Series 块、8,192 个公共情景
 和 400 次 Series 分组重采样生成可复现的 Stat 表及终局估值哈希；它不是人工手册或重随求解器。
 可选的 `--team-rank-bootstrap` 会再为 42 个位置/颜色/Stat 组生成全部 16 队的排名记录和
-可读 Top 3 附表。默认关闭以保持冻结 v2 schema 与哈希兼容；附表中的 `P1/P3` 是 Series
-重采样频率，不是已校准的未来真实排名概率。正式附表见
-[v2 Stat 队伍 Top 3](docs/playbooks/group-roll/stat-team-top3-evidence-v2.md)。
+可读 Top 3 附表。默认关闭以保持冻结 v2 schema 与哈希兼容；发布版以“平均分、低迷分、
+样本、落后第一、第一稳定率、前三稳定率”呈现，稳定率不是未来真实排名概率。正式附表见
+[v2 Stat 队伍 Top 3 发布版](docs/playbooks/group-roll/stat-team-top3-publication-v2.md)。
 两版 v2 人工手册、完整 Stat/Quality/Trait 表、最终证据包和当前发布状态见
 [Group Roll 手册索引](docs/playbooks/group-roll/README.md)。v2 standalone 在约 25 分钟内完成，
 完整 held-out 只读交叉审计在约 45 分钟内完成 108/108；二者合计约 70 分钟，不需要再追加

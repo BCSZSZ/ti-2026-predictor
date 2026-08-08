@@ -5,17 +5,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-TEAM_RANK_REPORT_VERSION = "publication-v2"
+TEAM_RANK_REPORT_VERSION = "publication-v3"
 TEAM_RANK_REPORT_FILENAME = "group-stat-team-top3-publication.md"
 
 _ROLE_LABELS = {"core": "核心位", "mid": "中单", "support": "辅助位"}
 _COLOR_LABELS = {"red": "红色", "blue": "蓝色", "green": "绿色"}
-_PROVENANCE_LABELS = {
-    "exact": "精确数据",
-    "derived": "推导数据",
-    "proxy": "代理数据",
-    "unavailable": "不可用",
-}
 _ROLE_COLOR_ORDER = {
     ("core", "red"): 0,
     ("core", "green"): 1,
@@ -131,16 +125,15 @@ def render_group_stat_team_top3_markdown(
                 [
                     f"## {_ROLE_LABELS[group[0]]} · {_COLOR_LABELS[group[1]]}",
                     "",
-                    "| Stat | 数据来源 / 分档 | 第 1 | 第 2 | 第 3 |",
+                    "| Stat | 分档状态 | 第 1 | 第 2 | 第 3 |",
                     "| --- | --- | --- | --- | --- |",
                 ]
             )
             current_group = group
         top3 = sorted(grouped[key], key=lambda row: int(row["point_rank"]))[:3]
         stability = "分档边界" if boundary_by_key.get(key, False) else "分档稳定"
-        provenance = _PROVENANCE_LABELS.get(str(forecast["provenance"]), str(forecast["provenance"]))
         lines.append(
-            f"| `{key[2]}` | {provenance} / {stability} | "
+            f"| `{key[2]}` | {stability} | "
             f"{_team_cell(top3[0], team_names)} | {_team_cell(top3[1], team_names)} | "
             f"{_team_cell(top3[2], team_names)} |"
         )

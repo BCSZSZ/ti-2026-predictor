@@ -35,6 +35,8 @@
   单元格，并说明稳定率可以和不可以代表什么。
 - [发布版 r2 修订说明](../../reports/group-stat-team-top3-publication-r2-2026-08-08.md)：记录移除
   队伍 ID 显示后的不可变重生成、数值一致性、审计与测试。
+- [发布版 r3 修订说明](../../reports/group-stat-team-top3-publication-r3-2026-08-08.md)：记录移除
+  来源显示、保留内部 provenance 与分档状态后的重生成和验收。
 - [发布版实施与验收](../../reports/group-stat-team-top3-publication-revision-2026-08-08.md)：记录
   新旧数值逐字节一致、不可变 run、正式哈希、审计和项目回归。
 - [v2 Stat 队伍 Top 3 技术版](stat-team-top3-evidence-v2.md)：为每个位置/颜色/Stat 列出点估计

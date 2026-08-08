@@ -10,21 +10,21 @@
 LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统计模型和固定随机种子产生。
 
 梦幻挑战与赛事预测共同使用的数据基础、分析方法、证据等级、复现身份和可信边界，统一见
-[TI 2026 梦幻挑战与赛事预测：方法与证据权威性报告](docs/reports/ti2026-methodology-and-evidence-authority-report-2026-08-08.md)。
+[TI 2026 梦幻挑战与赛事预测：方法与证据权威性报告](docs/reports/ti2026-methodology-and-evidence-authority-report-2026-08-09.md)。
 它逐项区分 Valve/客户端事实、`exact`/`derived` 观测、模型推断和仍未闭合的草案，不把
-`publishable` 误写成“预测一定正确”；[实施、问题与验收记录](docs/reports/ti2026-methodology-authority-report-implementation-2026-08-08.md)
-保存本阶段的来源核验、数值反算、旧 run 审计边界和全项目检查；
-[易懂总结](docs/reports/ti2026-methodology-and-evidence-summary-2026-08-08.md)用玩家语言说明用了什么、
+`publishable` 误写成“预测一定正确”；[7.41e 权重实施、影响与验收记录](docs/reports/ti2026-current-exact-patch-weight-v3-implementation-2026-08-09.md)
+保存本阶段的中央实现、正式重跑、Title 冲突解释和全项目检查；
+[易懂总结](docs/reports/ti2026-methodology-and-evidence-summary-2026-08-09.md)用玩家语言说明用了什么、
 怎么算、能信到什么程度以及下一步最值得补什么；只想看数据来源、计分、平均分与 Series 时，
-使用[方法极简速查](docs/reports/ti2026-methodology-quick-reference-2026-08-08.md)。本轮所有仍然有效的
+使用[方法极简速查](docs/reports/ti2026-methodology-quick-reference-2026-08-09.md)。本轮所有仍然有效的
 玩家版 Markdown 已集中到
-[TI 2026 玩家发布包](docs/publication/ti2026-release-bundle-2026-08-08/README.md)。
+[TI 2026 玩家发布包](docs/publication/ti2026-release-bundle-2026-08-09/README.md)。
 
 当前面向玩家的小组赛结论见
-[TI 2026 小组赛最终预测：综合实力排名与胜负关系](docs/reports/ti2026-group-forecast-publication-2026-08-08.md)。
+[TI 2026 小组赛预测：7.41e 权重更新版](docs/reports/ti2026-group-forecast-publication-2026-08-09.md)。
 它以 16 队综合排名、实力带和两两胜负关系为主，明确披露正式模型在 TI 2025 留出集上只有
 56.25% 的胜负准确率；游戏内 16 槽填写放在报告末尾，不把微弱模型优势包装成确定答案。
-[易懂总结](docs/reports/ti2026-group-forecast-publication-summary-2026-08-08.md)提供一页速读，
+[易懂总结](docs/reports/ti2026-group-forecast-publication-summary-2026-08-09.md)提供一页速读，
 [赛事档位与奖金易懂总结](docs/reports/ti2026-group-event-tier-prize-summary-2026-08-08.md)单独说明
 当前 7.41 赛事的社区 Tier、总奖金和资格赛缺失值该怎样理解，
 [7.41 系列赛证据展开](docs/reports/ti2026-group-current-patch-series-evidence-2026-08-08.md)列出
@@ -91,7 +91,7 @@ Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策
 可选的 `--team-rank-bootstrap` 会再为 42 个位置/颜色/Stat 组生成全部 16 队的排名记录和
 可读 Top 3 附表。默认关闭以保持冻结 v2 schema 与哈希兼容；发布版以“平均分、低迷分、
 样本、落后第一、第一稳定率、前三稳定率”呈现，稳定率不是未来真实排名概率。正式附表见
-[v2 Stat 队伍 Top 3 发布版](docs/playbooks/group-roll/stat-team-top3-publication-v2.md)。
+[v3 Stat 队伍 Top 3 发布版](docs/playbooks/group-roll/stat-team-top3-publication-v3.md)。
 两版 v2 人工手册、完整 Stat/Quality/Trait 表、最终证据包和当前发布状态见
 [Group Roll 手册索引](docs/playbooks/group-roll/README.md)。v2 standalone 在约 25 分钟内完成，
 完整 held-out 只读交叉审计在约 45 分钟内完成 108/108；二者合计约 70 分钟，不需要再追加
@@ -101,7 +101,7 @@ Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策
 [易懂总结](docs/reports/group-roll-playbook-v2-summary-2026-08-07.md)。
 
 面向玩家直接查阅的保守版本见
-[Group 40 Roll 玩家手册（证据分层发布版）](docs/playbooks/group-roll/group-roll-publication-manual-v2.md)：
+[Group 40 Roll 玩家手册（7.41e 权重更新版）](docs/playbooks/group-roll/group-roll-publication-manual-v3.md)：
 它用易懂语言说明 Roll 机制，并按证据确定度排列规则，不把仍为 `draft` 的两本候选包装成
 可靠或全局最优策略。
 

@@ -15,7 +15,10 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 `publishable` 误写成“预测一定正确”；[实施、问题与验收记录](docs/reports/ti2026-methodology-authority-report-implementation-2026-08-08.md)
 保存本阶段的来源核验、数值反算、旧 run 审计边界和全项目检查；
 [易懂总结](docs/reports/ti2026-methodology-and-evidence-summary-2026-08-08.md)用玩家语言说明用了什么、
-怎么算、能信到什么程度以及下一步最值得补什么。
+怎么算、能信到什么程度以及下一步最值得补什么；只想看数据来源、计分、平均分与 Series 时，
+使用[方法极简速查](docs/reports/ti2026-methodology-quick-reference-2026-08-08.md)。本轮所有仍然有效的
+玩家版 Markdown 已集中到
+[TI 2026 玩家发布包](docs/publication/ti2026-release-bundle-2026-08-08/README.md)。
 
 当前面向玩家的小组赛结论见
 [TI 2026 小组赛最终预测：综合实力排名与胜负关系](docs/reports/ti2026-group-forecast-publication-2026-08-08.md)。

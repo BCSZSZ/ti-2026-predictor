@@ -26,7 +26,7 @@
 3. [Title 分析与推荐](reports/ti2026-fantasy-title-recommendation-2026-08-09.md)：默认仍是
    `Cerulean + the Clutch`，并解释两个一血内部字段为什么暂时排除。
 4. [Roll 手册易懂总结](reports/group-roll-publication-manual-summary-2026-08-09.md)：先看明确的
-   Stat/Tier/Trait 接受与拒绝标准；完整条件见
+   Stat/Tier/Trait 接受与拒绝标准，以及 Trait 配方、追逐概率和停止线；完整条件见
    [Roll 玩家手册](playbooks/group-roll/group-roll-publication-manual-v3.md)。
 5. [小组赛预测易懂总结](reports/ti2026-group-forecast-publication-summary-2026-08-09.md)：当前第一集团
    是 Liquid 与 Yandex；完整排名和矩阵见[完整预测](reports/ti2026-group-forecast-publication-2026-08-09.md)。
@@ -59,8 +59,8 @@
 ## 版本边界
 
 - 7.41e 乘 2 是明确的建模政策，不是已证明最优的自然常数；
-- 旧 Roll v2 的完整 standalone/cross-audit 没有在新权重下重跑，所以 v3 手册只刷新当前数值，
-  B/C/D 操作规则继续沿用原验证身份；
+- 旧 Roll v2 的完整 standalone/cross-audit 没有在新权重下重跑；v3 新增的 Trait 追逐线是精确
+  一步算术门槛，不冒充整段 40 Roll 已验证核心规则，原 B/C/D 规则继续沿用原验证身份；
 - Group Forecast 在历史留出集上只有 56.25% 单局命中率，概率未校准；
 - “赛事总奖池”和“战队今年实际获得的奖金”是两份不同表；
 - 所有百分比、排名和槽位仍是决策辅助，不是 Valve 保证答案。

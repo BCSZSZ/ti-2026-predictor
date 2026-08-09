@@ -112,8 +112,8 @@ def test_current_exact_patch_multiplier_uses_reviewed_utc_boundary() -> None:
     weighted = evidence.matches.set_index("match_id")
 
     assert weighted.loc[1, "patch_weight"] == pytest.approx(1.0)
-    assert weighted.loc[2, "patch_weight"] == pytest.approx(2.0)
-    assert weighted.loc[3, "patch_weight"] == pytest.approx(2.0)
+    assert weighted.loc[2, "patch_weight"] == pytest.approx(1.5)
+    assert weighted.loc[3, "patch_weight"] == pytest.approx(1.5)
     assert weighted.loc[4, "patch_weight"] == pytest.approx(1.0)
     assert weighted.loc[5, "patch_weight"] == pytest.approx(0.15)
     assert weighted.loc[2, "current_exact_patch"]
@@ -121,7 +121,7 @@ def test_current_exact_patch_multiplier_uses_reviewed_utc_boundary() -> None:
     assert not weighted.loc[4, "current_exact_patch"]
     assert evidence.audit["current_exact_patch_games"] == 2
     assert evidence.audit["current_exact_patch_weight_active"] is True
-    assert evidence.audit["selected_by_exact_patch_multiplier"]["2.0"]["games"] == 2
+    assert evidence.audit["selected_by_exact_patch_multiplier"]["1.5"]["games"] == 2
     assert any(issue.code == "model-evidence-exact-patch-conflict" for issue in evidence.issues)
 
 

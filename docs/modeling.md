@@ -2,10 +2,10 @@
 
 ## Team strength
 
-The current operational policy is `team-strength-adr-0005-v3`. [ADR-0002](adr/0002-target-team-evidence-network-and-rule-based-audit.md)
-continues to govern evidence scope, while [ADR-0005](adr/0005-double-current-exact-patch-evidence.md)
-adds the Current exact gameplay patch factor. The versioned configuration remains at
-`config/models/team-strength-v2.json`; its internal schema and policy IDs are `v3`. The tournament
+The current operational policy is `team-strength-adr-0006-v4`. [ADR-0002](adr/0002-target-team-evidence-network-and-rule-based-audit.md)
+continues to govern evidence scope, while [ADR-0006](adr/0006-use-1-5-current-exact-patch-evidence.md)
+sets the Current exact gameplay patch factor. The versioned configuration remains at
+`config/models/team-strength-v2.json`; its internal schema and policy IDs are `v4`. The tournament
 manifest selects the active file. A run records its policy ID, policy hash, data snapshot hash and
 selected match-ID hash.
 
@@ -17,7 +17,7 @@ w = w_{major\ patch}\,m_{current\ exact\ patch}\,w_{tier}\,2^{-d/60}
 
 The target Major gameplay patch has patch weight `1.00`, its chronological predecessor `0.15`,
 and older versions zero. Within the target family, the reviewed Current exact gameplay patch has
-multiplier `2.00`; all other exact patches have multiplier `1.00`. For the current policy this is
+multiplier `1.50`; all other exact patches have multiplier `1.00`. For the current policy this is
 `7.41e`, active from `2026-07-30T23:58:15Z`. OpenDota `premium` has tier weight `1.00`,
 `professional` has `0.75`, and all other or unknown values are excluded and audited.
 
@@ -67,7 +67,7 @@ blocking condition.
 ## Fantasy
 
 Player/stat estimates use the same governed evidence policy as team strength: target Major
-gameplay Patch `1.00`, current Exact gameplay patch multiplier `2.00`, immediately previous Major
+gameplay Patch `1.00`, current Exact gameplay patch multiplier `1.50`, immediately previous Major
 gameplay Patch `0.15`, older Patches `0`;
 OpenDota `premium` `1.00`, `professional` `0.75`, other tiers `0`; and a 60-day time half-life.
 Production generation fails closed if that patch/tier evidence set cannot be built. An

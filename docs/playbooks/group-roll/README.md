@@ -1,14 +1,14 @@
 # Group Roll 人工手册索引
 
-## 当前发布版（7.41e 双倍证据权重）
+## 当前发布版（7.41e 1.5 倍证据权重）
 
 - [Group 40 Roll 玩家手册 v3](group-roll-publication-manual-v3.md)：Stat、队伍 Top 3 与 Title 已按
-  7.41e 双倍权重刷新；B/C/D 操作规则仍沿用原 v2 验证，不冒充重新认证。
+  7.41e 1.5 倍权重刷新；B/C/D 操作规则仍沿用原 v2 验证，不冒充重新认证。
 - [Stat 队伍 Top 3 v3](stat-team-top3-publication-v3.md)：当前 42 行排名、基础建议、前三队伍与
   400 次 Series 重采样稳定率。
 - [Title 推荐](../../reports/ti2026-fantasy-title-recommendation-2026-08-09.md)：默认仍为
   `Cerulean + the Clutch`，并说明一血内部配置为什么不能按变量名直接解释。
-- [本轮实施与影响报告](../../reports/ti2026-current-exact-patch-weight-v3-implementation-2026-08-09.md)：
+- [本轮实施与影响报告](../../reports/ti2026-current-exact-patch-weight-v4-implementation-2026-08-09.md)：
   记录中央权重实现、四个正式 run、验收、变化与剩余边界。
 
 以下内容是原 v2 冻结验证与历史报告。

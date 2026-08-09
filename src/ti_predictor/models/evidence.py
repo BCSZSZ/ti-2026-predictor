@@ -387,7 +387,7 @@ def build_evidence_set(
             )
         )
     audit: dict[str, Any] = {
-        "weight_formula_version": "major_exact_tier_time_v3",
+        "weight_formula_version": "major_exact_tier_time_v4",
         "weight_policy_sha256": sha256_json(policy.model_dump(mode="json")),
         "policy_id": policy.policy_id,
         "as_of": cutoff.isoformat().replace("+00:00", "Z"),

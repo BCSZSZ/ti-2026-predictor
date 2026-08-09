@@ -8,7 +8,7 @@
 - 赛事 Forecast 数据截止：`2026-08-08T04:11:08Z`
 - 赛事档位与奖金资料截止：`2026-08-08T06:05:53Z`
 - 当前规则版本：`2026-08-06-group-roll-v4`
-- 正式队伍强度策略：`team-strength-adr-0005-v3`
+- 正式队伍强度策略：`team-strength-adr-0006-v4`
 
 ## 先说结论
 
@@ -264,7 +264,7 @@ Group 每条战旗有三槽，因此项目穷举全部 `5³ = 125` 个有序特�
 Fantasy 不只看选手现在所属队伍的比赛。它按 TI 名单中的稳定玩家 ID 选择其全球职业历史，保留
 这些选手在旧队伍时的合格表现；否则刚转会选手会被错误地当成没有历史。
 
-正式 P3 证据包 `fantasy-26bccc9da5be9e7d` 的数据审计为：
+正式 P3 证据包 `fantasy-2b1ae75dcde6a1ab` 的数据审计为：
 
 | 项目 | 数值 |
 | --- | ---: |
@@ -273,15 +273,15 @@ Fantasy 不只看选手现在所属队伍的比赛。它按 TI 名单中的稳�
 | 身份或结果缺失 | 2,464 |
 | 有正权重的 Fantasy Game | 4,405 |
 | 其中 7.41 / 7.40 | 2,235 / 2,170 |
-| 其中 7.41e 双倍权重 Game | 141 |
+| 其中 7.41e 1.5 倍权重 Game | 141 |
 | 赛事目录等级 | 全部 `professional` |
-| 总有效权重 | 919.975219 |
+| 总有效权重 | 870.279398 |
 
 证据权重沿用已冻结的队伍强度政策：
 
 `weight = major_patch_weight × exact_patch_multiplier × tier_weight × 2^(-age_days / 60)`
 
-当前版本族 7.41 权重 1.0，其中 7.41e 的精确版本倍率为 2.0；同属 7.41 的其他字母版本倍率
+当前版本族 7.41 权重 1.0，其中 7.41e 的精确版本倍率为 1.5；同属 7.41 的其他字母版本倍率
 仍为 1.0。紧邻版本族 7.40 权重 0.15，更早版本为 0；OpenDota `premium` 权重 1.0、
 `professional` 权重 0.75，其他等级为 0。时间每过去 60 天，权重减半。
 
@@ -338,7 +338,7 @@ BO2 后才达到门槛。这个选择不是为了把某队排名调高，而是�
 - `Δ`：该队点估计均值相对当前第一名落后的比例。
 
 P1/P3 是**历史 Series 重采样稳定率**，不是经过校准的“未来真实排名概率”。点估计第一只有
-20/42 项的 P1 高于 50%，说明其余 22 项第一名对样本变化较敏感，不表示这 22 项没有结果。
+23/42 项的 P1 高于 50%，说明其余 19 项第一名对样本变化较敏感，不表示这 19 项没有结果。
 完整玩家表见
 [Stat 队伍 Top 3 发布版](../playbooks/group-roll/stat-team-top3-publication-v3.md)。
 
@@ -378,7 +378,7 @@ v2 使用三类分布假设：客户端主模型、把权重拉平的保守模�
 `failed-escalation-review-required`，v2 没有新跑全程 P5。实验顾问冻结在 v1 身份，只做人工输入后的
 本地一步诊断；Main Roll 和自动控制 Dota 客户端均不支持。
 
-7.41e 双倍权重已经进入所有未来 Roll 估值的中央证据层，但本轮没有重新跑 v2 的完整
+7.41e 1.5 倍权重已经进入所有未来 Roll 估值的中央证据层，但本轮没有重新跑 v2 的完整
 standalone/cross-audit。因此新版手册只刷新 Stat、队伍 Top 3 与 Title 数值，B/C/D 操作规则仍沿用
 原验证身份，不得声称已经在新权重下重新认证。
 
@@ -431,7 +431,7 @@ Dota 地图的模型倾向，不是 BO3/BO5 系列胜率；本项目也不会自
 
 ### 3. 哪些比赛真正进入当前模型
 
-当前 Group 运行 `group-b9c2bd18c201d91a` 的审计为：
+当前 Group 运行 `group-d90f0b006fe33908` 的审计为：
 
 | 项目 | 数值 |
 | --- | ---: |
@@ -443,9 +443,9 @@ Dota 地图的模型倾向，不是 BO3/BO5 系列胜率；本项目也不会自
 | 连通图队伍 | 463 |
 | 因不连通排除 | 462 |
 | 其中 7.41 / 7.40 | 1,936 / 2,007 |
-| 其中 7.41e 双倍权重 Game | 141 |
+| 其中 7.41e 1.5 倍权重 Game | 141 |
 | 入模赛事目录等级 | 全部 `professional` |
-| 总有效权重 | 791.480410 |
+| 总有效权重 | 741.568483 |
 
 模型从当前 16 队出发，保留正权重对手网络中与它们连通的部分。这样没有直接交手的两队仍可通过
 共同对手比较，但一个完全不相连的比赛岛不会改变 TI 队伍的相对强度。16 支目标队均在图内且达到
@@ -462,7 +462,7 @@ Dota 地图的模型倾向，不是 BO3/BO5 系列胜率；本项目也不会自
 | 因子 | 权重 |
 | --- | ---: |
 | 目标版本族 7.41 | 1.00 |
-| 当前精确版本 7.41e | ×2.00 |
+| 当前精确版本 7.41e | ×1.50 |
 | 其他 7.41 字母版本 | ×1.00 |
 | 紧邻版本族 7.40 | 0.15 |
 | 更早版本 | 0.00 |
@@ -471,9 +471,9 @@ Dota 地图的模型倾向，不是 BO3/BO5 系列胜率；本项目也不会自
 | 其他或未知等级 | 0.00 |
 | 时间半衰期 | 60 天 |
 
-这不是宣称“7.40 只有 7.41 的 15% 真理价值”或“7.41e 客观上恰好重要两倍”，而是显式的建模
+这不是宣称“7.40 只有 7.41 的 15% 真理价值”或“7.41e 客观上恰好重要 1.5 倍”，而是显式的建模
 政策。大版本、赛事目录等级和时间衰减保持原值；本轮只按负责人要求为当前精确版本加一层倍率。
-这项选择会做敏感性披露，不能拿未受影响的 TI 2025 历史回测证明 2 倍本身是最优参数。
+这项选择会做敏感性披露，不能拿未受影响的 TI 2025 历史回测证明 1.5 倍本身是最优参数。
 
 ### 5. Elo、Glicko 和 50/50 集成
 
@@ -568,7 +568,7 @@ Valve 已确认五轮瑞士制，但当前本地规则证据不足以逐场、�
 该方法保证每个情景的类别人数合法，也让所有队伍在同一个联合情景中竞争；它比逐队独立选最大概率
 更一致。但它没有生成真实五轮的对手、比分和 tie-break，所以是 D/E 级近似。
 
-当前 expected-points 方案模拟平均活动积分为 596.957，P10/中位/P90 为 60/360/1200。前 10%
+当前 expected-points 方案模拟平均活动积分为 590.144，P10/中位/P90 为 60/360/1200。前 10%
 和前 100 的服务器总体阈值没有可用分布，目前只是低置信代理目标，不能与 expected-points 同等
 看待。7.41e 倍权使实力排序和部分槽位发生实质变化，详见本轮实施报告的敏感性对照。
 
@@ -578,38 +578,38 @@ Valve 已确认五轮瑞士制，但当前本地规则证据不足以逐场、�
 
 | 字段 | 值 |
 | --- | --- |
-| run ID | `fantasy-26bccc9da5be9e7d` |
+| run ID | `fantasy-2b1ae75dcde6a1ab` |
 | `as_of` | `2026-08-08T13:12:00Z` |
-| 源码 commit | `a959deac6834550d0cd41343db2cddbf34ae060e` |
+| 源码 commit | `423784d1d91262174e92d589efa6ba3d66f28ba7-dirty-e5a6900a2b72` |
 | 随机种子 | `20260813` |
 | 运行数据 SHA-256 | `cf7f2ab715e45a44031bfb5a7acaed73cde69902ef701dbb677692dc448849eb` |
-| 治理数据快照 SHA-256 | `8959b2a2e495577d12af7624bea7c2b73f8b8ef32659b73574f79bc893def940` |
+| 治理数据快照 SHA-256 | `a39586e01b3b06ba5a382ef15ccb4789128194ae962f99152149b6f858cad542` |
 | 情景政策 SHA-256 | `e28876f6573afcdd261c044c215ece5fbbf6bc9ff0cf02324defcf445b961065` |
-| Series 池 SHA-256 | `d7426783d94d34e2e01e60e5fcc3f71eb41be8f31570302b617b7db715f1cd5f` |
-| 情景 SHA-256 | `15b59053ccb727899d3a31cb538d8a47605f5176322f48d4b82dfca3f96bd8c1` |
-| bootstrap SHA-256 | `818aae44754ba05f976f1308066c80903636703312519c651082a06cdb7ecb9c` |
-| 证据包语义 SHA-256 | `81766543483f38cd1ed621ccce5f2bbffbf77a40531313566351d237e93ebaa8` |
+| Series 池 SHA-256 | `1bd1e6d35baad5b09e1aa8f8163fe72dd222370a76b994019ba92dc3d297b5f3` |
+| 情景 SHA-256 | `5f30e21bd8b2a7a3dd8eafe989a6f3108aca737d7d97aadd581ea123f75c7960` |
+| bootstrap SHA-256 | `ad97645d71e130a37e4c38bb3e70364ca0e72a5d45a36e8a699575701070ce7d` |
+| 证据包语义 SHA-256 | `94c3313c62f812b492661682fbe85673104377862384eb511d0d185c1fe40d7a` |
 | 状态 | `warning`，审计 `publishable: true` |
 
 ### 赛事 Forecast
 
 | 字段 | 值 |
 | --- | --- |
-| run ID | `group-b9c2bd18c201d91a` |
-| backtest ID | `backtest-cae85ecc9c4e2f9b` |
+| run ID | `group-d90f0b006fe33908` |
+| backtest ID | `backtest-9aa63d3ba42671a9` |
 | `as_of` | `2026-08-08T04:11:08Z` |
 | 客户端 build | `6891:10893022` |
-| 源码 commit | `a959deac6834550d0cd41343db2cddbf34ae060e` |
+| 源码 commit | `423784d1d91262174e92d589efa6ba3d66f28ba7-dirty-e5a6900a2b72` |
 | 随机种子 | `20260813` |
 | 数据快照 SHA-256 | `cf7f2ab715e45a44031bfb5a7acaed73cde69902ef701dbb677692dc448849eb` |
 | 规则快照 ID | `20260808T040729Z-a6265cd07001` |
 | 规则快照 SHA-256 | `a6265cd07001e2a7710f23622f3bbe855b32d61445f17f4c941578c53a3275dc` |
-| 强度政策 SHA-256 | `e5eeec92f47f51433481129ef3b6607cce69a8e4dd03aa9193ec1cb6fb82628e` |
+| 强度政策 SHA-256 | `aa826cf3ef95fe9535192fd390dbe27541c13764ab4dbc88dd94ea579cadc0d4` |
 | 状态 | `warning`，审计 `publishable: true` |
 
 两个运行使用同一源码提交、规则快照、数据文件和权重政策；各自保留独立的显式 `as_of`，报告
 没有把两个不同截止时间拼成一个假装同时发生的快照。Title 另由
-`fantasy-4701c25efe319121` 在同一 Fantasy 截止时间生成并通过审计。
+`fantasy-80de5a937166a04a` 在同一 Fantasy 截止时间生成并通过审计。
 
 ## 五、主张—证据矩阵
 
@@ -651,10 +651,10 @@ Valve 已确认五轮瑞士制，但当前本地规则证据不足以逐场、�
 
 ```powershell
 uv run ti rules validate
-uv run ti audit fantasy-26bccc9da5be9e7d
-uv run ti audit fantasy-4701c25efe319121
-uv run ti audit backtest-cae85ecc9c4e2f9b
-uv run ti audit group-b9c2bd18c201d91a
+uv run ti audit fantasy-2b1ae75dcde6a1ab
+uv run ti audit fantasy-80de5a937166a04a
+uv run ti audit backtest-9aa63d3ba42671a9
+uv run ti audit group-d90f0b006fe33908
 uv run ti fantasy group-evidence --as-of 2026-08-08T13:12:00Z --seed 20260813 --bootstrap --team-rank-bootstrap
 uv run ti fantasy title-evidence --as-of 2026-08-08T13:12:00Z --hero-source data/raw/rules-title/20260808T131200Z-7d89d1a71895/scripts/npc/npc_heroes.txt --client-build 6891:10893022 --seed 20260808
 uv run ti forecast group --as-of 2026-08-08T04:11:08Z --profile all --samples 100000 --seed 20260813

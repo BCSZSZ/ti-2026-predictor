@@ -11,10 +11,10 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 
 梦幻挑战与赛事预测共同使用的数据基础、分析方法、证据等级、复现身份和可信边界，统一见
 [TI 2026 梦幻挑战与赛事预测：方法与证据权威性报告](docs/reports/ti2026-methodology-and-evidence-authority-report-2026-08-09.md)。
-当前 7.41e 双倍权重的完整公式与适用范围另见
+当前 7.41e 1.5 倍权重的完整公式与适用范围另见
 [统一加权方式](docs/reports/ti2026-weighting-policy-2026-08-09.md)。
 它逐项区分 Valve/客户端事实、`exact`/`derived` 观测、模型推断和仍未闭合的草案，不把
-`publishable` 误写成“预测一定正确”；[7.41e 权重实施、影响与验收记录](docs/reports/ti2026-current-exact-patch-weight-v3-implementation-2026-08-09.md)
+`publishable` 误写成“预测一定正确”；[7.41e 权重实施、影响与验收记录](docs/reports/ti2026-current-exact-patch-weight-v4-implementation-2026-08-09.md)
 保存本阶段的中央实现、正式重跑、Title 冲突解释和全项目检查；
 [易懂总结](docs/reports/ti2026-methodology-and-evidence-summary-2026-08-09.md)用玩家语言说明用了什么、
 怎么算、能信到什么程度以及下一步最值得补什么；只想看数据来源、计分、平均分与 Series 时，
@@ -23,7 +23,7 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 [TI 2026 玩家发布包](docs/publication/ti2026-release-bundle-2026-08-09/README.md)。
 
 当前面向玩家的小组赛结论见
-[TI 2026 小组赛预测：7.41e 权重更新版](docs/reports/ti2026-group-forecast-publication-2026-08-09.md)。
+[TI 2026 小组赛预测：7.41e 1.5 倍权重版](docs/reports/ti2026-group-forecast-publication-2026-08-09.md)。
 它以 16 队综合排名、实力带和两两胜负关系为主，明确披露正式模型在 TI 2025 留出集上只有
 56.25% 的胜负准确率；游戏内 16 槽填写放在报告末尾，不把微弱模型优势包装成确定答案。
 [易懂总结](docs/reports/ti2026-group-forecast-publication-summary-2026-08-09.md)提供一页速读，

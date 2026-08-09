@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0006
 ---
 
 # Double the current exact-patch evidence

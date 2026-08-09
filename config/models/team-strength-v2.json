@@ -1,7 +1,7 @@
 {
-  "schema_version": 3,
-  "policy_id": "team-strength-adr-0005-v3",
-  "decision_record": "docs/adr/0005-double-current-exact-patch-evidence.md",
+  "schema_version": 4,
+  "policy_id": "team-strength-adr-0006-v4",
+  "decision_record": "docs/adr/0006-use-1-5-current-exact-patch-evidence.md",
   "evidence_scope": {
     "mode": "target_connected_component"
   },
@@ -13,7 +13,7 @@
   "current_exact_patch_weight": {
     "patch_name": "7.41e",
     "active_from": "2026-07-30T23:58:15Z",
-    "multiplier": 2.0
+    "multiplier": 1.5
   },
   "tier_weights": {
     "premium": 1.0,

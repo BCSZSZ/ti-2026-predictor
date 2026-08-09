@@ -25,7 +25,8 @@
    前三队伍；先看[易懂说明](reports/group-stat-team-top3-publication-summary-2026-08-09.md)也可以。
 3. [Title 分析与推荐](reports/ti2026-fantasy-title-recommendation-2026-08-09.md)：默认仍是
    `Cerulean + the Clutch`，并解释两个一血内部字段为什么暂时排除。
-4. [Roll 手册易懂总结](reports/group-roll-publication-manual-summary-2026-08-09.md)：需要完整规则时看
+4. [Roll 手册易懂总结](reports/group-roll-publication-manual-summary-2026-08-09.md)：先看明确的
+   Stat/Tier/Trait 接受与拒绝标准；完整条件见
    [Roll 玩家手册](playbooks/group-roll/group-roll-publication-manual-v3.md)。
 5. [小组赛预测易懂总结](reports/ti2026-group-forecast-publication-summary-2026-08-09.md)：当前第一集团
    是 Liquid 与 Yandex；完整排名和矩阵见[完整预测](reports/ti2026-group-forecast-publication-2026-08-09.md)。

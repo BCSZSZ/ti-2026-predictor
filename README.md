@@ -11,6 +11,8 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 
 梦幻挑战与赛事预测共同使用的数据基础、分析方法、证据等级、复现身份和可信边界，统一见
 [TI 2026 梦幻挑战与赛事预测：方法与证据权威性报告](docs/reports/ti2026-methodology-and-evidence-authority-report-2026-08-09.md)。
+当前 7.41e 双倍权重的完整公式与适用范围另见
+[统一加权方式](docs/reports/ti2026-weighting-policy-2026-08-09.md)。
 它逐项区分 Valve/客户端事实、`exact`/`derived` 观测、模型推断和仍未闭合的草案，不把
 `publishable` 误写成“预测一定正确”；[7.41e 权重实施、影响与验收记录](docs/reports/ti2026-current-exact-patch-weight-v3-implementation-2026-08-09.md)
 保存本阶段的中央实现、正式重跑、Title 冲突解释和全项目检查；

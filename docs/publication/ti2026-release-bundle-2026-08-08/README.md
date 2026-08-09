@@ -1,6 +1,10 @@
 # TI 2026 玩家发布包（2026-08-08）
 
-本文件夹收拢了本轮仍然有效的玩家版 Markdown。旧版修订记录、候选草案、实施报告、测试 memo
+> **历史包。** 当前发布版已经迁移到
+> [2026-08-09 发布包](../ti2026-release-bundle-2026-08-09/README.md)，并统一采用 7.41e 双倍证据
+> 权重。这里保留旧日期文件用于追溯，不应继续作为当前排名和填写答案。
+
+本文件夹收拢了 2026-08-08 当时有效的玩家版 Markdown。旧版修订记录、候选草案、实施报告、测试 memo
 和已被最终稿替代的内容没有混入。
 
 包内正文与仓库中的当前发布原件同步；少数指向未打包工程资料的链接只调整了相对路径，仍会打开
@@ -28,7 +32,6 @@
 - [Title 分析、排名与默认推荐](reports/ti2026-fantasy-title-recommendation-2026-08-08.md)
 - [Roll 玩家手册易懂总结](reports/group-roll-publication-manual-summary-2026-08-08.md)
 - [Roll 玩家手册完整发布版](playbooks/group-roll/group-roll-publication-manual-v2.md)
-- [v2 做了什么、进步与退步](reports/group-roll-playbook-v2-summary-2026-08-07.md)
 
 ## 小组赛预测
 

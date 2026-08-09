@@ -434,9 +434,17 @@ _Avoid_: Forty token-specific rules, evidence-free phase boundary, solver horizo
 
 **Interactive Roll advisor / 实时重随顾问**:
 A secondary local interface that accepts manually confirmed War Banners, shared Roll options,
-remaining tokens and risk preference, then explains and tracks a Roll recommendation. It never
-controls the Dota or Steam client.
+remaining tokens and risk preference, then explains a Roll recommendation. It may either track a
+confirmed event history or recompute from a complete current screen. It never controls the Dota or
+Steam client.
 _Avoid_: Client automation, Human Roll playbook, unconfirmed OCR action
+
+**Current-screen Roll advice / 当前屏幕重随建议**:
+One directly executable apply-or-refresh recommendation computed from all War Banners, all three
+shared Roll options and the exact remaining-token count currently visible to the player. It values
+the legal outcomes of the current options but deliberately excludes the unknown replacement offer;
+after acting in Dota, the player supplies the newly observed complete screen and recomputes.
+_Avoid_: Next-offer generation, full-horizon Roll plan, automatic client state
 
 **Policy route separation / 策略路线分离**:
 The Reference Roll solver and the two Human Roll playbook editions are separately versioned decision

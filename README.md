@@ -110,13 +110,14 @@ Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策
 v2 没有新跑 full-session P5 solver。历史 v1 P5 仍是
 `failed-escalation-review-required`，只作为失败的诊断证据保留，不会自动启用更复杂的 full
 planner。v1 手册、P5/P6 产物和默认 CLI 路径继续作为不可变兼容证据保留。
-P7 已增加本地 `Group Roll 顾问（实验）` 页面：手工录入九格、三个共享选项和剩余 Roll，
-优先显示冻结人工手册，再显示不含未来 offer 价值的一步诊断与最终队伍匹配。每次实际操作后
-必须人工确认实现结果和新选项；会话可保存并从初始状态确定性重放。首次上下文、完整快速层和
-缓存重复的正式耗时分别为 18.92s、1.25s、0.028s；真实浏览器为 22.60s、2.16s、0.06s。
-P5 长视野历史中位数约 749s，因此交互入口只在最后 1 次 Roll 开放（正式实测 8.60s），
-且仍显示失败门禁。该实验页面仍冻结在 v1 证据身份；它没有被 P5 静默切换为 v2。详见
-[P7 报告](docs/reports/p7-local-interactive-group-roll-advisor-2026-08-06.md)。
+本地页面现提供 `Group Roll 实时顾问`：用下拉菜单录入九格、当前三个共享选项和剩余 Roll，
+然后得到唯一的一步建议、风险说明、当前三个位置的队伍组合及自动 Title 排名。它直接使用
+2026-08-08 的当前 P3/Title 冻结证据，不依赖旧 P4/P5/P6 手册门禁；不会生成下一轮选项，
+玩家在游戏内操作后只需把页面改成实际新画面并重新计算。真实数据冷启动约 18 秒，首次一步
+计算约 0.6 秒，缓存重算约 0.05 秒。旧 P7 v1 会话与证据命令作为历史兼容证据保留，不再是
+页面运行路径。实装范围和验收标准见
+[v2 实装计划](docs/plans/current-screen-roll-advisor-v2.md)，完成结果见
+[易懂总结](docs/reports/current-screen-roll-advisor-v2-implementation-2026-08-09.md)。
 完整操作顺序、主赛事种子导入和状态含义见 [docs/runbook.md](docs/runbook.md)。模型的时间
 切分、覆盖门槛和三种目标见 [docs/modeling.md](docs/modeling.md)。
 

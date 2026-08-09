@@ -24,6 +24,7 @@ def project_paths(tmp_path: Path) -> ProjectPaths:
         "fantasy-group-branch-capped-solver-v1.json",
         "fantasy-group-read-only-cross-audit-v1.json",
         "fantasy-group-interactive-advisor-v1.json",
+        "fantasy-group-current-screen-advisor-v2.json",
     ):
         shutil.copy2(
             source_root / "config/models" / policy_name,

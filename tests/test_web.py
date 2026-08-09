@@ -16,22 +16,38 @@ def test_streamlit_group_advisor_input_page_has_no_runtime_exception() -> None:
     app_path = Path(__file__).resolve().parents[1] / "src/ti_predictor/web_app.py"
     app = AppTest.from_file(str(app_path)).run(timeout=20)
 
-    app.sidebar.radio[0].set_value("Group Roll 顾问（实验）").run(timeout=20)
+    app.sidebar.radio[0].set_value("Group Roll 实时顾问").run(timeout=20)
 
     assert not app.exception
-    assert any(title.value == "Group 40-Roll 顾问（实验）" for title in app.title)
-    assert any(button.label == "确认录入并创建 Locked baseline" for button in app.button)
-    assert any("P5 求解器 effectiveness 失败" in error.value for error in app.error)
+    assert any(title.value == "Group Roll 实时顾问" for title in app.title)
+    assert any(button.label == "计算现在应该怎么选" for button in app.button)
+    assert sum(select.label.startswith("选项 ") for select in app.selectbox) == 3
+    assert not app.error
 
 
-def test_streamlit_group_advisor_main_fails_closed() -> None:
+def test_streamlit_group_advisor_manual_lineup_uses_three_team_dropdowns() -> None:
     app_path = Path(__file__).resolve().parents[1] / "src/ti_predictor/web_app.py"
     app = AppTest.from_file(str(app_path)).run(timeout=20)
-    app.sidebar.radio[0].set_value("Group Roll 顾问（实验）").run(timeout=20)
+    app.sidebar.radio[0].set_value("Group Roll 实时顾问").run(timeout=20)
 
-    stage = next(radio for radio in app.radio if radio.label == "阶段")
-    stage.set_value("Main（预留）").run(timeout=20)
+    mode = next(radio for radio in app.radio if radio.label == "队伍组合")
+    mode.set_value(True).run(timeout=20)
 
     assert not app.exception
-    assert any("Main 的五格规则尚未冻结" in error.value for error in app.error)
-    assert not any(button.label == "确认录入并创建 Locked baseline" for button in app.button)
+    labels = {select.label for select in app.selectbox}
+    assert {"核心位", "中单", "辅助位"} <= labels
+    assert not app.error
+
+
+def test_streamlit_group_advisor_default_input_calculates_recommendation_and_title() -> None:
+    app_path = Path(__file__).resolve().parents[1] / "src/ti_predictor/web_app.py"
+    app = AppTest.from_file(str(app_path)).run(timeout=20)
+    app.sidebar.radio[0].set_value("Group Roll 实时顾问").run(timeout=20)
+
+    calculate = next(button for button in app.button if button.label == "计算现在应该怎么选")
+    calculate.click().run(timeout=40)
+
+    assert not app.exception
+    assert any(subheader.value == "现在的结论" for subheader in app.subheader)
+    assert any(subheader.value == "自动 Title 建议" for subheader in app.subheader)
+    assert any("在游戏里完成操作后" in info.value for info in app.info)

@@ -1,4 +1,4 @@
-"""Streamlit surface for the experimental, local-only Group Roll advisor."""
+"""Streamlit UI for the local current-screen Group Roll advisor."""
 
 from __future__ import annotations
 
@@ -7,558 +7,339 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
-from ti_predictor.config import load_rules
-from ti_predictor.fantasy.advisor import (
-    AdvisorSession,
-    AdvisorSessionError,
-    action_identity,
-    action_label,
-    legal_realized_banners,
-    load_advisor_policy,
-    mutation_outcome_label,
-    operation_label,
-    state_sha256,
+from ti_predictor.config import load_rules, load_tournament_manifest
+from ti_predictor.fantasy.advisor import operation_label
+from ti_predictor.fantasy.current_advisor import (
+    CurrentAdvisorContext,
+    analyze_current_screen,
+    load_current_advisor_policy,
+    load_current_advisor_roll_rules,
+    prepare_current_advisor_context,
 )
-from ti_predictor.fantasy.advisor_analysis import (
-    AdvisorContext,
-    analyze_advisor_state,
-    load_advisor_roll_rules,
-    prepare_advisor_context,
-    run_optional_solver,
-)
-from ti_predictor.fantasy.roll import (
-    ApplyRollAction,
-    BannerState,
-    EmblemState,
-    GroupRollState,
-    RefreshRollAction,
-    RollOffer,
-    legal_actions,
-    validate_group_state,
-)
+from ti_predictor.fantasy.roll import BannerState, EmblemState, GroupRollState, RollOffer
 from ti_predictor.paths import PATHS
 
-_ROLE_LABELS = {"core": "Carry", "mid": "Mid", "support": "Support"}
+_ROLE_LABELS = {"core": "核心位", "mid": "中单", "support": "辅助位"}
 _COLOR_LABELS = {"red": "红", "blue": "蓝", "green": "绿"}
 _TRAIT_LABELS = {
-    "fractal": "Fractal（品质互异）",
-    "benevolent": "Benevolent（友爱/邻格 +20%）",
-    "vampiric": "Vampiric（吸血/自身 +50%，邻格 -10%）",
-    "unique": "Unique（全旗唯一）",
-    "friendly": "Friendly（三格同款）",
+    "fractal": "Fractal（品质两两不同才生效）",
+    "benevolent": "Benevolent（相邻格 +20%）",
+    "vampiric": "Vampiric（自身 +50%，相邻格 -10%）",
+    "unique": "Unique（整面仅有一个该 Trait 才生效）",
+    "friendly": "Friendly（三格全是 Friendly 才生效）",
 }
 _RISK_LABELS = {
-    "mean-first": "均值优先",
-    "default-knee": "默认折点",
-    "downside-first": "下行优先",
+    "balanced": "平衡（推荐）",
+    "mean-first": "最高平均分",
+    "downside-first": "更看重低迷时表现",
 }
-_EDITION_LABELS = {
-    "rate-agnostic": "无关出率版",
-    "primary-model": "最佳猜测出率版",
+_GRADE_LABELS = {
+    "clear": "可以选择",
+    "conditional": "有条件选择",
+    "refresh": "建议刷新",
+    "complete": "Roll 已完成",
+}
+_MODEL_LABELS = {
+    "client-weight-primary-v1": "当前最佳出率估计",
+    "flattened-weights-v1": "出率更平均",
+    "sharpened-weights-v1": "高权重结果更集中",
+}
+_TITLE_LABEL_OVERRIDES = {
+    "clutch": "BO3 打到第 3 局时，在第 3 局触发",
 }
 
 
 @st.cache_resource(show_spinner=False)
 def _cached_roll_rules():
-    return load_advisor_roll_rules()
+    return load_current_advisor_roll_rules()
 
 
 @st.cache_resource(show_spinner=False)
-def _cached_context(as_of: str) -> AdvisorContext:
-    return prepare_advisor_context(as_of=as_of)
+def _cached_context(as_of: str) -> CurrentAdvisorContext:
+    return prepare_current_advisor_context(as_of=as_of)
 
 
 def _policy():
-    return load_advisor_policy(PATHS.config / "models" / "fantasy-group-interactive-advisor-v1.json")
+    return load_current_advisor_policy(
+        PATHS.config / "models" / "fantasy-group-current-screen-advisor-v2.json"
+    )
 
 
 def _stat_labels() -> dict[str, str]:
     stats = load_rules()["fantasy"]["stats"]
-    return {stat_id: f"{row['label']} · {stat_id}" for stat_id, row in stats.items()}
+    return {stat_id: str(row["label"]) for stat_id, row in stats.items()}
 
 
-def _clear_computed_results() -> None:
-    for key in (
-        "group_advisor_analysis_key",
-        "group_advisor_analysis",
-        "group_advisor_solver_key",
-        "group_advisor_solver",
-    ):
-        st.session_state.pop(key, None)
+def _public_operation_label(operation_id: int, rules) -> str:
+    return operation_label(operation_id, rules).replace(f"#{operation_id} · ", "").replace(" / ", " · ")
 
 
-def _initial_state_form(rules) -> GroupRollState | None:
+def _team_options() -> tuple[tuple[int, str], ...]:
+    manifest = load_tournament_manifest(PATHS.tournament)
+    return tuple((int(team.team_id), team.name) for team in manifest.teams)
+
+
+def _clear_result() -> None:
+    st.session_state.pop("current_advisor_result", None)
+
+
+def _input_form(rules, *, manual_team_mode: bool) -> tuple[GroupRollState | None, Any, str, bool]:
     stat_labels = _stat_labels()
-    st.subheader("1. 手工确认当前 Group 状态")
-    st.caption("按 Carry → Mid → Support、每面从左到右录入。九格、三个选项缺一不可。")
-    banners = []
-    for role in rules.group_roles:
-        with st.expander(_ROLE_LABELS[role], expanded=True):
-            columns = st.columns(3)
-            emblems = []
-            for index, (column, color) in enumerate(zip(columns, rules.colors_for(role)[:3], strict=True)):
-                with column:
-                    st.markdown(f"{index + 1}. {_COLOR_LABELS[color]}色")
-                    stats = rules.stats_for(color)
-                    stat_id = st.selectbox(
-                        "Stat",
-                        stats,
-                        key=f"advisor_initial_{role}_{index}_stat",
-                        format_func=lambda item, labels=stat_labels: labels.get(item, item),
-                    )
-                    quality = st.selectbox(
-                        "品质",
-                        (1, 2, 3, 4, 5),
-                        key=f"advisor_initial_{role}_{index}_quality",
-                        format_func=lambda item: f"T{item}",
-                    )
-                    trait = st.selectbox(
-                        "Trait",
-                        rules.traits,
-                        key=f"advisor_initial_{role}_{index}_trait",
-                        format_func=lambda item: _TRAIT_LABELS.get(item, item),
-                    )
-                    emblems.append(EmblemState(stat_id, quality, trait))
-            banners.append(BannerState(role, tuple(emblems)))
-
+    team_options = _team_options()
+    team_names = dict(team_options)
     positive_ids = tuple(item.operation_id for item in rules.offered_operations)
-    offer = st.multiselect(
-        "当前共享的三个 Roll 选项",
-        positive_ids,
-        default=positive_ids[:3],
-        max_selections=3,
-        key="advisor_initial_offer",
-        format_func=lambda item: operation_label(item, rules),
-    )
-    remaining = int(
-        st.number_input(
-            "剩余 Roll",
-            min_value=1,
-            max_value=40,
-            value=40,
-            step=1,
-            key="advisor_initial_remaining",
+    with st.form("current_advisor_form"):
+        st.subheader("1. 录入当前三面战旗")
+        st.caption("每格只需选择 Stat、品质和 Trait。颜色与位置固定，页面会自动限制可选 Stat。")
+        banners = []
+        for role in rules.group_roles:
+            with st.expander(_ROLE_LABELS[role], expanded=True):
+                columns = st.columns(3)
+                emblems = []
+                for index, (column, color) in enumerate(
+                    zip(columns, rules.colors_for(role)[:3], strict=True)
+                ):
+                    with column:
+                        st.markdown(f"**第 {index + 1} 格 · {_COLOR_LABELS[color]}色**")
+                        stat_id = st.selectbox(
+                            "Stat",
+                            rules.stats_for(color),
+                            key=f"current_advisor_{role}_{index}_stat",
+                            format_func=lambda item, labels=stat_labels: labels.get(item, item),
+                        )
+                        quality = st.selectbox(
+                            "品质",
+                            (1, 2, 3, 4, 5),
+                            key=f"current_advisor_{role}_{index}_quality",
+                            format_func=lambda item: f"Tier {item}",
+                        )
+                        trait = st.selectbox(
+                            "Trait",
+                            rules.traits,
+                            key=f"current_advisor_{role}_{index}_trait",
+                            format_func=lambda item: _TRAIT_LABELS.get(item, item),
+                        )
+                        emblems.append(EmblemState(stat_id, quality, trait))
+                banners.append(BannerState(role, tuple(emblems)))
+
+        st.subheader("2. 录入这一次看到的三个选项")
+        st.caption("三个选项来自同一屏幕。系统不会猜下一轮；你操作后把这里改成游戏实际出现的新选项。")
+        offer_columns = st.columns(3)
+        offer_ids = []
+        for index, column in enumerate(offer_columns):
+            with column:
+                offer_ids.append(
+                    st.selectbox(
+                        f"选项 {index + 1}",
+                        positive_ids,
+                        index=index,
+                        key=f"current_advisor_offer_{index}",
+                        format_func=lambda item: _public_operation_label(item, rules),
+                    )
+                )
+        remaining = int(
+            st.number_input(
+                "剩余 Roll 次数",
+                min_value=0,
+                max_value=40,
+                value=40,
+                step=1,
+                key="current_advisor_remaining",
+            )
         )
-    )
-    if len(offer) != 3:
-        st.warning("必须确认恰好三个不同的正权重选项。")
-        return None
-    return GroupRollState(
+
+        selected_team_ids = None
+        if manual_team_mode:
+            st.subheader("3. 指定准备使用的队伍组合")
+            st.caption("三个位置可来自不同队伍；历史样本始终跟随该位置的稳定选手 ID。")
+            team_columns = st.columns(3)
+            selected = []
+            for role, column in zip(rules.group_roles, team_columns, strict=True):
+                with column:
+                    selected.append(
+                        st.selectbox(
+                            _ROLE_LABELS[role],
+                            tuple(team_names),
+                            key=f"current_advisor_team_{role}",
+                            format_func=lambda item, names=team_names: names[item],
+                        )
+                    )
+            selected_team_ids = tuple(selected)
+
+        with st.expander("高级设置"):
+            risk_profile = st.selectbox(
+                "取舍方式",
+                tuple(_RISK_LABELS),
+                index=0,
+                format_func=lambda item: _RISK_LABELS[item],
+                key="current_advisor_risk",
+            )
+            st.caption("平衡模式允许牺牲最多 1% 的理论最高均值，换取更好的低迷情景表现。")
+        submitted = st.form_submit_button("计算现在应该怎么选", type="primary", use_container_width=True)
+
+    if len(set(offer_ids)) != 3:
+        if submitted:
+            st.error("三个 Roll 选项必须互不重复；请按游戏画面重新选择。")
+        return None, selected_team_ids, risk_profile, False
+    state = GroupRollState(
         banners=tuple(banners),
-        offer=RollOffer(tuple(offer)),
+        offer=RollOffer(tuple(offer_ids)),
         remaining_rolls=remaining,
     )
+    return state, selected_team_ids, risk_profile, submitted
 
 
-def _state_rows(state: GroupRollState, rules) -> list[dict[str, Any]]:
-    stat_labels = _stat_labels()
+def _render_recommendation(result: dict[str, Any]) -> None:
+    recommendation = result["recommendation"]
+    grade = str(recommendation["grade"])
+    heading = f"{_GRADE_LABELS[grade]}：{recommendation['action_label']}"
+    renderer = {
+        "clear": st.success,
+        "conditional": st.warning,
+        "refresh": st.info,
+        "complete": st.success,
+    }[grade]
+    renderer(f"**{heading}**\n\n{recommendation['reason']}")
+
+    metrics = st.columns(4)
+    metrics[0].metric("预计平均分变化", f"{recommendation['mean_delta']:+,.0f}")
+    metrics[1].metric("低迷情景变化", f"{recommendation['cvar10_delta']:+,.0f}")
+    metrics[2].metric("最差合法结果", f"{recommendation['support_lower']:+,.0f}")
+    metrics[3].metric("最好合法结果", f"{recommendation['support_upper']:+,.0f}")
+    st.caption("低迷情景是把所有可能结果放在一起，只看最差 10% 的平均表现。")
+    if grade == "conditional":
+        st.caption("这不是说一定会变差，而是这个选项的合法结果中仍含有回撤，或不同出率假设没有完全同意。")
+    if grade == "refresh":
+        st.caption("刷新只消耗一次 Roll 并换掉三个选项。下一屏出现什么不在计算内。")
+
     rows = []
-    for banner in state.banners:
-        for index, (emblem, color) in enumerate(
-            zip(banner.emblems, rules.colors_for(banner.role)[:3], strict=True),
-            start=1,
-        ):
-            rows.append(
-                {
-                    "位置": _ROLE_LABELS[banner.role],
-                    "格": index,
-                    "颜色": _COLOR_LABELS[color],
-                    "Stat": stat_labels.get(emblem.stat_id, emblem.stat_id),
-                    "品质": f"T{emblem.quality_tier}",
-                    "Trait": _TRAIT_LABELS.get(emblem.trait_id, emblem.trait_id),
-                }
-            )
-    return rows
-
-
-def _session_loader(rules, context: AdvisorContext | None) -> None:
-    with st.expander("加载并重放已保存会话"):
-        uploaded = st.file_uploader(
-            "会话 JSON",
-            type=("json",),
-            key="group_advisor_session_upload",
-        )
-        if st.button("校验并重放", disabled=uploaded is None, key="group_advisor_replay"):
-            try:
-                expected = None if context is None else context.baseline
-                replayed = AdvisorSession.from_json(
-                    uploaded.getvalue(),
-                    rules,
-                    expected_baseline=expected,
-                )
-                st.session_state["group_advisor_session_json"] = replayed.as_json(rules)
-                _clear_computed_results()
-                st.rerun()
-            except (AdvisorSessionError, ValueError) as error:
-                st.error(f"会话拒绝加载：{error}")
-
-
-def _load_current_session(context: AdvisorContext, rules) -> AdvisorSession:
-    saved = st.session_state["group_advisor_session_json"]
-    return AdvisorSession.from_json(saved, rules, expected_baseline=context.baseline)
-
-
-def _analysis_for(
-    context: AdvisorContext,
-    session: AdvisorSession,
-    rules,
-    *,
-    edition: str,
-    risk_preference: str,
-) -> dict[str, Any]:
-    state = session.current_state(rules)
-    key = (
-        state_sha256(state),
-        context.baseline.semantic_hash,
-        edition,
-        risk_preference,
-    )
-    if st.session_state.get("group_advisor_analysis_key") != key:
-        with st.spinner("计算一步精确分布（不含未来 offer 价值）…"):
-            st.session_state["group_advisor_analysis"] = analyze_advisor_state(
-                context,
-                state,
-                edition=edition,
-                risk_preference=risk_preference,
-            )
-        st.session_state["group_advisor_analysis_key"] = key
-    return st.session_state["group_advisor_analysis"]
-
-
-def _render_diagnostic(
-    context: AdvisorContext,
-    state: GroupRollState,
-    analysis: dict[str, Any],
-    *,
-    selected_model: str,
-    selected_epsilon: float,
-) -> None:
-    manual = analysis["manual"]
-    st.subheader("2. 人工手册结论（第一优先）")
-    st.warning(
-        f"{_EDITION_LABELS[manual['edition']]}仍是 {manual['status']}；"
-        "这是冻结人工规则的当前分支，不是全局最优证明。"
-    )
-    st.info(f"建议：{manual['action_label']}\n\n依据：{manual['explanation']}")
-
-    st.subheader("3. 一步诊断（第二意见）")
-    st.caption(
-        "下面精确枚举本次 mutation 与 128 个留出比赛情景；不估计下一组 offer 的期权价值，"
-        "也不计算剩余 Roll 的未来可达性。刷新 delta=0 只表示这层没有给未来 offer 定价。"
-    )
-    selected_rows = [
-        row
-        for row in analysis["action_values"]
-        if row["model_id"] == selected_model and row["epsilon"] == selected_epsilon
-    ]
-    preferred = next(
-        (
-            row
-            for row in analysis["preferred_actions"]
-            if row["model_id"] == selected_model and row["epsilon"] == selected_epsilon
-        ),
-        None,
-    )
-    table = []
-    for row in selected_rows:
-        table.append(
+    for index, row in enumerate(result["primary_action_values"], start=1):
+        rows.append(
             {
-                "动作": row["action_label"],
-                "手册": row["action_id"] == manual["action_id"],
-                "一步首选": preferred is not None and row["action_id"] == preferred["action_id"],
-                "期望总分": round(row["mean"], 2),
-                "期望变化": round(row["mean_delta"], 2),
-                "CVaR10": round(row["cvar10"], 2),
-                "CVaR10 变化": round(row["cvar10_delta"], 2),
-                "无关出率下界": round(row["rate_agnostic_lower"], 2),
-                "无关出率上界": round(row["rate_agnostic_upper"], 2),
+                "建议顺序": index,
+                "当前可执行动作": row["action_label"],
+                "平均变化": round(float(row["mean_delta"])),
+                "低迷情景变化": round(float(row["cvar10_delta"])),
+                "最差～最好合法结果": (
+                    f"{float(row['support_lower']):+,.0f} ～ {float(row['support_upper']):+,.0f}"
+                ),
             }
         )
-    if table:
-        st.dataframe(pd.DataFrame(table), hide_index=True, width="stretch")
-        st.caption(
-            f"当前选择：{selected_model} · epsilon={selected_epsilon:.0%} · "
-            f"完整计算 {analysis['runtime_seconds']['total']:.2f}s"
-        )
-    else:
-        st.info("Roll 已用完，没有可执行动作。")
+    if rows:
+        st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
 
-    matching = next(row for row in analysis["current_matching"] if row["epsilon"] == selected_epsilon)
-    st.subheader("4. 当前战旗的最终队伍匹配")
-    team_columns = st.columns(3)
-    for column, role, team_name, team_id in zip(
-        team_columns,
-        ("core", "mid", "support"),
-        matching["selected_teams"],
-        matching["selected_team_ids"],
-        strict=True,
+
+def _render_lineup_and_title(result: dict[str, Any]) -> None:
+    st.subheader("当前队伍组合")
+    current = result["current"]
+    columns = st.columns(3)
+    for column, role, team in zip(
+        columns, ("core", "mid", "support"), current["selected_teams"], strict=True
     ):
-        column.metric(_ROLE_LABELS[role], team_name, help=f"stable team_id={team_id}")
-    st.caption(
-        f"Group 总分期望 {matching['mean']:.2f}；CVaR10 {matching['cvar10']:.2f}；三个位置可分别匹配战队。"
-    )
+        column.metric(_ROLE_LABELS[role], team)
+    mode = "系统自动匹配" if result["team_mode"] == "auto" else "按你指定的组合"
+    st.caption(f"{mode}。每个位置只计算该队对应位置的选手池，不按全队五人混算。")
 
-    with st.expander("模型分歧、证据状态与限制"):
-        st.dataframe(pd.DataFrame(analysis["model_sensitivity"]), hide_index=True)
-        st.json(analysis["source_status"])
-        for limitation in analysis["limitations"]:
+    title = result["title"]
+    prefix = title["recommended_prefix"]
+    suffix = title["recommended_suffix"]
+    st.subheader("自动 Title 建议")
+    st.success(
+        f"**{prefix['name']} + {suffix['name']}**\n\n"
+        f"当前阵容下的纸面平均加成约 **+{title['estimated_pair_bonus_percent']:.2f}%**。"
+    )
+    title_columns = st.columns(2)
+    with title_columns[0]:
+        st.markdown("**Prefix 前三**")
+        for row in title["prefixes"]:
+            st.markdown(
+                f"**{row['rank']}. {row['name']} · +{row['paper_bonus_percent']:.2f}%**  \n"
+                f"{_TITLE_LABEL_OVERRIDES.get(row['id'], row['label'])} · "
+                f"预计触发 {row['trigger_rate']:.1%}"
+            )
+    with title_columns[1]:
+        st.markdown("**Suffix 前三**")
+        for row in title["suffixes"]:
+            st.markdown(
+                f"**{row['rank']}. {row['name']} · +{row['paper_bonus_percent']:.2f}%**  \n"
+                f"{_TITLE_LABEL_OVERRIDES.get(row['id'], row['label'])} · "
+                f"预计触发 {row['trigger_rate']:.1%}"
+            )
+    st.caption(f"{title['method']} {title['limitation']}")
+
+
+def _render_details(result: dict[str, Any], context: CurrentAdvisorContext) -> None:
+    with st.expander("模型分歧与计算边界"):
+        model_rows = []
+        action_labels = {
+            row["action_id"]: row["action_label"] for row in result["primary_action_values"]
+        }
+        for row in result["preferred_by_model"]:
+            model_rows.append(
+                {
+                    "出率假设": _MODEL_LABELS.get(row["model_id"], row["model_id"]),
+                    "首选动作": action_labels.get(row["action_id"], row["action_id"]),
+                }
+            )
+        if model_rows:
+            st.dataframe(pd.DataFrame(model_rows), hide_index=True, width="stretch")
+        for limitation in result["limitations"]:
             st.warning(limitation)
-        st.caption(f"state_sha256: {state_sha256(state)}")
-
-
-def _observed_transition_panel(
-    session: AdvisorSession,
-    context: AdvisorContext,
-    rules,
-) -> None:
-    state = session.current_state(rules)
-    st.subheader("5. 实际 Roll 后更新 Observed state")
-    st.caption("这里不控制客户端。先在游戏里操作，再回来确认画面实际出现的结果。")
-    if state.remaining_rolls == 0:
-        st.success("40 次中的可用 Roll 已耗尽；保留当前战旗并使用上面的队伍匹配。")
-        return
-    actions = legal_actions(state, rules)
-    action_ids = tuple(action_identity(action) for action in actions)
-    action_by_id = {action_identity(action): action for action in actions}
-    selected_id = st.selectbox(
-        "你在游戏里实际选择的动作",
-        action_ids,
-        key="group_advisor_observed_action",
-        format_func=lambda item: action_label(action_by_id[item], rules),
-    )
-    selected_action = action_by_id[selected_id]
-    realized = None
-    if isinstance(selected_action, ApplyRollAction):
-        current_banner = next(
-            banner for banner in state.banners if banner.role == selected_action.banner_role
-        )
-        outcomes = legal_realized_banners(state, selected_action, rules)
-        outcome_indexes = tuple(range(len(outcomes)))
-        selected_outcome = st.selectbox(
-            "画面实际实现的战旗结果",
-            outcome_indexes,
-            key=f"group_advisor_outcome_{selected_id}",
-            format_func=lambda index: mutation_outcome_label(current_banner, outcomes[index]),
-        )
-        realized = outcomes[selected_outcome]
-    else:
-        st.info("刷新只更换三个选项，九格战旗必须保持不变。")
-
-    positive_ids = tuple(item.operation_id for item in rules.offered_operations)
-    replacement = st.multiselect(
-        "本次消耗后画面显示的新三个共享选项",
-        positive_ids,
-        default=list(state.offer.operation_ids),
-        max_selections=3,
-        key=f"group_advisor_replacement_{state_sha256(state)}_{selected_id}",
-        format_func=lambda item: operation_label(item, rules),
-    )
-    confirmed = st.checkbox(
-        "我已逐项核对动作、实现结果和新三个选项",
-        key=f"group_advisor_confirm_{state_sha256(state)}_{selected_id}",
-    )
-    if st.button(
-        "记录这次已观察结果并重新规划",
-        type="primary",
-        disabled=not confirmed or len(replacement) != 3,
-        key=f"group_advisor_apply_event_{state_sha256(state)}_{selected_id}",
-    ):
-        try:
-            offer = RollOffer(tuple(replacement))
-            if isinstance(selected_action, RefreshRollAction):
-                updated = session.refresh_observed(offer, rules)
-            else:
-                if realized is None:
-                    raise AdvisorSessionError("apply action lacks a manually confirmed result")
-                updated = session.apply_observed(selected_action, realized, offer, rules)
-            if updated.baseline != context.baseline:
-                raise AdvisorSessionError("locked baseline changed during an observed transition")
-            st.session_state["group_advisor_session_json"] = updated.as_json(rules)
-            _clear_computed_results()
-            st.rerun()
-        except (AdvisorSessionError, ValueError) as error:
-            st.error(f"状态没有更新：{error}")
-
-
-def _optional_solver_panel(
-    context: AdvisorContext,
-    state: GroupRollState,
-    *,
-    selected_model: str,
-    selected_epsilon: float,
-) -> None:
-    with st.expander("按需运行 P5 简化求解器（次要、失败门禁）"):
-        st.error(
-            "P5 effectiveness = failed-escalation-review-required。结果近似且不保证全局最优；"
-            "未决时实际动作是无关出率 fallback。"
-        )
-        if state.remaining_rolls == 0:
-            st.info("没有剩余 Roll，求解器不再提供动作。")
-            return
-        if state.remaining_rolls > 1:
-            st.warning(
-                "当前只开放最后 1 次 Roll 的按需求解：实测约 9 秒。P5 长视野历史中位数约 "
-                "749 秒，超过本地交互的 60 秒目标；较早阶段请使用人工手册与一步诊断。"
-            )
-            return
-        key = (state_sha256(state), selected_model, selected_epsilon)
-        if st.button("我理解限制，运行一次求解器", key="group_advisor_run_solver"):
-            with st.spinner("运行分支截断求解器…"):
-                st.session_state["group_advisor_solver"] = run_optional_solver(
-                    context,
-                    state,
-                    model_id=selected_model,
-                    epsilon=selected_epsilon,
-                )
-                st.session_state["group_advisor_solver_key"] = key
-        if st.session_state.get("group_advisor_solver_key") == key:
-            result = st.session_state["group_advisor_solver"]
-            if result["resolved"]:
-                st.warning("本次内部确认已分离候选，但 P5 总体失败门禁仍然有效。")
-            else:
-                st.error("本次候选未决；必须看 executed fallback，不能把 preferred 当成确定答案。")
-            st.write(f"preferred：{result['preferred_action_label']}")
-            st.write(f"executed：{result['executed_action_label']}")
-            st.caption(
-                f"screen={result['screening_paths_per_action']}/action；"
-                f"confirm={result['confirmation_paths_per_finalist']}/finalist；"
-                f"runtime={result['runtime_seconds']:.2f}s"
-            )
-            st.json(result)
+        for warning in context.warnings:
+            st.caption(warning)
+        st.caption(f"数据截止：{result['as_of']} · 分析指纹：{result['analysis_sha256'][:12]}")
 
 
 def render_advisor_page() -> None:
-    st.title("Group 40-Roll 顾问（实验）")
-    st.error(
-        "人工手册仍为 draft；P5 求解器 effectiveness 失败；P6 仅 partial-draft。"
-        "本页是本地辅助记录器，不是自动操作器或最优性证明。"
-    )
-    st.caption("仅 Group 40 次 Roll；Main 接口预留但执行层 fail closed。")
-    period = st.radio("阶段", ("Group", "Main（预留）"), horizontal=True, key="advisor_period")
-    if period != "Group":
-        st.error("Main 的五格规则尚未冻结，本页拒绝创建、加载或推进 Main 状态。")
-        return
+    st.title("Group Roll 实时顾问")
+    st.write("录入你现在看到的战旗和三个选项，页面只推荐这一步怎么做。")
+    st.caption("本地只读辅助：不控制 Dota、不自动填写、不猜下一轮选项。仅支持 Group 三格战旗。")
 
     try:
         rules = _cached_roll_rules()
         policy = _policy()
     except (OSError, ValueError) as error:
-        st.error(f"冻结规则不可用：{error}")
+        st.error(f"当前客户端规则不可用：{error}")
         return
 
-    saved = st.session_state.get("group_advisor_session_json")
-    if saved is None:
-        _session_loader(rules, None)
-        initial_state = _initial_state_form(rules)
-        if st.button(
-            "确认录入并创建 Locked baseline",
-            type="primary",
-            disabled=initial_state is None,
-            key="group_advisor_create",
-        ):
-            try:
-                if initial_state is None:
-                    raise AdvisorSessionError("initial state is incomplete")
-                validate_group_state(initial_state, rules)
-                with st.spinner("验证 P3–P6 冻结证据并加载 128 个留出情景…"):
-                    context = _cached_context(policy.as_of)
-                session = AdvisorSession.create(context.baseline, initial_state, rules)
-                st.session_state["group_advisor_session_json"] = session.as_json(rules)
-                _clear_computed_results()
-                st.rerun()
-            except (OSError, ValueError) as error:
-                st.error(f"会话没有创建：{error}")
-        return
+    manual_team_mode = st.radio(
+        "队伍组合",
+        (False, True),
+        format_func=lambda value: "系统自动选择" if not value else "我自己指定",
+        horizontal=True,
+        key="current_advisor_manual_team_mode",
+        on_change=_clear_result,
+    )
+    state, selected_team_ids, risk_profile, submitted = _input_form(
+        rules, manual_team_mode=manual_team_mode
+    )
+    if submitted and state is not None:
+        try:
+            with st.spinner("载入当前证据并计算所有可执行选择…首次打开约需十几秒。"):
+                context = _cached_context(policy.as_of)
+                result = analyze_current_screen(
+                    context,
+                    state,
+                    risk_profile=risk_profile,
+                    selected_team_ids=selected_team_ids,
+                )
+            st.session_state["current_advisor_result"] = result
+        except (OSError, ValueError) as error:
+            st.error(f"本次结果被阻断：{error}")
+            st.session_state.pop("current_advisor_result", None)
 
+    result = st.session_state.get("current_advisor_result")
+    if result is None:
+        st.info("完成输入后点击“计算现在应该怎么选”。")
+        return
     try:
-        with st.spinner("校验 Locked baseline 与会话重放…"):
-            context = _cached_context(policy.as_of)
-            session = _load_current_session(context, rules)
-        state = session.current_state(rules)
+        context = _cached_context(policy.as_of)
     except (OSError, ValueError) as error:
-        st.error(f"当前会话被阻断：{error}")
-        if st.button("丢弃本页会话并重新录入", key="group_advisor_discard_blocked"):
-            st.session_state.pop("group_advisor_session_json", None)
-            _clear_computed_results()
-            st.rerun()
+        st.error(f"结果来源已经不可用：{error}")
         return
-
-    header = st.columns(4)
-    header[0].metric("剩余 Roll", state.remaining_rolls)
-    header[1].metric("已确认事件", len(session.events))
-    header[2].metric("上下文加载", f"{context.context_load_seconds:.2f}s")
-    header[3].metric("P6", context.p6_status)
-    st.dataframe(pd.DataFrame(_state_rows(state, rules)), hide_index=True, width="stretch")
-    st.write("当前三个选项：")
-    for operation_id in state.offer.operation_ids:
-        st.write(f"- {operation_label(operation_id, rules)}")
-
-    controls = st.columns(4)
-    with controls[0]:
-        edition = st.selectbox(
-            "人工手册",
-            tuple(context.manuals),
-            format_func=lambda item: _EDITION_LABELS[item],
-            key="group_advisor_edition",
-        )
-    with controls[1]:
-        risk_preference = st.selectbox(
-            "手册风险偏好",
-            tuple(_RISK_LABELS),
-            index=1,
-            format_func=lambda item: _RISK_LABELS[item],
-            key="group_advisor_risk",
-        )
-    with controls[2]:
-        selected_model = st.selectbox(
-            "一步出率模型",
-            context.policy.quick_analysis.models,
-            key="group_advisor_model",
-        )
-    with controls[3]:
-        selected_epsilon = st.selectbox(
-            "期望损失阀门",
-            context.policy.quick_analysis.mean_retention_epsilons,
-            index=1,
-            format_func=lambda item: f"{item:.0%}",
-            key="group_advisor_epsilon",
-        )
-
-    analysis = _analysis_for(
-        context,
-        session,
-        rules,
-        edition=edition,
-        risk_preference=risk_preference,
-    )
-    _render_diagnostic(
-        context,
-        state,
-        analysis,
-        selected_model=selected_model,
-        selected_epsilon=selected_epsilon,
-    )
-    _observed_transition_panel(session, context, rules)
-    _optional_solver_panel(
-        context,
-        state,
-        selected_model=selected_model,
-        selected_epsilon=selected_epsilon,
-    )
-
-    st.subheader("会话保存与边界")
-    st.download_button(
-        "下载可重放会话 JSON",
-        session.as_json(rules),
-        file_name="ti2026-group-roll-session.json",
-        mime="application/json",
-        key="group_advisor_download",
-    )
-    _session_loader(rules, context)
-    if st.button("结束并清除本页会话", key="group_advisor_discard"):
-        st.session_state.pop("group_advisor_session_json", None)
-        _clear_computed_results()
-        st.rerun()
-    st.caption(
-        "服务仅监听 127.0.0.1；不保存 Steam 凭据，不控制 Dota 客户端，不自动填写，本局观测不会修改出率权重。"
-    )
+    st.divider()
+    st.subheader("现在的结论")
+    _render_recommendation(result)
+    _render_lineup_and_title(result)
+    _render_details(result, context)
+    st.info("在游戏里完成操作后，直接修改实际发生变化的战旗、三个新选项和剩余次数，再点一次计算。")

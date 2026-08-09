@@ -1,0 +1,50 @@
+{
+  "schema_version": 2,
+  "policy_id": "fantasy-group-current-screen-advisor-v2",
+  "period": "group",
+  "as_of": "2026-08-08T13:12:00Z",
+  "seed": 20260813,
+  "source": {
+    "p3_evidence_sha256": "94c3313c62f812b492661682fbe85673104377862384eb511d0d185c1fe40d7a",
+    "data_snapshot_sha256": "a39586e01b3b06ba5a382ef15ccb4789128194ae962f99152149b6f858cad542",
+    "pool_set_sha256": "1bd1e6d35baad5b09e1aa8f8163fe72dd222370a76b994019ba92dc3d297b5f3",
+    "full_scenario_sha256": "5f30e21bd8b2a7a3dd8eafe989a6f3108aca737d7d97aadd581ea123f75c7960",
+    "title_evidence_sha256": "d9a57ea0d57cd4873be88422f4a5fdb7dbf1ee9b7a68baab16d18754ddd50483",
+    "rule_snapshot_sha256": "4bbcce56e047a008118fdb5e1ea6cf870070f58f5fe2fec3ad68c7521e5aea3d"
+  },
+  "responsive_scenarios": {
+    "count": 256,
+    "seed": 2026080902
+  },
+  "analysis": {
+    "primary_model": "client-weight-primary-v1",
+    "models": [
+      "client-weight-primary-v1",
+      "flattened-weights-v1",
+      "sharpened-weights-v1"
+    ],
+    "cvar_alpha": 0.1,
+    "risk_profiles": {
+      "mean-first": 0.0,
+      "balanced": 0.01,
+      "downside-first": 0.02
+    }
+  },
+  "title": {
+    "top_k": 3,
+    "excluded_suffix_ids": ["early_first_blood", "late_first_blood", "fountain"],
+    "aggregation": "current_banner_role_mean_weighted_pool_paper_bonus"
+  },
+  "boundaries": {
+    "listen_address": "127.0.0.1",
+    "dota_client_control": false,
+    "automatic_filling": false,
+    "future_offer_generation": false,
+    "main_execution": "fail_closed"
+  },
+  "performance_targets_seconds": {
+    "context_load": 30.0,
+    "analysis": 10.0,
+    "cached_repeat": 1.0
+  }
+}

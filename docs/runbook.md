@@ -140,33 +140,33 @@ conditional matrix; Primary has one directionally wrong Common case. Both labels
 because the audit can never promote a failed standalone candidate. See the
 [v2 cross-audit report](reports/group-roll-playbook-v2-p4-read-only-cross-audit-2026-08-07.md).
 
-The P7 local advisor has a separate reproducible evidence command:
+The current local advisor is started with:
 
 ```powershell
-uv run ti fantasy group-advisor-evidence --as-of 2026-08-06T08:15:00Z
 uv run ti web
 ```
 
-Open `Group Roll 顾问（实验）`, keep `Group` selected, and manually enter the nine ordered
-Emblems, exactly three shared operations and remaining Rolls. Creating a session verifies the
-frozen P3–P6 identities. The page shows the selected draft manual first, then exact one-step
-mutation/performance diagnostics under all three rate models and four epsilon values, followed by
-the best Team match for each role. The one-step table deliberately excludes future-offer option
-value and remaining-Roll reachability.
+Open `Group Roll 实时顾问` and choose whether the three role Teams should be selected automatically
+or specified manually. Enter all nine Emblems, the three distinct operations currently visible in
+Dota, and the remaining Roll count, then press `计算现在应该怎么选`. The page returns one of three
+action grades: a clear apply, a conditional apply with its risk, or refresh because none of the
+three current operations has acceptable direct value. It also shows the current role-specific Team
+lineup and a lineup-weighted Prefix/Suffix Top 3.
 
-After acting in Dota, select the action actually used, confirm the realised Banner result and the
-new three-operation offer, tick the manual-confirmation box, then record the event. A refresh must
-leave all Banners unchanged. Downloaded session JSON stores the initial state and confirmed events;
-loading it replays every transition and rejects baseline/hash drift. `Main` fails closed. The app
-never controls or fills Dota and never learns rates from the current session.
+After acting in Dota, edit only what the client actually changed: the realised Banner attributes,
+the three new operations, and the remaining count. Calculate again from that complete observed
+screen. The advisor does not generate or value the unknown next offer, does not control Dota, and
+does not support Main five-slot execution.
 
-The P5 button remains secondary and retains
-`failed-escalation-review-required`. It is available only when exactly one Roll remains: the formal
-last-Roll run took 8.60 seconds, while prior long-horizon P5 sessions had a roughly 749-second
-median and are blocked from the responsive UI. See the
+The old P7 evidence command remains available only for reproducing its historical v1 session and
+failed P5 diagnostics:
+
+```powershell
+uv run ti fantasy group-advisor-evidence --as-of 2026-08-06T08:15:00Z
+```
+
+It is compatibility/evidence tooling and is not called by the current page. See the historical
 [P7 report](reports/p7-local-interactive-group-roll-advisor-2026-08-06.md).
-This experimental advisor remains frozen to v1 identities. Use the v2 Markdown manuals directly;
-do not assume the page silently applies v2 rules.
 
 The OpenDota `data sync` and `data fantasy-history` commands stop before exceeding their per-run
 `--request-limit` (default 5,000), and keyed

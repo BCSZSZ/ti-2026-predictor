@@ -151,26 +151,31 @@ def _render_live_monitor_status() -> None:
 
 def _render_live_controls() -> None:
     st.subheader("自动读取游戏画面")
-    st.caption("识别语言：英文优先，同时支持简体中文客户端。")
-    enabled = st.toggle(
-        "实时监视 Dota 2 的 Group Roll 页面",
-        value=False,
-        key="current_advisor_live_ocr_enabled",
-        help=(
-            "按 dota2.exe 所在显示器读取画面并更新本页；Chrome 可以放在另一块屏幕。"
-            "不会向游戏发送鼠标、键盘或内存操作。"
-        ),
+    st.caption(
+        "点击后切回 Dota；程序读取下一张稳定的完整页面一次，然后自动停止。"
+        "英文优先，同时支持简体中文。"
     )
     monitor = _cached_live_monitor()
     snapshot = monitor.snapshot()
-    if enabled and not snapshot.running:
-        monitor.start()
-    elif not enabled and snapshot.running:
-        monitor.stop()
+    if snapshot.running:
+        if st.button("取消本次识别", use_container_width=True):
+            monitor.stop()
+            st.rerun()
+    elif st.button(
+        "识别下一次稳定的 Dota 画面",
+        type="primary",
+        use_container_width=True,
+        help=(
+            "单屏时点击后用 Alt+Tab 切回 Dota；双屏时可以直接点击。"
+            "只读取一次，不控制游戏。"
+        ),
+    ):
+        monitor.start_once()
+        st.rerun()
     _render_live_monitor_status()
     observation = st.session_state.get("current_advisor_last_observation")
     if observation is None:
-        st.caption("开启后可继续使用下方手填；识别到完整页面时会自动录入并计算。")
+        st.caption("等待期间可切回 Dota；识别完成后回到本页查看，也可以始终使用下方手填。")
         return
     captured_at = str(observation.get("captured_at", ""))
     fingerprint = str(observation.get("image_sha256", ""))[:12]
@@ -458,6 +463,6 @@ def render_advisor_page() -> None:
     _render_lineup_and_title(result)
     _render_details(result, context)
     st.info(
-        "在游戏里完成操作后，实时监视会等待画面稳定并自动重算；"
-        "也可以关闭监视，手动修改实际发生变化的字段后再计算。"
+        "在游戏里完成操作后，再点击一次“识别下一次稳定的 Dota 画面”并切回游戏；"
+        "也可以手动修改实际发生变化的字段后重新计算。"
     )

@@ -25,9 +25,12 @@ Dota, Steam, the mouse, the keyboard, or client memory.
      then upscale it to 2560 pixels for detailed OCR. This keeps full-screen Dota chrome from making
      Tier and Trait text too small.
 3. Advisor integration
-   - Minimum change: one opt-in toggle and status panel above the unchanged manual form.
+   - Minimum change: one opt-in, one-shot capture button and status panel above the unchanged manual
+     form. Clicking arms the next stable target screen; confirmed or incomplete target OCR stops
+     automatically, while minimized, covered and non-target states keep waiting and remain cancelable.
    - Accept when a confirmed observation fills all inputs and recalculates, while an incomplete
-     observation fills confirmed fields only and leaves manual correction available.
+     observation fills confirmed fields only and leaves manual correction available. A single-monitor
+     browser/Dota Alt+Tab flow must not terminate early or read the browser into the form.
 4. Project review and closeout
    - Acceptance: focused OCR/UI tests, full regression tests, lint, deterministic parse, local visual
      QA, and an explicit real-client validation status. Retain the older upload/screenshot OCR path

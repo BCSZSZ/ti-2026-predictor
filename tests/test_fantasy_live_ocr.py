@@ -10,6 +10,7 @@ from ti_predictor.fantasy.live_ocr import (
     OCRToken,
     RollScreenObservation,
     RollScreenReader,
+    ScreenCaptureError,
     StableFrameGate,
     _select_dxcam_output,
     load_live_ocr_profile,
@@ -32,6 +33,9 @@ class FakeImage:
 
     def crop(self, box: tuple[int, int, int, int]) -> FakeImage:
         return FakeImage(self.value, (box[2] - box[0], box[3] - box[1]))
+
+    def save(self, path, **_kwargs) -> None:
+        path.write_bytes(self.tobytes())
 
     def tobytes(self) -> bytes:
         return bytes([self.value]) * (self.width * self.height)
@@ -418,3 +422,113 @@ def test_stop_prevents_a_slow_recognition_from_overwriting_idle_state() -> None:
     snapshot = monitor.snapshot()
     assert snapshot.stage == "idle"
     assert snapshot.generation == stopped_generation
+
+
+def test_one_shot_waits_through_minimized_and_non_target_then_stops_after_result(tmp_path) -> None:
+    profile = load_live_ocr_profile()
+    profile.capture["stable_frame_count"] = 1
+    profile.capture["poll_seconds"] = 0.01
+    recognized = threading.Event()
+
+    class SequencedCapturer:
+        def __init__(self) -> None:
+            self.calls = 0
+            self.closed = False
+
+        def __call__(self, **_kwargs) -> CapturedFrame:
+            self.calls += 1
+            if self.calls == 1:
+                raise ScreenCaptureError("Dota 2 窗口已最小化；请先恢复窗口。")
+            value = 10 if self.calls <= 3 else 30
+            return CapturedFrame(
+                image=FakeImage(value),
+                captured_at=datetime(2026, 8, 9, 7, 0, tzinfo=UTC),
+                image_sha256="a" * 64,
+                window_title="Dota 2",
+            )
+
+        def close(self) -> None:
+            self.closed = True
+
+    class ConfirmedReader:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def inspect(self, frame: CapturedFrame) -> RollScreenObservation:
+            self.calls += 1
+            if self.calls == 1:
+                return RollScreenObservation(
+                    status="not_target",
+                    captured_at=frame.captured_at,
+                    image_sha256=frame.image_sha256,
+                    viewport=frame.viewport,
+                    profile_id=profile.profile_id,
+                )
+            recognized.set()
+            return _parse(_complete_tokens(), captured_at=frame.captured_at)
+
+    capturer = SequencedCapturer()
+    reader = ConfirmedReader()
+    monitor = LiveRollMonitor(
+        profile=profile,
+        rules=load_current_advisor_roll_rules(),
+        capturer=capturer,
+        reader=reader,  # type: ignore[arg-type]
+        cache_dir=tmp_path,
+    )
+
+    monitor.start_once()
+    assert recognized.wait(timeout=2)
+    assert monitor._thread is not None  # noqa: SLF001 - lifecycle regression test
+    monitor._thread.join(timeout=2)  # noqa: SLF001 - lifecycle regression test
+
+    snapshot = monitor.snapshot()
+    assert snapshot.stage == "confirmed"
+    assert snapshot.running is False
+    assert snapshot.observation is not None
+    assert snapshot.observation["status"] == "confirmed"
+    assert capturer.calls == 4
+    assert reader.calls == 2
+    assert capturer.closed is True
+
+
+def test_one_shot_stops_after_an_incomplete_target_observation(tmp_path) -> None:
+    profile = load_live_ocr_profile()
+    profile.capture["stable_frame_count"] = 1
+    profile.capture["poll_seconds"] = 0.01
+    recognized = threading.Event()
+
+    class IncompleteReader:
+        def inspect(self, frame: CapturedFrame) -> RollScreenObservation:
+            recognized.set()
+            return _parse(
+                _complete_tokens(weak_field="mid.1.quality"),
+                captured_at=frame.captured_at,
+            )
+
+    def capture(**_kwargs) -> CapturedFrame:
+        return CapturedFrame(
+            image=FakeImage(10),
+            captured_at=datetime(2026, 8, 9, 7, 0, tzinfo=UTC),
+            image_sha256="a" * 64,
+            window_title="Dota 2",
+        )
+
+    monitor = LiveRollMonitor(
+        profile=profile,
+        rules=load_current_advisor_roll_rules(),
+        capturer=capture,
+        reader=IncompleteReader(),  # type: ignore[arg-type]
+        cache_dir=tmp_path,
+    )
+
+    monitor.start_once()
+    assert recognized.wait(timeout=2)
+    assert monitor._thread is not None  # noqa: SLF001 - lifecycle regression test
+    monitor._thread.join(timeout=2)  # noqa: SLF001 - lifecycle regression test
+
+    snapshot = monitor.snapshot()
+    assert snapshot.stage == "incomplete"
+    assert snapshot.running is False
+    assert snapshot.observation is not None
+    assert "banner.mid.1.quality" in snapshot.observation["missing_field_ids"]

@@ -160,15 +160,19 @@ uv sync --extra dev --extra ocr
 uv run ti web
 ```
 
-Open Dota's complete Group Roll screen, then enable `实时监视 Dota 2 的 Group Roll 页面` in the
-advisor. The reader waits for two stable frames, recognises only the finite client vocabulary, and
-requires all 31 fields (nine Stat/Quality/Trait triples, three distinct operations, and the remaining
-Roll count) to be confirmed before it recalculates. An incomplete observation updates only
+Click `识别下一次稳定的 Dota 画面` in the advisor, then switch to Dota's complete Group Roll screen.
+On a single monitor, Alt+Tab is the intended workflow; on two monitors the button can be clicked while
+Dota is already visible. The reader waits for two stable frames, recognises only the finite client
+vocabulary, and requires all 31 fields (nine Stat/Quality/Trait triples, three distinct operations,
+and the remaining Roll count) to be confirmed before it recalculates. An incomplete observation updates only
 high-confidence fields and lists what still needs manual confirmation; it never triggers a new
-recommendation. The latest target screenshot and observation JSON overwrite the local ignored cache
-under `data/cache/ocr/live-roll/`; no screenshot history is retained.
+recommendation. Confirmed and incomplete target observations both finish that one capture request.
+While armed, a minimized Dota window, a covered/not-yet-visible Dota surface, or a non-Group page keeps
+waiting instead of filling the form; use `取消本次识别` to stop waiting. The latest target screenshot and
+observation JSON overwrite the local ignored cache under `data/cache/ocr/live-roll/`; no screenshot
+history is retained.
 
-The browser and Dota may be on different monitors. The capture path verifies `dota2.exe`, resolves
+The browser and Dota may be on the same or different monitors. The capture path verifies `dota2.exe`, resolves
 the exact Windows monitor handle, and maps that handle to the corresponding DXcam output; it does not
 assume that Dota is on the primary display. Keep Dota restored because a minimized window is rejected
 explicitly. On a full client frame, the reader first locates the aligned `CORE / MID / SUPPORT`
@@ -177,7 +181,7 @@ navigation, top bar and chat area do not determine Banner fields.
 
 After acting in Dota, edit only what the client actually changed: the realised Banner attributes,
 the three new operations, and the remaining count. Calculate again from that complete observed
-screen, or leave live monitoring on and let the newly stable screen refill the form. The advisor
+screen, or click the one-shot capture button again and switch back to Dota. The advisor
 does not generate or value the unknown next offer, does not control Dota, and does not support Main
 five-slot execution. It reads pixels from the local window only and never sends mouse, keyboard,
 memory or Steam operations.

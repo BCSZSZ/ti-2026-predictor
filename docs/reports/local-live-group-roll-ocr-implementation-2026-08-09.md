@@ -4,10 +4,10 @@ Date: 2026-08-09
 
 ## Outcome
 
-The local `Group Roll 实时顾问` now has an optional live Dota-window observer. The original dropdown
+The local `Group Roll 实时顾问` now has an optional one-shot Dota-window observer. The original dropdown
 form remains the default and works with OCR disabled. When the observer confirms a complete stable
 screen, it fills the local form and automatically calls the existing current-screen recommendation
-and Title calculation. It never applies an operation inside Dota.
+and Title calculation, then stops. It never applies an operation inside Dota.
 
 ## Implemented boundary
 
@@ -23,9 +23,11 @@ and Title calculation. It never applies an operation inside Dota.
 - Legal color/Stat, duplicate-Stat, distinct-offer and full-state validation.
 - Partial fill only for confirmed fields; no automatic calculation from an incomplete observation.
 - Latest target screenshot and JSON only, under the ignored local cache; no image history.
-- Opt-in Streamlit toggle, live status, missing-field list, automatic fill and recalculation.
+- Opt-in Streamlit one-shot button, wait/cancel status, missing-field list, automatic fill and
+  recalculation. Clicking arms the next stable target page, which supports a same-monitor Alt+Tab
+  workflow without keeping a permanent watcher enabled.
 - The live controls exist only on local Windows. Linux or hosted Streamlit keeps the original manual
-  form and does not expose a nonfunctional capture toggle.
+  form and does not expose a nonfunctional capture button.
 
 ## Acceptance evidence
 
@@ -40,9 +42,12 @@ and Title calculation. It never applies an operation inside Dota.
   fields and the same legal state, rather than relying only on pre-tokenised Chinese parser input.
 - Weak, conflicting or missing evidence produces `incomplete` and blocks automatic calculation.
 - A real 2560×1440 Dota match screen produced `not_target` with zero advisor fields.
-- Starting the browser toggle while that match screen was present displayed “当前不是完整的 Group
-  Roll 页面；继续监视” and left the manual form usable.
-- Turning monitoring off displayed the stopped state and preserved the form.
+- Starting a one-shot request while a non-target Dota screen was present displayed “已经看到 Dota，
+  但还不是完整的 Group Roll 页面；继续等待” and left the manual form usable.
+- Canceling the pending request displayed the canceled state and preserved the form.
+- A state-machine regression test confirms that minimized/covered capture and a non-target Dota page
+  keep a one-shot request armed, while the next incomplete or confirmed target page stops it exactly
+  once.
 - A lifecycle regression test confirms that a slow OCR pass cannot overwrite the stopped state or
   create a second worker after a rapid off/on sequence.
 - The user-supplied 2560×1440 full Dota client screenshot passed the real RapidOCR engine end to end:
@@ -50,7 +55,9 @@ and Title calculation. It never applies an operation inside Dota.
 - The full-screen locator ignored the separate `SUPPORT` text in Dota's left navigation, cropped the
   three aligned Banners, enlarged the detailed region, joined `WATCHERS / TAKEN` and
   `TORMENTOR / KILLS`, and associated each Tier and Trait with the Stat card immediately above it.
-- Final project suite: 187 tests collected, 186 passed and one pre-existing intentional skip; Ruff,
+- Final project suite after the one-shot interaction update: 189 tests collected, 188 passed and one
+  pre-existing intentional skip. A fresh local Streamlit browser run also verified the arm, wait on a
+  non-target Dota screen, cancel and return-to-idle states with no console errors. Ruff,
   JSON parsing, dependency-lock validation and `git diff --check` passed. The only warning is the
   existing NumPy generic-timedelta deprecation in `forecasting.py`.
 

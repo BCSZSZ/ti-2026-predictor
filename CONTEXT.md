@@ -446,6 +446,16 @@ the legal outcomes of the current options but deliberately excludes the unknown 
 after acting in Dota, the player supplies the newly observed complete screen and recomputes.
 _Avoid_: Next-offer generation, full-horizon Roll plan, automatic client state
 
+**Roll screen observation / 重随屏幕观测**:
+A time-stamped, image-identified reading of the complete Group Roll screen with separate confidence
+for every required field. Any missing, conflicting or low-confidence field keeps it unconfirmed.
+_Avoid_: Confirmed Roll state, client memory state, arbitrary screenshot text
+
+**Advisor autofill / 顾问自动录入**:
+Applying a newer complete Roll screen observation to the local Interactive Roll advisor and
+recomputing its Current-screen Roll advice. It never sends input to the Dota or Steam client.
+_Avoid_: Game autofill, client automation, applying a Roll option
+
 **Policy route separation / 策略路线分离**:
 The Reference Roll solver and the two Human Roll playbook editions are separately versioned decision
 products with distinct execution and outputs. Neither route silently replaces or modifies another,

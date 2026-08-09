@@ -110,10 +110,13 @@ Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策
 v2 没有新跑 full-session P5 solver。历史 v1 P5 仍是
 `failed-escalation-review-required`，只作为失败的诊断证据保留，不会自动启用更复杂的 full
 planner。v1 手册、P5/P6 产物和默认 CLI 路径继续作为不可变兼容证据保留。
-本地页面现提供 `Group Roll 实时顾问`：用下拉菜单录入九格、当前三个共享选项和剩余 Roll，
-然后得到唯一的一步建议、风险说明、当前三个位置的队伍组合及自动 Title 排名。它直接使用
+本地页面现提供 `Group Roll 实时顾问`：默认保留原有下拉菜单手填，也可在 Windows 本机开启
+实时读屏。读屏只观察标题为 `Dota 2` 的窗口；完整识别九格、当前三个共享选项和剩余 Roll 后，
+会自动填入本页并重新计算。页面给出唯一的一步建议、风险说明、当前三个位置的队伍组合及
+自动 Title 排名。它直接使用
 2026-08-08 的当前 P3/Title 冻结证据，不依赖旧 P4/P5/P6 手册门禁；不会生成下一轮选项，
-玩家在游戏内操作后只需把页面改成实际新画面并重新计算。真实数据冷启动约 18 秒，首次一步
+也不会向 Dota 发送鼠标、键盘或内存操作。玩家在游戏内操作后只需让实际新画面稳定出现。
+真实数据冷启动约 18 秒，首次一步
 计算约 0.6 秒，缓存重算约 0.05 秒。旧 P7 v1 会话与证据命令作为历史兼容证据保留，不再是
 页面运行路径。实装范围和验收标准见
 [v2 实装计划](docs/plans/current-screen-roll-advisor-v2.md)，完成结果见
@@ -121,14 +124,23 @@ planner。v1 手册、P5/P6 产物和默认 CLI 路径继续作为不可变兼�
 完整操作顺序、主赛事种子导入和状态含义见 [docs/runbook.md](docs/runbook.md)。模型的时间
 切分、覆盖门槛和三种目标见 [docs/modeling.md](docs/modeling.md)。
 
-## 可选 OCR
+## 本地实时 OCR（可选）
 
 ```powershell
 uv sync --extra dev --extra ocr
-uv run ti ocr inspect path\to\fantasy-screenshot.png
+uv run ti web
 ```
 
-OCR 结果只生成待确认草稿，不控制 Steam，也不会自动提交游戏内选择。
+打开 `Group Roll 实时顾问`，再打开“实时监视 Dota 2 的 Group Roll 页面”。完整且可信的
+屏幕观测会自动写入本页并计算；缺失、冲突或低置信度字段只会填入已确认部分，不会触发计算。
+截图与识别 JSON 只覆盖写入本机忽略目录 `data/cache/ocr/live-roll/`。手填始终可用。
+实时开关只在本机 Windows 显示；Linux/托管环境保持原始手填页面。
+旧的 `ti ocr inspect <截图>` 仍只生成待确认草稿。两条路径都不控制 Steam，也不会自动提交
+游戏内选择。
+
+本轮实装结果与已知校准缺口见
+[技术报告](docs/reports/local-live-group-roll-ocr-implementation-2026-08-09.md)；直接使用时可看
+[易懂总结](docs/reports/local-live-group-roll-ocr-summary-2026-08-09.md)。
 
 ## 数据与发布状态
 
@@ -144,4 +156,4 @@ OCR 结果只生成待确认草稿，不控制 Steam，也不会自动提交游�
 - 主赛事实际八队与种子未写入前，14 节点网格会生成但保持 `blocked`。
 - Fantasy 默认只用覆盖充分的 `exact/derived` 字段；五项原生 replay 统计只有通过逐场状态、
   字段存在性和 Watcher build 门槛后才参与，OpenDota proxy 永不参与默认最优解。
-- OCR 是可选第二阶段，只输出需要人工确认的草稿。
+- 实时 OCR 只在完整观测时自动填入本地顾问；任何不完整观测都会阻止自动计算。

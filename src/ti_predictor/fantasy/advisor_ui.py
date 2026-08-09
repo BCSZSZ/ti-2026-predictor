@@ -16,6 +16,12 @@ from ti_predictor.fantasy.current_advisor import (
     load_current_advisor_roll_rules,
     prepare_current_advisor_context,
 )
+from ti_predictor.fantasy.live_ocr import (
+    LiveRollMonitor,
+    live_capture_supported,
+    load_live_ocr_profile,
+    observation_widget_updates,
+)
 from ti_predictor.fantasy.roll import BannerState, EmblemState, GroupRollState, RollOffer
 from ti_predictor.paths import PATHS
 
@@ -65,6 +71,14 @@ def _policy():
     )
 
 
+@st.cache_resource(show_spinner=False)
+def _cached_live_monitor() -> LiveRollMonitor:
+    return LiveRollMonitor(
+        profile=load_live_ocr_profile(),
+        rules=_cached_roll_rules(),
+    )
+
+
 def _stat_labels() -> dict[str, str]:
     stats = load_rules()["fantasy"]["stats"]
     return {stat_id: str(row["label"]) for stat_id, row in stats.items()}
@@ -83,7 +97,96 @@ def _clear_result() -> None:
     st.session_state.pop("current_advisor_result", None)
 
 
-def _input_form(rules, *, manual_team_mode: bool) -> tuple[GroupRollState | None, Any, str, bool]:
+def _field_label(field_id: str) -> str:
+    parts = field_id.split(".")
+    if len(parts) == 4 and parts[0] == "banner":
+        role = _ROLE_LABELS.get(parts[1], parts[1])
+        attribute = {"stat": "Stat", "quality": "品质", "trait": "Trait"}.get(
+            parts[3], parts[3]
+        )
+        return f"{role}第 {int(parts[2]) + 1} 格 {attribute}"
+    if len(parts) == 2 and parts[0] == "offer":
+        return f"选项 {int(parts[1]) + 1}"
+    if field_id == "remaining_rolls":
+        return "剩余 Roll 次数"
+    return field_id
+
+
+def _consume_pending_observation(rules) -> None:
+    observation = st.session_state.pop("current_advisor_pending_observation", None)
+    if observation is None:
+        return
+    for key, value in observation_widget_updates(observation, rules).items():
+        st.session_state[key] = value
+    st.session_state["current_advisor_last_observation"] = observation
+    st.session_state.pop("current_advisor_result", None)
+    if observation.get("status") == "confirmed":
+        st.session_state["current_advisor_autocalculate"] = True
+
+
+@st.fragment(run_every=1.0)
+def _render_live_monitor_status() -> None:
+    monitor = _cached_live_monitor()
+    snapshot = monitor.snapshot()
+    stage = snapshot.stage
+    if stage == "error":
+        st.error(snapshot.message)
+    elif stage == "incomplete":
+        st.warning(snapshot.message)
+    elif stage == "confirmed":
+        st.success(snapshot.message)
+    else:
+        st.caption(snapshot.message)
+
+    observation = snapshot.observation
+    last_generation = int(st.session_state.get("current_advisor_monitor_generation", -1))
+    if observation is None or snapshot.generation <= last_generation:
+        return
+    st.session_state["current_advisor_monitor_generation"] = snapshot.generation
+    if observation.get("status") not in {"incomplete", "confirmed"}:
+        return
+    st.session_state["current_advisor_pending_observation"] = observation
+    st.rerun()
+
+
+def _render_live_controls() -> None:
+    st.subheader("自动读取游戏画面")
+    enabled = st.toggle(
+        "实时监视 Dota 2 的 Group Roll 页面",
+        value=False,
+        key="current_advisor_live_ocr_enabled",
+        help="只读取窗口画面并更新本页，不向游戏发送鼠标、键盘或内存操作。",
+    )
+    monitor = _cached_live_monitor()
+    snapshot = monitor.snapshot()
+    if enabled and not snapshot.running:
+        monitor.start()
+    elif not enabled and snapshot.running:
+        monitor.stop()
+    _render_live_monitor_status()
+    observation = st.session_state.get("current_advisor_last_observation")
+    if observation is None:
+        st.caption("开启后可继续使用下方手填；识别到完整页面时会自动录入并计算。")
+        return
+    captured_at = str(observation.get("captured_at", ""))
+    fingerprint = str(observation.get("image_sha256", ""))[:12]
+    if observation.get("status") == "incomplete":
+        missing = [_field_label(item) for item in observation.get("missing_field_ids", [])]
+        st.warning(
+            "已自动填入可信字段；以下字段没有覆盖原值，也没有自动计算："
+            + "、".join(missing)
+        )
+    else:
+        st.caption("完整观测已自动写入表单；无需再点计算按钮。")
+    st.caption(f"画面时间：{captured_at} · 图像指纹：{fingerprint}")
+
+
+def _input_form(
+    rules,
+    *,
+    manual_team_mode: bool,
+    auto_calculate: bool = False,
+) -> tuple[GroupRollState | None, Any, str, bool]:
     stat_labels = _stat_labels()
     team_options = _team_options()
     team_names = dict(team_options)
@@ -186,7 +289,7 @@ def _input_form(rules, *, manual_team_mode: bool) -> tuple[GroupRollState | None
         offer=RollOffer(tuple(offer_ids)),
         remaining_rolls=remaining,
     )
-    return state, selected_team_ids, risk_profile, submitted
+    return state, selected_team_ids, risk_profile, submitted or auto_calculate
 
 
 def _render_recommendation(result: dict[str, Any]) -> None:
@@ -292,8 +395,8 @@ def _render_details(result: dict[str, Any], context: CurrentAdvisorContext) -> N
 
 def render_advisor_page() -> None:
     st.title("Group Roll 实时顾问")
-    st.write("录入你现在看到的战旗和三个选项，页面只推荐这一步怎么做。")
-    st.caption("本地只读辅助：不控制 Dota、不自动填写、不猜下一轮选项。仅支持 Group 三格战旗。")
+    st.write("本机可自动读取完整 Roll 页面，也可以继续手填；页面只推荐这一步怎么做。")
+    st.caption("本地只读辅助：不控制 Dota、不猜下一轮选项。仅支持 Group 三格战旗。")
 
     try:
         rules = _cached_roll_rules()
@@ -301,6 +404,11 @@ def render_advisor_page() -> None:
     except (OSError, ValueError) as error:
         st.error(f"当前客户端规则不可用：{error}")
         return
+
+    if live_capture_supported():
+        _consume_pending_observation(rules)
+        _render_live_controls()
+        st.divider()
 
     manual_team_mode = st.radio(
         "队伍组合",
@@ -310,8 +418,11 @@ def render_advisor_page() -> None:
         key="current_advisor_manual_team_mode",
         on_change=_clear_result,
     )
+    auto_calculate = bool(st.session_state.pop("current_advisor_autocalculate", False))
     state, selected_team_ids, risk_profile, submitted = _input_form(
-        rules, manual_team_mode=manual_team_mode
+        rules,
+        manual_team_mode=manual_team_mode,
+        auto_calculate=auto_calculate,
     )
     if submitted and state is not None:
         try:
@@ -342,4 +453,7 @@ def render_advisor_page() -> None:
     _render_recommendation(result)
     _render_lineup_and_title(result)
     _render_details(result, context)
-    st.info("在游戏里完成操作后，直接修改实际发生变化的战旗、三个新选项和剩余次数，再点一次计算。")
+    st.info(
+        "在游戏里完成操作后，实时监视会等待画面稳定并自动重算；"
+        "也可以关闭监视，手动修改实际发生变化的字段后再计算。"
+    )

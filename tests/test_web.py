@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
@@ -20,6 +21,13 @@ def test_streamlit_group_advisor_input_page_has_no_runtime_exception() -> None:
 
     assert not app.exception
     assert any(title.value == "Group Roll 实时顾问" for title in app.title)
+    live_toggles = [
+        toggle for toggle in app.toggle if toggle.label == "实时监视 Dota 2 的 Group Roll 页面"
+    ]
+    if sys.platform == "win32":
+        assert len(live_toggles) == 1 and not live_toggles[0].value
+    else:
+        assert not live_toggles
     assert any(button.label == "计算现在应该怎么选" for button in app.button)
     assert sum(select.label.startswith("选项 ") for select in app.selectbox) == 3
     assert not app.error

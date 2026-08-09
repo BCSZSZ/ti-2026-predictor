@@ -1,0 +1,94 @@
+{
+  "profile_id": "fantasy-group-roll-screen-v1",
+  "period": "group",
+  "source": {
+    "client_build": "6891:10893022",
+    "rule_snapshot_sha256": "a6265cd07001e2a7710f23622f3bbe855b32d61445f17f4c941578c53a3275dc",
+    "localization_english_sha256": "5cfa0886244ce5ce06314466e7d928c22bc7da0b621d1e905d51e95486037a00",
+    "localization_schinese_sha256": "868b2100b45cfbbf22a3d152f9182ee0df9cffab32bb8feeed1a6849ca1d8245"
+  },
+  "capture": {
+    "window_title": "Dota 2",
+    "poll_seconds": 0.75,
+    "signature_width": 160,
+    "signature_height": 90,
+    "stable_frame_count": 2,
+    "stable_mean_difference": 4.0,
+    "meaningful_mean_difference": 1.25
+  },
+  "recognition": {
+    "maximum_ocr_width": 2560,
+    "target_anchor_confidence": 0.6,
+    "field_confidence": 0.76,
+    "operation_confidence": 0.68,
+    "role_maximum_x_distance": 0.2,
+    "operation_region_top": 0.55
+  },
+  "roles": {
+    "core": ["Core", "核心"],
+    "mid": ["Mid", "中单", "中路"],
+    "support": ["Support", "辅助"]
+  },
+  "stats": {
+    "kills": ["Kills", "击杀数", "击杀"],
+    "deaths": ["Deaths", "死亡数", "死亡"],
+    "creep_score": ["Creep Score", "正反补得分", "正补与反补"],
+    "gpm": ["GPM"],
+    "madstone_collected": ["Madstone Collected", "狂石收集数量", "魔石拾取"],
+    "tower_kills": ["Tower Kills", "防御塔摧毁数", "防御塔最后一击"],
+    "wards_placed": ["Obs Wards Planted", "Wards Placed", "放置侦察守卫数", "假眼放置"],
+    "camps_stacked": ["Camps Stacked", "野怪堆叠次数", "堆叠野怪营地"],
+    "runes_grabbed": ["Runes Grabbed", "激活神符数", "神符拾取"],
+    "smokes_used": ["Smokes Used", "开雾次数", "诡计之雾使用"],
+    "watchers_taken": ["Watchers Taken", "占领观察者次数", "瞭望台占领"],
+    "lotuses_gained": ["Lotuses Gained", "Lotuses Grabbed", "莲花采集数量", "莲花拾取"],
+    "roshan_kills": ["Roshan Kills", "肉山击杀数", "Roshan 击杀"],
+    "teamfight_participation": ["Teamfight", "Teamfight Participation", "团战", "团战参与"],
+    "first_blood": ["First Blood", "第一滴血"],
+    "stuns": ["Stuns", "眩晕时间", "眩晕秒数"],
+    "tormentor_kills": ["Tormentor Kills", "痛苦魔方消灭次数", "魔方击杀"],
+    "courier_kills": ["Courier Kills", "击杀信使次数", "信使击杀"]
+  },
+  "qualities": {
+    "1": ["Tier I", "第1阶", "第 1 阶"],
+    "2": ["Tier II", "第2阶", "第 2 阶"],
+    "3": ["Tier III", "第3阶", "第 3 阶"],
+    "4": ["Tier IV", "第4阶", "第 4 阶"],
+    "5": ["Tier V", "第5阶", "第 5 阶"]
+  },
+  "traits": {
+    "fractal": ["Fractal", "分形"],
+    "benevolent": ["Benevolent", "仁爱"],
+    "vampiric": ["Vampiric", "吸血鬼"],
+    "unique": ["Unique", "唯一"],
+    "friendly": ["Friendly", "友好"]
+  },
+  "target_anchors": [
+    "Reroll Operations",
+    "Roll Tokens",
+    "重新生成操作选项",
+    "重选代币"
+  ],
+  "operations": {
+    "9": ["Reroll Quality for Red Emblems", "重新生成红色徽标的品质"],
+    "10": ["Reroll Trait for Red Emblems", "重新生成红色徽标的特性"],
+    "11": ["Reroll Stat for Red Emblems", "重新生成红色徽标的统计数据"],
+    "12": ["Reroll Quality for Blue Emblems", "重新生成蓝色徽标的品质"],
+    "13": ["Reroll Trait for Blue Emblems", "重新生成蓝色徽标的特性"],
+    "14": ["Reroll Stat for Blue Emblems", "重新生成蓝色徽标的统计数据"],
+    "15": ["Reroll Quality for Green Emblems", "重新生成绿色徽标的品质"],
+    "16": ["Reroll Trait for Green Emblems", "重新生成绿色徽标的特性"],
+    "17": ["Reroll Stat for Green Emblems", "重新生成绿色徽标的统计数据"],
+    "23": ["Randomly increase one Quality", "随机提升一项品质"],
+    "24": ["Randomly increase two Qualities and reduce one", "随机提升两项品质，并降低一项品质"],
+    "25": ["Reroll Quality for One random Red Emblem", "重新生成随机一枚红色徽标的品质"],
+    "26": ["Reroll Quality for The first Red Emblem", "重新生成第一枚红色徽标的品质"],
+    "27": ["Reroll Quality for The last Red Emblem", "重新生成最后一枚红色徽标的品质"],
+    "28": ["Reroll Trait for One random Blue Emblem", "重新生成随机一枚蓝色徽标的特性"],
+    "29": ["Reroll Trait for The first Blue Emblem", "重新生成第一枚蓝色徽标的特性"],
+    "30": ["Reroll Trait for The last Blue Emblem", "重新生成最后一枚蓝色徽标的特性"],
+    "31": ["Reroll Stat for One random Green Emblem", "重新生成随机一枚绿色徽标的统计数据"],
+    "32": ["Reroll Stat for The first Green Emblem", "重新生成第一枚绿色徽标的统计数据"],
+    "33": ["Reroll Stat for The last Green Emblem", "重新生成最后一枚绿色徽标的统计数据"]
+  }
+}

@@ -7,7 +7,7 @@
 ## Fantasy
 
 1. [Stat 与队伍 Top 3 完整表](playbooks/group-roll/stat-team-top3-publication-v3.md)：42 个
-   位置×颜色×Stat 组合的明确排名、保留/改善建议、前三队伍和稳定性。
+   位置×颜色×Stat 组合的明确排名、保留/改善建议、对应位置选手池的前三队伍和稳定性。
 2. [Title 分析与推荐](reports/ti2026-fantasy-title-recommendation-2026-08-09.md)：Prefix、Suffix、
    触发率、默认选择和客户端条件冲突。
 3. [Group 40 Roll 玩家手册](playbooks/group-roll/group-roll-publication-manual-v3.md)：Stat、Tier、

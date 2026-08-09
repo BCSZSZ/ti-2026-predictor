@@ -116,6 +116,12 @@ def test_top3_markdown_reports_plain_language_risk_samples_and_rank_stability() 
     assert "| 5 | `stuns` | 优先改善<br>相对强度 40.0 | 分档稳定 |" in report
     assert "| 6 | `madstone_collected` | 优先改善<br>相对强度 20.0 | 分档稳定 |" in report
     assert "同一位置和颜色内从强到弱排列" in report
+    assert "Xtreme Gaming" in report
+    assert "不是把该队五名选手的分数合计" in report
+    assert "核心位和辅助位都先分别计算两名对应选手的单局分，再取两人平均" in report
+    assert "历史样本跟随稳定选手 ID" in report
+    assert "可以包含二人过去共同效力其他队伍时的比赛" in report
+    assert "同一面战旗的三格最终必须共同匹配一支队伍" in report
     assert "一定保留" in report
     assert "可以保留" in report
     assert "可以改善" in report

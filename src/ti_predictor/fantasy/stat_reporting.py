@@ -7,7 +7,7 @@ from typing import Any
 
 from ti_predictor.fantasy.playbook import build_stat_priorities
 
-TEAM_RANK_REPORT_VERSION = "publication-v5"
+TEAM_RANK_REPORT_VERSION = "publication-v6"
 TEAM_RANK_REPORT_FILENAME = "group-stat-team-top3-publication.md"
 
 _ROLE_LABELS = {"core": "核心位", "mid": "中单", "support": "辅助位"}
@@ -116,6 +116,20 @@ def render_group_stat_team_top3_markdown(
         "",
         "每张表的 Stat 排名按同一位置和颜色内从强到弱排列：第 1 最强，第 6 最弱。相对强度把"
         "第 1 名设为 100，并比较每项 Stat 的最佳队伍预测平均贡献。",
+        "",
+        "## 队名代表谁",
+        "",
+        "表中的队名始终受当前小标题的位置限制。例如“核心位 · 红色 / `creep_score` / "
+        "第 1 Xtreme Gaming”表示：Xtreme Gaming 名单中的两名核心选手，在这个核心位 Stat 上排名第一；"
+        "不是把该队五名选手的分数合计。核心位和辅助位都先分别计算两名对应选手的单局分，再取两人平均；"
+        "中单只计算该队的一名中单。",
+        "",
+        "历史样本跟随稳定选手 ID。核心位和辅助位只采用这两名目标选手共同打完整个系列赛、每局同队，"
+        "且系列赛期间队伍不变的记录，因此可以包含二人过去共同效力其他队伍时的比赛。表中的“样本”是"
+        "这个位置组合的完整系列赛数量，不是该队五人参加过的全部系列赛。",
+        "",
+        "核心位、中单、辅助位三面战旗可以分别选择不同队伍；但同一面战旗的三格最终必须共同匹配一支队伍。"
+        "因此，每项 Stat 的队伍 Top 3 是单格候选表，不能把同一面战旗三项 Stat 各自的第一名直接拼起来。",
         "",
         "## 基础建议的判断依据",
         "",

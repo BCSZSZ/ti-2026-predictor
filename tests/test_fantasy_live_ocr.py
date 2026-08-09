@@ -9,7 +9,9 @@ from ti_predictor.fantasy.live_ocr import (
     LiveRollMonitor,
     OCRToken,
     RollScreenObservation,
+    RollScreenReader,
     StableFrameGate,
+    _select_dxcam_output,
     load_live_ocr_profile,
     observation_widget_updates,
     parse_roll_screen_tokens,
@@ -25,8 +27,11 @@ class FakeImage:
     def convert(self, _mode: str) -> FakeImage:
         return self
 
-    def resize(self, size: tuple[int, int]) -> FakeImage:
+    def resize(self, size: tuple[int, int], **_kwargs) -> FakeImage:
         return FakeImage(self.value, size)
+
+    def crop(self, box: tuple[int, int, int, int]) -> FakeImage:
+        return FakeImage(self.value, (box[2] - box[0], box[3] - box[1]))
 
     def tobytes(self) -> bytes:
         return bytes([self.value]) * (self.width * self.height)
@@ -99,6 +104,64 @@ def _complete_schinese_tokens() -> tuple[OCRToken, ...]:
     return tuple(tokens)
 
 
+def _current_client_layout_tokens() -> tuple[OCRToken, ...]:
+    """Tokens shaped like the current 16:9 client, including multiline Stat labels."""
+
+    tokens = [
+        # The full Dota page also contains SUPPORT in the left navigation. It
+        # must not replace the three aligned banner headings.
+        _token("Support", 0.99, 0.08, 0.40),
+        _token("Core", 0.98, 0.20, 0.08),
+        _token("Mid", 0.98, 0.50, 0.08),
+        _token("Support", 0.98, 0.80, 0.08),
+    ]
+    cards = {
+        "core": (
+            0.20,
+            (
+                (("Tower Kills",), "Tier II", "Unique"),
+                (("Teamfight",), "Tier IV", "Vampiric"),
+                (("Deaths",), "Tier V", "Benevolent"),
+            ),
+        ),
+        "mid": (
+            0.50,
+            (
+                (("Kills",), "Tier I", "Fractal"),
+                (("Camps Stacked",), "Tier V", "Unique"),
+                (("Stuns",), "Tier II", "Benevolent"),
+            ),
+        ),
+        "support": (
+            0.80,
+            (
+                (("Watchers", "Taken"), "Tier II", "Unique"),
+                (("Tormentor", "Kills"), "Tier III", "Friendly"),
+                (("Smokes Used",), "Tier II", "Fractal"),
+            ),
+        ),
+    }
+    for _role, (x, rows) in cards.items():
+        for index, (stat_lines, quality, trait) in enumerate(rows):
+            stat_y = 0.20 + index * 0.12
+            if len(stat_lines) == 1:
+                tokens.append(_token(stat_lines[0], 0.98, x, stat_y, width=0.12))
+            else:
+                tokens.append(_token(stat_lines[0], 0.98, x, stat_y - 0.008, width=0.12))
+                tokens.append(_token(stat_lines[1], 0.98, x, stat_y + 0.008, width=0.12))
+            tokens.append(_token(quality, 0.98, x, stat_y + 0.035))
+            tokens.append(_token(trait, 0.98, x, stat_y + 0.065))
+    tokens.extend(
+        (
+            _token("Reroll Trait for Red Emblems", 0.98, 0.34, 0.74, width=0.2),
+            _token("Reroll Quality for One random Red Emblem", 0.98, 0.50, 0.74, width=0.24),
+            _token("Reroll Trait for One random Blue Emblem", 0.98, 0.66, 0.74, width=0.24),
+            _token("Roll Tokens: 33", 0.99, 0.50, 0.88, width=0.12),
+        )
+    )
+    return tuple(tokens)
+
+
 def _parse(tokens: tuple[OCRToken, ...], *, captured_at: datetime | None = None):
     return parse_roll_screen_tokens(
         tokens,
@@ -123,6 +186,18 @@ def test_stable_frame_gate_accepts_only_stable_meaningful_changes() -> None:
     assert gate.observe(FakeImage(10)) == "duplicate"
     assert gate.observe(FakeImage(30)) == "unstable"
     assert gate.observe(FakeImage(30)) == "accepted"
+
+
+def test_dxcam_output_is_selected_by_exact_dota_monitor_handle() -> None:
+    class Output:
+        def __init__(self, handle: int) -> None:
+            self.hmonitor = handle
+
+    factory = type("Factory", (), {"outputs": [[Output(101), Output(202)], [Output(303)]]})()
+
+    device_index, output_index, output = _select_dxcam_output(factory, 202)
+
+    assert (device_index, output_index, output.hmonitor) == (0, 1, 202)
 
 
 def test_complete_structured_tokens_build_a_valid_group_roll_state() -> None:
@@ -159,6 +234,74 @@ def test_complete_simplified_chinese_tokens_build_the_same_valid_state() -> None
         "stuns",
         "gpm",
     ]
+
+
+def test_current_client_multiline_layout_builds_the_exact_visible_state() -> None:
+    observation = _parse(_current_client_layout_tokens())
+
+    assert observation.status == "confirmed"
+    assert observation.missing_field_ids == ()
+    assert observation.state is not None
+    assert observation.state.remaining_rolls == 33
+    assert observation.state.offer.operation_ids == (10, 25, 28)
+    assert [
+        [(emblem.stat_id, emblem.quality_tier, emblem.trait_id) for emblem in banner.emblems]
+        for banner in observation.state.banners
+    ] == [
+        [
+            ("tower_kills", 2, "unique"),
+            ("teamfight_participation", 4, "vampiric"),
+            ("deaths", 5, "benevolent"),
+        ],
+        [
+            ("kills", 1, "fractal"),
+            ("camps_stacked", 5, "unique"),
+            ("stuns", 2, "benevolent"),
+        ],
+        [
+            ("watchers_taken", 2, "unique"),
+            ("tormentor_kills", 3, "friendly"),
+            ("smokes_used", 2, "fractal"),
+        ],
+    ]
+
+
+def test_reader_locates_and_upscales_fantasy_region_before_detailed_ocr() -> None:
+    class SequencedEngine:
+        def __init__(self) -> None:
+            self.calls: list[tuple[tuple[int, int], int]] = []
+
+        def extract(self, image: FakeImage, *, maximum_width: int) -> tuple[OCRToken, ...]:
+            self.calls.append((image.size, maximum_width))
+            if len(self.calls) == 1:
+                return (
+                    _token("Support", 0.99, 0.08, 0.40),
+                    _token("Core", 0.98, 0.29, 0.27),
+                    _token("Mid", 0.98, 0.54, 0.27),
+                    _token("Support", 0.98, 0.79, 0.27),
+                )
+            return _current_client_layout_tokens()
+
+    engine = SequencedEngine()
+    frame = CapturedFrame(
+        image=FakeImage(10, (2048, 1152)),
+        captured_at=datetime(2026, 8, 9, 7, 0, tzinfo=UTC),
+        image_sha256="a" * 64,
+        window_title="Dota 2",
+    )
+    observation = RollScreenReader(
+        profile=load_live_ocr_profile(),
+        rules=load_current_advisor_roll_rules(),
+        token_engine=engine,
+    ).inspect(frame)
+
+    assert observation.status == "confirmed"
+    assert engine.calls[0] == ((2048, 1152), 1280)
+    assert engine.calls[1][0][0] == 2560
+    assert engine.calls[1][1] == 2560
+    core_stat = next(field for field in observation.fields if field.field_id == "banner.core.0.stat")
+    assert core_stat.evidence_box is not None
+    assert 0.28 < core_stat.evidence_box[0] < 0.31
 
 
 def test_low_confidence_field_allows_partial_autofill_but_blocks_auto_calculation() -> None:

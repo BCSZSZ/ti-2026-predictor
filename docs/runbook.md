@@ -168,6 +168,13 @@ high-confidence fields and lists what still needs manual confirmation; it never 
 recommendation. The latest target screenshot and observation JSON overwrite the local ignored cache
 under `data/cache/ocr/live-roll/`; no screenshot history is retained.
 
+The browser and Dota may be on different monitors. The capture path verifies `dota2.exe`, resolves
+the exact Windows monitor handle, and maps that handle to the corresponding DXcam output; it does not
+assume that Dota is on the primary display. Keep Dota restored because a minimized window is rejected
+explicitly. On a full client frame, the reader first locates the aligned `CORE / MID / SUPPORT`
+headings, crops and enlarges the Fantasy region, and only then performs detailed OCR, so the side
+navigation, top bar and chat area do not determine Banner fields.
+
 After acting in Dota, edit only what the client actually changed: the realised Banner attributes,
 the three new operations, and the remaining count. Calculate again from that complete observed
 screen, or leave live monitoring on and let the newly stable screen refill the form. The advisor

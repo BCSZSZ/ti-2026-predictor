@@ -156,7 +156,10 @@ def _render_live_controls() -> None:
         "实时监视 Dota 2 的 Group Roll 页面",
         value=False,
         key="current_advisor_live_ocr_enabled",
-        help="只读取窗口画面并更新本页，不向游戏发送鼠标、键盘或内存操作。",
+        help=(
+            "按 dota2.exe 所在显示器读取画面并更新本页；Chrome 可以放在另一块屏幕。"
+            "不会向游戏发送鼠标、键盘或内存操作。"
+        ),
     )
     monitor = _cached_live_monitor()
     snapshot = monitor.snapshot()

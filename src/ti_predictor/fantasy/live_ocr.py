@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import copy
 import ctypes
+import itertools
 import json
 import re
 import sys
 import threading
 import unicodedata
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from difflib import SequenceMatcher
 from hashlib import sha256
@@ -138,6 +139,8 @@ class CapturedFrame:
     captured_at: datetime
     image_sha256: str
     window_title: str
+    capture_source: str = ""
+    monitor_device: str = ""
 
     @property
     def viewport(self) -> tuple[int, int]:
@@ -149,7 +152,7 @@ class LiveOCRProfile:
     profile_id: str
     language_priority: tuple[str, ...]
     source: dict[str, str]
-    capture: dict[str, float | int | str]
+    capture: dict[str, Any]
     recognition: dict[str, float | int]
     roles: dict[str, tuple[str, ...]]
     stats: dict[str, tuple[str, ...]]
@@ -188,33 +191,261 @@ def live_capture_supported() -> bool:
     return sys.platform == "win32"
 
 
-def capture_dota_window(*, window_title: str = "Dota 2") -> CapturedFrame:
+@dataclass(frozen=True)
+class DotaCaptureTarget:
+    hwnd: int
+    process_id: int
+    executable_path: str
+    monitor_handle: int
+    monitor_device: str
+    monitor_rect: tuple[int, int, int, int]
+    window_rect: tuple[int, int, int, int]
+
+
+def _locate_dota_capture_target(window_title: str) -> DotaCaptureTarget:
     if not live_capture_supported():
         raise ScreenCaptureError("实时窗口识别仅支持本机 Windows；手填顾问仍可使用。")
-    try:
-        from PIL import ImageGrab
-    except ImportError as error:  # pragma: no cover - optional dependency
-        raise ScreenCaptureError("缺少 Pillow；请运行 `uv sync --extra ocr`。") from error
-    handle = int(ctypes.windll.user32.FindWindowW(None, window_title))
-    if handle == 0:
+    from ctypes import wintypes
+
+    class Rect(ctypes.Structure):
+        _fields_ = [
+            ("left", wintypes.LONG),
+            ("top", wintypes.LONG),
+            ("right", wintypes.LONG),
+            ("bottom", wintypes.LONG),
+        ]
+
+    class MonitorInfoEx(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", wintypes.DWORD),
+            ("rcMonitor", Rect),
+            ("rcWork", Rect),
+            ("dwFlags", wintypes.DWORD),
+            ("szDevice", wintypes.WCHAR * 32),
+        ]
+
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+    user32.FindWindowW.argtypes = (wintypes.LPCWSTR, wintypes.LPCWSTR)
+    user32.FindWindowW.restype = wintypes.HWND
+    user32.IsIconic.argtypes = (wintypes.HWND,)
+    user32.IsIconic.restype = wintypes.BOOL
+    user32.GetWindowThreadProcessId.argtypes = (
+        wintypes.HWND,
+        ctypes.POINTER(wintypes.DWORD),
+    )
+    user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+    kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.QueryFullProcessImageNameW.argtypes = (
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        wintypes.LPWSTR,
+        ctypes.POINTER(wintypes.DWORD),
+    )
+    kernel32.QueryFullProcessImageNameW.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    handle = int(user32.FindWindowW(None, window_title) or 0)
+    if not handle:
         raise ScreenCaptureError(f"没有找到标题为 {window_title!r} 的 Dota 窗口。")
+    if user32.IsIconic(handle):
+        raise ScreenCaptureError("Dota 2 窗口已最小化；请先恢复窗口。")
+
+    process_id = wintypes.DWORD()
+    user32.GetWindowThreadProcessId(handle, ctypes.byref(process_id))
+    process_handle = kernel32.OpenProcess(0x1000, False, process_id.value)
+    if not process_handle:
+        raise ScreenCaptureError(f"无法核对 Dota 窗口进程（PID {process_id.value}）。")
     try:
-        image = ImageGrab.grab(window=handle).convert("RGB")
-    except OSError as error:
-        raise ScreenCaptureError(f"Dota 窗口捕获失败：{error}") from error
-    if image.width < 800 or image.height < 600:
-        raise ScreenCaptureError(f"Dota 窗口尺寸异常：{image.width}×{image.height}。")
-    identity = (
-        image.width.to_bytes(4, "little")
-        + image.height.to_bytes(4, "little")
-        + image.tobytes()
+        path_buffer = ctypes.create_unicode_buffer(32768)
+        path_length = wintypes.DWORD(len(path_buffer))
+        if not kernel32.QueryFullProcessImageNameW(
+            process_handle,
+            0,
+            path_buffer,
+            ctypes.byref(path_length),
+        ):
+            raise ScreenCaptureError(f"无法读取 Dota 窗口进程路径（PID {process_id.value}）。")
+        executable_path = path_buffer.value
+    finally:
+        kernel32.CloseHandle(process_handle)
+    if Path(executable_path).name.casefold() != "dota2.exe":
+        raise ScreenCaptureError(
+            f"标题为 {window_title!r} 的窗口属于 {Path(executable_path).name}，不是 dota2.exe。"
+        )
+
+    user32.MonitorFromWindow.argtypes = (wintypes.HWND, wintypes.DWORD)
+    user32.MonitorFromWindow.restype = wintypes.HANDLE
+    user32.GetMonitorInfoW.argtypes = (wintypes.HANDLE, ctypes.POINTER(MonitorInfoEx))
+    user32.GetMonitorInfoW.restype = wintypes.BOOL
+    user32.GetWindowRect.argtypes = (wintypes.HWND, ctypes.POINTER(Rect))
+    user32.GetWindowRect.restype = wintypes.BOOL
+    monitor_handle = int(user32.MonitorFromWindow(handle, 2) or 0)
+    monitor_info = MonitorInfoEx()
+    monitor_info.cbSize = ctypes.sizeof(MonitorInfoEx)
+    if not monitor_handle or not user32.GetMonitorInfoW(monitor_handle, ctypes.byref(monitor_info)):
+        raise ScreenCaptureError("无法确定 Dota 2 所在显示器。")
+    window_rect = Rect()
+    if not user32.GetWindowRect(handle, ctypes.byref(window_rect)):
+        raise ScreenCaptureError("无法读取 Dota 2 窗口范围。")
+    return DotaCaptureTarget(
+        hwnd=handle,
+        process_id=int(process_id.value),
+        executable_path=executable_path,
+        monitor_handle=monitor_handle,
+        monitor_device=str(monitor_info.szDevice),
+        monitor_rect=(
+            int(monitor_info.rcMonitor.left),
+            int(monitor_info.rcMonitor.top),
+            int(monitor_info.rcMonitor.right),
+            int(monitor_info.rcMonitor.bottom),
+        ),
+        window_rect=(
+            int(window_rect.left),
+            int(window_rect.top),
+            int(window_rect.right),
+            int(window_rect.bottom),
+        ),
     )
-    return CapturedFrame(
-        image=image,
-        captured_at=_utc_now(),
-        image_sha256=sha256(identity).hexdigest(),
-        window_title=window_title,
+
+
+def _select_dxcam_output(factory: Any, monitor_handle: int) -> tuple[int, int, Any]:
+    for device_index, outputs in enumerate(factory.outputs):
+        for output_index, output in enumerate(outputs):
+            if int(output.hmonitor) == monitor_handle:
+                return device_index, output_index, output
+    available = [
+        int(output.hmonitor)
+        for outputs in factory.outputs
+        for output in outputs
+    ]
+    raise ScreenCaptureError(
+        f"DXcam 没有找到 Dota 所在显示器句柄 {monitor_handle}；可用句柄：{available}。"
     )
+
+
+def _crop_monitor_frame_to_window(image: Any, target: DotaCaptureTarget) -> Any:
+    monitor_left, monitor_top, monitor_right, monitor_bottom = target.monitor_rect
+    window_left, window_top, window_right, window_bottom = target.window_rect
+    left = max(monitor_left, window_left)
+    top = max(monitor_top, window_top)
+    right = min(monitor_right, window_right)
+    bottom = min(monitor_bottom, window_bottom)
+    if right <= left or bottom <= top:
+        raise ScreenCaptureError("Dota 2 窗口没有位于检测到的显示器可见范围内。")
+    scale_x = image.width / max(1, monitor_right - monitor_left)
+    scale_y = image.height / max(1, monitor_bottom - monitor_top)
+    box = (
+        round((left - monitor_left) * scale_x),
+        round((top - monitor_top) * scale_y),
+        round((right - monitor_left) * scale_x),
+        round((bottom - monitor_top) * scale_y),
+    )
+    return image.crop(box)
+
+
+def _capture_is_blank(image: Any) -> bool:
+    low, high = image.convert("L").resize((64, 36)).getextrema()
+    return int(high) < 16 or int(high) - int(low) < 4
+
+
+class DotaMonitorCapturer:
+    """Capture the physical monitor containing dota2.exe, including DirectX surfaces."""
+
+    def __init__(self, *, backend_order: tuple[str, ...] = ("winrt", "dxgi")) -> None:
+        self._backend_order = backend_order
+        self._factory: Any | None = None
+        self._camera: Any | None = None
+        self._camera_key: tuple[int, int, str] | None = None
+
+    @property
+    def factory(self) -> Any:
+        if self._factory is None:
+            try:
+                import dxcam
+            except ImportError as error:  # pragma: no cover - optional dependency
+                raise ScreenCaptureError("缺少 DXcam；请运行 `uv sync --extra ocr`。") from error
+            self._factory = dxcam.DXFactory()
+        return self._factory
+
+    def _camera_for(self, device_index: int, output_index: int, backend: str) -> Any:
+        key = (device_index, output_index, backend)
+        if self._camera is not None and self._camera_key == key:
+            return self._camera
+        if self._camera is not None:
+            self._camera.release()
+        try:
+            self._camera = self.factory.create(
+                device_idx=device_index,
+                output_idx=output_index,
+                output_color="RGB",
+                backend=backend,
+                processor_backend="numpy",
+            )
+        except (OSError, RuntimeError, ValueError) as error:
+            self._camera = None
+            self._camera_key = None
+            raise ScreenCaptureError(f"{backend} 捕获器初始化失败：{error}") from error
+        self._camera_key = key
+        return self._camera
+
+    def __call__(self, *, window_title: str = "Dota 2") -> CapturedFrame:
+        try:
+            from PIL import Image
+        except ImportError as error:  # pragma: no cover - optional dependency
+            raise ScreenCaptureError("缺少 Pillow；请运行 `uv sync --extra ocr`。") from error
+        target = _locate_dota_capture_target(window_title)
+        device_index, output_index, _ = _select_dxcam_output(
+            self.factory,
+            target.monitor_handle,
+        )
+        failures: list[str] = []
+        for backend in self._backend_order:
+            try:
+                array = self._camera_for(device_index, output_index, backend).grab(
+                    new_frame_only=False
+                )
+                if array is None:
+                    raise ScreenCaptureError("没有返回画面。")
+                image = _crop_monitor_frame_to_window(
+                    Image.fromarray(array).convert("RGB"),
+                    target,
+                )
+                if image.width < 800 or image.height < 600:
+                    raise ScreenCaptureError(f"窗口尺寸异常：{image.width}×{image.height}。")
+                if _capture_is_blank(image):
+                    raise ScreenCaptureError("返回了空白画面。")
+                identity = (
+                    image.width.to_bytes(4, "little")
+                    + image.height.to_bytes(4, "little")
+                    + image.tobytes()
+                )
+                return CapturedFrame(
+                    image=image,
+                    captured_at=_utc_now(),
+                    image_sha256=sha256(identity).hexdigest(),
+                    window_title=window_title,
+                    capture_source=backend,
+                    monitor_device=target.monitor_device,
+                )
+            except (OSError, RuntimeError, ValueError, ScreenCaptureError) as error:
+                failures.append(f"{backend}: {error}")
+        raise ScreenCaptureError("Dota 显示器捕获失败；" + "；".join(failures))
+
+    def close(self) -> None:
+        if self._camera is not None:
+            self._camera.release()
+        self._camera = None
+        self._camera_key = None
+
+
+def capture_dota_window(*, window_title: str = "Dota 2") -> CapturedFrame:
+    capturer = DotaMonitorCapturer()
+    try:
+        return capturer(window_title=window_title)
+    finally:
+        capturer.close()
 
 
 def _signature(image: Any, *, width: int, height: int) -> bytes:
@@ -380,16 +611,81 @@ def _matched_tokens(
     return matches
 
 
+def _multiline_token_candidates(tokens: tuple[OCRToken, ...]) -> tuple[OCRToken, ...]:
+    """Add two-line OCR labels without replacing the original evidence tokens."""
+
+    combined: list[OCRToken] = []
+    for pair in itertools.combinations(tokens, 2):
+        first, second = sorted(pair, key=lambda token: token.center_y)
+        vertical_gap = second.center_y - first.center_y
+        if vertical_gap <= 0 or vertical_gap > 0.026:
+            continue
+        if abs(first.center_x - second.center_x) > 0.045:
+            continue
+        horizontal_overlap = min(first.box[2], second.box[2]) - max(first.box[0], second.box[0])
+        narrowest_width = min(first.box[2] - first.box[0], second.box[2] - second.box[0])
+        if horizontal_overlap < max(0.0, narrowest_width * 0.25):
+            continue
+        combined.append(_combined_token([first, second]))
+    return (*tokens, *combined)
+
+
+def _deduplicate_vertical_matches(
+    matches: list[tuple[OCRToken, Any, float]],
+    *,
+    minimum_separation: float = 0.035,
+) -> list[tuple[OCRToken, Any, float]]:
+    """Keep the most specific label when OCR returns both a line and its joined label."""
+
+    ranked = sorted(
+        matches,
+        key=lambda item: (
+            item[0].confidence * item[2],
+            len(_normalize(item[0].text)),
+        ),
+        reverse=True,
+    )
+    chosen: list[tuple[OCRToken, Any, float]] = []
+    for item in ranked:
+        if any(abs(item[0].center_y - other[0].center_y) < minimum_separation for other in chosen):
+            continue
+        chosen.append(item)
+    return sorted(chosen, key=lambda item: item[0].center_y)
+
+
 def _role_anchors(
     tokens: tuple[OCRToken, ...], profile: LiveOCRProfile
 ) -> dict[str, tuple[OCRToken, float]]:
     threshold = float(profile.recognition["target_anchor_confidence"])
-    anchors: dict[str, tuple[OCRToken, float]] = {}
+    candidates: dict[str, list[tuple[OCRToken, float]]] = {
+        role: [] for role in profile.roles
+    }
     for token, role, similarity in _matched_tokens(tokens, profile.roles, minimum_similarity=0.72):
         confidence = token.confidence * similarity
-        current = anchors.get(role)
-        if confidence >= threshold and (current is None or confidence > current[1]):
-            anchors[role] = (token, confidence)
+        if confidence >= threshold:
+            candidates[role].append((token, confidence))
+
+    role_order = ("core", "mid", "support")
+    if all(candidates.get(role) for role in role_order):
+        aligned: list[tuple[float, tuple[tuple[OCRToken, float], ...]]] = []
+        for triplet in itertools.product(*(candidates[role] for role in role_order)):
+            xs = [item[0].center_x for item in triplet]
+            ys = [item[0].center_y for item in triplet]
+            if not (xs[0] + 0.08 < xs[1] and xs[1] + 0.08 < xs[2]):
+                continue
+            y_spread = max(ys) - min(ys)
+            if y_spread > 0.08:
+                continue
+            score = sum(item[1] for item in triplet) - y_spread * 4.0
+            aligned.append((score, triplet))
+        if aligned:
+            _, best = max(aligned, key=lambda item: item[0])
+            return dict(zip(role_order, best, strict=True))
+
+    anchors: dict[str, tuple[OCRToken, float]] = {}
+    for role, items in candidates.items():
+        if items:
+            anchors[role] = max(items, key=lambda item: item[1])
     return anchors
 
 
@@ -403,7 +699,9 @@ def _is_target_screen(
         >= 0.68
         for token in tokens
     )
-    stat_count = len(_matched_tokens(tokens, profile.stats, minimum_similarity=0.7))
+    stat_count = len(
+        _matched_tokens(_multiline_token_candidates(tokens), profile.stats, minimum_similarity=0.7)
+    )
     return len(roles) == 3 and (anchor_hit or stat_count >= 6), roles
 
 
@@ -422,8 +720,8 @@ def _row_boundaries(stat_tokens: list[tuple[OCRToken, str, float]]) -> list[tupl
     centers = [item[0].center_y for item in stat_tokens]
     bounds = []
     for index, center in enumerate(centers):
-        low = 0.0 if index == 0 else (centers[index - 1] + center) / 2.0
-        high = 1.0 if index == len(centers) - 1 else (center + centers[index + 1]) / 2.0
+        low = max(0.0, center - 0.025)
+        high = 1.0 if index == len(centers) - 1 else max(low, centers[index + 1] - 0.005)
         bounds.append((low, high))
     return bounds
 
@@ -631,7 +929,11 @@ def parse_roll_screen_tokens(
 
     threshold = float(profile.recognition["field_confidence"])
     maximum_distance = float(profile.recognition["role_maximum_x_distance"])
-    stat_matches = _matched_tokens(tokens, profile.stats, minimum_similarity=0.66)
+    stat_matches = _matched_tokens(
+        _multiline_token_candidates(tokens),
+        profile.stats,
+        minimum_similarity=0.66,
+    )
     quality_matches = _matched_tokens(tokens, profile.qualities, minimum_similarity=0.7)
     trait_matches = _matched_tokens(tokens, profile.traits, minimum_similarity=0.7)
     readings: list[RollFieldReading] = []
@@ -643,8 +945,7 @@ def parse_roll_screen_tokens(
             for item in stat_matches
             if _nearest_role(item[0], roles, maximum_distance) == role
         ]
-        role_stats.sort(key=lambda item: item[0].center_y)
-        role_stats = role_stats[:3]
+        role_stats = _deduplicate_vertical_matches(role_stats)[:3]
         while len(role_stats) < 3:
             role_stats.append((None, None, 0.0))  # type: ignore[arg-type]
         valid_stats = [item for item in role_stats if item[0] is not None]
@@ -806,12 +1107,97 @@ class RollScreenReader:
             self._token_engine = RapidOCRTokenEngine()
         return self._token_engine
 
-    def inspect(self, frame: CapturedFrame) -> RollScreenObservation:
-        tokens = self.token_engine.extract(
-            frame.image,
-            maximum_width=int(self.profile.recognition["maximum_ocr_width"]),
+    def _recognition_region(
+        self,
+        image: Any,
+        roles: dict[str, tuple[OCRToken, float]],
+    ) -> tuple[Any, tuple[int, int, int, int]]:
+        left = max(
+            0.0,
+            min(item[0].center_x for item in roles.values())
+            - float(self.profile.recognition["fantasy_region_left_margin"]),
         )
-        return parse_roll_screen_tokens(
+        right = min(
+            1.0,
+            max(item[0].center_x for item in roles.values())
+            + float(self.profile.recognition["fantasy_region_right_margin"]),
+        )
+        top = max(
+            0.0,
+            min(item[0].center_y for item in roles.values())
+            - float(self.profile.recognition["fantasy_region_top_margin"]),
+        )
+        bottom = float(self.profile.recognition["fantasy_region_bottom"])
+        if right - left < 0.55 or bottom - top < 0.45:
+            return image, (0, 0, image.width, image.height)
+        box = (
+            round(left * image.width),
+            round(top * image.height),
+            round(right * image.width),
+            round(bottom * image.height),
+        )
+        return image.crop(box), box
+
+    @staticmethod
+    def _upscale_for_detail(image: Any, *, target_width: int) -> Any:
+        if image.width >= target_width:
+            return image
+        ratio = target_width / image.width
+        size = (target_width, max(1, round(image.height * ratio)))
+        try:
+            from PIL import Image
+
+            return image.resize(size, resample=Image.Resampling.LANCZOS)
+        except (ImportError, TypeError):
+            return image.resize(size)
+
+    @staticmethod
+    def _to_full_frame_observation(
+        observation: RollScreenObservation,
+        *,
+        region_box: tuple[int, int, int, int],
+        viewport: tuple[int, int],
+    ) -> RollScreenObservation:
+        left, top, right, bottom = region_box
+        full_width, full_height = viewport
+        region_width = right - left
+        region_height = bottom - top
+        fields = tuple(
+            replace(
+                reading,
+                evidence_box=(
+                    (left + reading.evidence_box[0] * region_width) / full_width,
+                    (top + reading.evidence_box[1] * region_height) / full_height,
+                    (left + reading.evidence_box[2] * region_width) / full_width,
+                    (top + reading.evidence_box[3] * region_height) / full_height,
+                )
+                if reading.evidence_box is not None
+                else None,
+            )
+            for reading in observation.fields
+        )
+        return replace(observation, fields=fields)
+
+    def inspect(self, frame: CapturedFrame) -> RollScreenObservation:
+        locator_tokens = self.token_engine.extract(
+            frame.image,
+            maximum_width=int(self.profile.recognition["locator_ocr_width"]),
+        )
+        roles = _role_anchors(locator_tokens, self.profile)
+        region_box: tuple[int, int, int, int] | None = None
+        if len(roles) == 3:
+            recognition_image, region_box = self._recognition_region(frame.image, roles)
+            recognition_image = self._upscale_for_detail(
+                recognition_image,
+                target_width=int(self.profile.recognition["maximum_ocr_width"]),
+            )
+            tokens = self.token_engine.extract(
+                recognition_image,
+                maximum_width=int(self.profile.recognition["maximum_ocr_width"]),
+            )
+        else:
+            tokens = locator_tokens
+        observation = parse_roll_screen_tokens(
             tokens,
             captured_at=frame.captured_at,
             image_sha256=frame.image_sha256,
@@ -819,6 +1205,13 @@ class RollScreenReader:
             profile=self.profile,
             rules=self.rules,
         )
+        if region_box is not None:
+            return self._to_full_frame_observation(
+                observation,
+                region_box=region_box,
+                viewport=frame.viewport,
+            )
+        return observation
 
 
 @dataclass(frozen=True)
@@ -845,13 +1238,16 @@ class LiveRollMonitor:
         *,
         profile: LiveOCRProfile,
         rules: RollRuleSet,
-        capturer: Callable[..., CapturedFrame] = capture_dota_window,
+        capturer: Callable[..., CapturedFrame] | None = None,
         reader: RollScreenReader | None = None,
         cache_dir: Path = PATHS.cache / "ocr" / "live-roll",
     ) -> None:
         self.profile = profile
         self.rules = rules
-        self._capturer = capturer
+        backend_order = tuple(str(item) for item in profile.capture.get("capture_backends", ()))
+        self._capturer = capturer or DotaMonitorCapturer(
+            backend_order=backend_order or ("winrt", "dxgi")
+        )
         self._reader = reader or RollScreenReader(profile=profile, rules=rules)
         self._cache_dir = cache_dir
         self._gate = StableFrameGate(
@@ -970,6 +1366,9 @@ class LiveRollMonitor:
                     self._publish("error", str(error))
                 self._stop.wait(poll_seconds)
         finally:
+            close = getattr(self._capturer, "close", None)
+            if callable(close):
+                close()
             if not self._stop.is_set():
                 self._publish("error", "实时识别线程意外结束。")
 

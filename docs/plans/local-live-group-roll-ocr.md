@@ -12,15 +12,18 @@ Dota, Steam, the mouse, the keyboard, or client memory.
 ## Stages and acceptance
 
 1. Capture and observation contract
-   - Minimum change: window capture, stable-frame gate, per-field confidence, local ignored cache.
+   - Minimum change: verify `dota2.exe`, resolve its exact Windows monitor handle, capture that DirectX
+     display through DXcam, then apply the stable-frame gate, per-field confidence and local ignored
+     cache.
    - Accept when a non-target Dota screen is rejected without changing advisor inputs.
 2. Structured OCR
    - Minimum change: finite English/Chinese vocabulary from the current client snapshot; no open
      text interpretation.
    - Accept when all 31 required fields form a valid `GroupRollState`; any missing, conflicting, or
      low-confidence field blocks automatic calculation.
-   - Calibration: retain up to 2560 pixels of source width because a 1920-pixel downscale lost a
-     small Tier label in end-to-end OCR, while 2560 confirmed all 31 rendered fields.
+   - Calibration: locate the three aligned Banner headings at 1280 pixels, crop the Fantasy region,
+     then upscale it to 2560 pixels for detailed OCR. This keeps full-screen Dota chrome from making
+     Tier and Trait text too small.
 3. Advisor integration
    - Minimum change: one opt-in toggle and status panel above the unchanged manual form.
    - Accept when a confirmed observation fills all inputs and recalculates, while an incomplete

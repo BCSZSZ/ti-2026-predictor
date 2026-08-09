@@ -11,7 +11,10 @@ and Title calculation. It never applies an operation inside Dota.
 
 ## Implemented boundary
 
-- Read-only Windows capture of the window titled `Dota 2`.
+- Read-only Windows capture of the physical display containing the window titled `Dota 2`, after
+  verifying that the owning executable is exactly `dota2.exe`.
+- Exact `HMONITOR` to DXcam-output matching, with Windows Graphics Capture first and DXGI fallback;
+  Chrome and the local advisor may remain on a different display.
 - Two-frame stability gate and meaningful-change deduplication before OCR.
 - Finite English/Chinese vocabulary tied to the current client snapshot.
 - Explicit language contract `("en", "zh-Hans")`: English is primary and Simplified Chinese is the
@@ -42,18 +45,28 @@ and Title calculation. It never applies an operation inside Dota.
 - Turning monitoring off displayed the stopped state and preserved the form.
 - A lifecycle regression test confirms that a slow OCR pass cannot overwrite the stopped state or
   create a second worker after a rapid off/on sequence.
-- Final project suite: 184 tests collected, 183 passed and one pre-existing intentional skip; Ruff,
-  JSON parsing, offer-profile parity and `git diff --check` passed. The only warning is the existing
-  NumPy generic-timedelta deprecation in `forecasting.py`.
+- The user-supplied 2560×1440 full Dota client screenshot passed the real RapidOCR engine end to end:
+  31/31 fields, the exact nine visible Emblems, offer `(10, 25, 28)`, and 33 remaining Rolls.
+- The full-screen locator ignored the separate `SUPPORT` text in Dota's left navigation, cropped the
+  three aligned Banners, enlarged the detailed region, joined `WATCHERS / TAKEN` and
+  `TORMENTOR / KILLS`, and associated each Tier and Trait with the Stat card immediately above it.
+- Final project suite: 187 tests collected, 186 passed and one pre-existing intentional skip; Ruff,
+  JSON parsing, dependency-lock validation and `git diff --check` passed. The only warning is the
+  existing NumPy generic-timedelta deprecation in `forecasting.py`.
 
-## Known validation gap
+## Dual-monitor defect postmortem
 
-The live process was not on the Group Roll screen during implementation, so exact OCR recall against
-one real current-client Roll screen remains the final calibration check. The client source layout,
-localisations and rule snapshot were inspected, and synthetic structured coverage passes, but this
-does not replace a real-screen acceptance sample. Until that check passes, a complete-looking OCR
-result still receives the same legality and confidence gates, and the user can keep OCR disabled or
-correct the form manually.
+The original `Pillow.ImageGrab(window=hwnd)` path returned a black image for Dota's DirectX surface.
+The monitor-based GDI fallback could capture the desktop beneath Dota instead, so a two-display setup
+appeared to monitor Chrome or never recognise a complete page. The replacement resolves the Dota
+window's PID, rejects title collisions from any executable other than `dota2.exe`, obtains the exact
+Windows monitor handle, and selects the DXcam output with that same handle. A minimized Dota window
+now fails explicitly instead of silently reading another display.
+
+The live hardware smoke check confirmed that the correct `dota2.exe` window is found and that a
+minimized window is rejected with an actionable message. The user-provided real full-screen capture
+closes the OCR-layout gap at 31/31. A final live capture-to-OCR pass requires Dota to be restored and
+left on that page; this is an execution-state check, not a remaining parser defect.
 
 ## Operations and cleanup decision
 

@@ -10,6 +10,7 @@
   },
   "capture": {
     "window_title": "Dota 2",
+    "capture_backends": ["winrt", "dxgi"],
     "poll_seconds": 0.75,
     "signature_width": 160,
     "signature_height": 90,
@@ -18,7 +19,12 @@
     "meaningful_mean_difference": 1.25
   },
   "recognition": {
+    "locator_ocr_width": 1280,
     "maximum_ocr_width": 2560,
+    "fantasy_region_left_margin": 0.11,
+    "fantasy_region_right_margin": 0.17,
+    "fantasy_region_top_margin": 0.13,
+    "fantasy_region_bottom": 0.985,
     "target_anchor_confidence": 0.6,
     "field_confidence": 0.76,
     "operation_confidence": 0.68,

@@ -23,6 +23,7 @@ dependencies = [
 
 [project.optional-dependencies]
 ocr = [
+  "dxcam[winrt]>=0.3,<0.4",
   "onnxruntime>=1.20,<2",
   "pillow>=11,<13",
   "rapidocr>=3.0,<4",

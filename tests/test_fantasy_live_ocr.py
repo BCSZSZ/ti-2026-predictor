@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from datetime import UTC, datetime, timedelta
 
 from ti_predictor.fantasy.current_advisor import load_current_advisor_roll_rules
@@ -380,6 +381,7 @@ def test_stop_prevents_a_slow_recognition_from_overwriting_idle_state() -> None:
     profile.capture["poll_seconds"] = 0.01
     entered = threading.Event()
     release = threading.Event()
+    request_closed = threading.Event()
 
     class BlockingReader:
         def inspect(self, frame: CapturedFrame) -> RollScreenObservation:
@@ -393,35 +395,37 @@ def test_stop_prevents_a_slow_recognition_from_overwriting_idle_state() -> None:
                 profile_id=profile.profile_id,
             )
 
-    def capture(**_kwargs) -> CapturedFrame:
-        return CapturedFrame(
-            image=FakeImage(10),
-            captured_at=datetime(2026, 8, 9, 7, 0, tzinfo=UTC),
-            image_sha256="a" * 64,
-            window_title="Dota 2",
-        )
+    class Capturer:
+        def __call__(self, **_kwargs) -> CapturedFrame:
+            return CapturedFrame(
+                image=FakeImage(10),
+                captured_at=datetime(2026, 8, 9, 7, 0, tzinfo=UTC),
+                image_sha256="a" * 64,
+                window_title="Dota 2",
+            )
+
+        def close(self) -> None:
+            request_closed.set()
 
     monitor = LiveRollMonitor(
         profile=profile,
         rules=load_current_advisor_roll_rules(),
-        capturer=capture,
+        capturer=Capturer(),
         reader=BlockingReader(),  # type: ignore[arg-type]
     )
-    monitor.start()
-    assert entered.wait(timeout=2)
-    monitor.stop(join_timeout=0.01)
-    stopped_generation = monitor.snapshot().generation
+    try:
+        monitor.start_once()
+        assert entered.wait(timeout=2)
+        monitor.stop(join_timeout=0.01)
+        stopped_generation = monitor.snapshot().generation
+        release.set()
+        assert request_closed.wait(timeout=2)
 
-    # start() must remain a no-op while the previous worker is still alive.
-    monitor.start()
-    assert monitor.snapshot().stage == "idle"
-    release.set()
-    assert monitor._thread is not None  # noqa: SLF001 - lifecycle regression test
-    monitor._thread.join(timeout=2)  # noqa: SLF001 - lifecycle regression test
-
-    snapshot = monitor.snapshot()
-    assert snapshot.stage == "idle"
-    assert snapshot.generation == stopped_generation
+        snapshot = monitor.snapshot()
+        assert snapshot.stage == "idle"
+        assert snapshot.generation == stopped_generation
+    finally:
+        monitor.shutdown()
 
 
 def test_one_shot_waits_through_minimized_and_non_target_then_stops_after_result(tmp_path) -> None:
@@ -477,19 +481,20 @@ def test_one_shot_waits_through_minimized_and_non_target_then_stops_after_result
         cache_dir=tmp_path,
     )
 
-    monitor.start_once()
-    assert recognized.wait(timeout=2)
-    assert monitor._thread is not None  # noqa: SLF001 - lifecycle regression test
-    monitor._thread.join(timeout=2)  # noqa: SLF001 - lifecycle regression test
+    try:
+        monitor.start_once()
+        assert recognized.wait(timeout=2)
+        assert _wait_until(lambda: capturer.closed)
 
-    snapshot = monitor.snapshot()
-    assert snapshot.stage == "confirmed"
-    assert snapshot.running is False
-    assert snapshot.observation is not None
-    assert snapshot.observation["status"] == "confirmed"
-    assert capturer.calls == 4
-    assert reader.calls == 2
-    assert capturer.closed is True
+        snapshot = monitor.snapshot()
+        assert snapshot.stage == "confirmed"
+        assert snapshot.running is False
+        assert snapshot.observation is not None
+        assert snapshot.observation["status"] == "confirmed"
+        assert capturer.calls == 4
+        assert reader.calls == 2
+    finally:
+        monitor.shutdown()
 
 
 def test_one_shot_stops_after_an_incomplete_target_observation(tmp_path) -> None:
@@ -522,13 +527,138 @@ def test_one_shot_stops_after_an_incomplete_target_observation(tmp_path) -> None
         cache_dir=tmp_path,
     )
 
-    monitor.start_once()
-    assert recognized.wait(timeout=2)
-    assert monitor._thread is not None  # noqa: SLF001 - lifecycle regression test
-    monitor._thread.join(timeout=2)  # noqa: SLF001 - lifecycle regression test
+    try:
+        monitor.start_once()
+        assert recognized.wait(timeout=2)
+        assert _wait_until(lambda: not monitor.snapshot().running)
 
-    snapshot = monitor.snapshot()
-    assert snapshot.stage == "incomplete"
-    assert snapshot.running is False
-    assert snapshot.observation is not None
-    assert "banner.mid.1.quality" in snapshot.observation["missing_field_ids"]
+        snapshot = monitor.snapshot()
+        assert snapshot.stage == "incomplete"
+        assert snapshot.running is False
+        assert snapshot.observation is not None
+        assert "banner.mid.1.quality" in snapshot.observation["missing_field_ids"]
+    finally:
+        monitor.shutdown()
+
+
+def _wait_until(predicate, *, timeout: float = 2.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.01)
+    return bool(predicate())
+
+
+def test_sequential_one_shot_requests_reuse_one_worker_thread(tmp_path) -> None:
+    profile = load_live_ocr_profile()
+    profile.capture["stable_frame_count"] = 1
+    profile.capture["poll_seconds"] = 0.01
+
+    class ThreadTrackingCapturer:
+        def __init__(self) -> None:
+            self.calls = 0
+            self.capture_threads: list[threading.Thread] = []
+            self.close_threads: list[threading.Thread] = []
+
+        def __call__(self, **_kwargs) -> CapturedFrame:
+            self.calls += 1
+            self.capture_threads.append(threading.current_thread())
+            return CapturedFrame(
+                image=FakeImage(10 + self.calls),
+                captured_at=datetime(2026, 8, 9, 7, 0, tzinfo=UTC),
+                image_sha256=f"{self.calls:064x}",
+                window_title="Dota 2",
+            )
+
+        def close(self) -> None:
+            self.close_threads.append(threading.current_thread())
+
+    class ConfirmedReader:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def inspect(self, frame: CapturedFrame) -> RollScreenObservation:
+            self.calls += 1
+            return _parse(_complete_tokens(), captured_at=frame.captured_at)
+
+    capturer = ThreadTrackingCapturer()
+    reader = ConfirmedReader()
+    monitor = LiveRollMonitor(
+        profile=profile,
+        rules=load_current_advisor_roll_rules(),
+        capturer=capturer,
+        reader=reader,  # type: ignore[arg-type]
+        cache_dir=tmp_path,
+    )
+
+    try:
+        monitor.start_once()
+        assert _wait_until(lambda: len(capturer.close_threads) == 1)
+        monitor.start_once()
+        assert _wait_until(lambda: len(capturer.close_threads) == 2)
+
+        worker_threads = capturer.capture_threads + capturer.close_threads
+        assert len({id(thread) for thread in worker_threads}) == 1
+        assert reader.calls == 2
+        assert monitor._thread is not None  # noqa: SLF001 - lifecycle regression test
+        assert monitor._thread.is_alive()  # noqa: SLF001 - lifecycle regression test
+    finally:
+        monitor.shutdown()
+
+
+def test_cancelled_slow_request_can_rearm_on_the_same_worker(tmp_path) -> None:
+    profile = load_live_ocr_profile()
+    profile.capture["stable_frame_count"] = 1
+    profile.capture["poll_seconds"] = 0.01
+    first_entered = threading.Event()
+    release_first = threading.Event()
+    second_read = threading.Event()
+    capture_threads: list[threading.Thread] = []
+
+    class BlockingThenConfirmedReader:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def inspect(self, frame: CapturedFrame) -> RollScreenObservation:
+            self.calls += 1
+            if self.calls == 1:
+                first_entered.set()
+                assert release_first.wait(timeout=2)
+            else:
+                second_read.set()
+            return _parse(_complete_tokens(), captured_at=frame.captured_at)
+
+    def capture(**_kwargs) -> CapturedFrame:
+        capture_threads.append(threading.current_thread())
+        value = 10 + len(capture_threads)
+        return CapturedFrame(
+            image=FakeImage(value),
+            captured_at=datetime(2026, 8, 9, 7, 0, tzinfo=UTC),
+            image_sha256=f"{value:064x}",
+            window_title="Dota 2",
+        )
+
+    monitor = LiveRollMonitor(
+        profile=profile,
+        rules=load_current_advisor_roll_rules(),
+        capturer=capture,
+        reader=BlockingThenConfirmedReader(),  # type: ignore[arg-type]
+        cache_dir=tmp_path,
+    )
+
+    try:
+        monitor.start_once()
+        assert first_entered.wait(timeout=2)
+        monitor.stop(join_timeout=0.01)
+        monitor.start_once()
+        release_first.set()
+
+        assert second_read.wait(timeout=2)
+        assert _wait_until(
+            lambda: monitor.snapshot().stage == "confirmed"
+            and not monitor.snapshot().running
+        )
+        assert len({id(thread) for thread in capture_threads}) == 1
+    finally:
+        monitor.shutdown()

@@ -213,22 +213,28 @@ def _input_form(
                 ):
                     with column:
                         st.markdown(f"**第 {index + 1} 格 · {_COLOR_LABELS[color]}色**")
+                        stat_key = f"current_advisor_{role}_{index}_stat"
                         stat_id = st.selectbox(
                             "Stat",
                             rules.stats_for(color),
-                            key=f"current_advisor_{role}_{index}_stat",
+                            index=None if stat_key in st.session_state else 0,
+                            key=stat_key,
                             format_func=lambda item, labels=stat_labels: labels.get(item, item),
                         )
+                        quality_key = f"current_advisor_{role}_{index}_quality"
                         quality = st.selectbox(
                             "品质",
                             (1, 2, 3, 4, 5),
-                            key=f"current_advisor_{role}_{index}_quality",
+                            index=None if quality_key in st.session_state else 0,
+                            key=quality_key,
                             format_func=lambda item: f"Tier {item}",
                         )
+                        trait_key = f"current_advisor_{role}_{index}_trait"
                         trait = st.selectbox(
                             "Trait",
                             rules.traits,
-                            key=f"current_advisor_{role}_{index}_trait",
+                            index=None if trait_key in st.session_state else 0,
+                            key=trait_key,
                             format_func=lambda item: _TRAIT_LABELS.get(item, item),
                         )
                         emblems.append(EmblemState(stat_id, quality, trait))
@@ -240,23 +246,25 @@ def _input_form(
         offer_ids = []
         for index, column in enumerate(offer_columns):
             with column:
+                offer_key = f"current_advisor_offer_{index}"
                 offer_ids.append(
                     st.selectbox(
                         f"选项 {index + 1}",
                         positive_ids,
-                        index=index,
-                        key=f"current_advisor_offer_{index}",
+                        index=None if offer_key in st.session_state else index,
+                        key=offer_key,
                         format_func=lambda item: _public_operation_label(item, rules),
                     )
                 )
+        remaining_key = "current_advisor_remaining"
         remaining = int(
             st.number_input(
                 "剩余 Roll 次数",
                 min_value=0,
                 max_value=40,
-                value=40,
+                value=None if remaining_key in st.session_state else 40,
                 step=1,
-                key="current_advisor_remaining",
+                key=remaining_key,
             )
         )
 

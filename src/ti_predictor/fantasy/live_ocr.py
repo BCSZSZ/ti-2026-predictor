@@ -1258,51 +1258,65 @@ class LiveRollMonitor:
             meaningful_mean_difference=float(profile.capture["meaningful_mean_difference"]),
         )
         self._lock = threading.Lock()
-        self._stop = threading.Event()
+        self._condition = threading.Condition(self._lock)
         self._thread: threading.Thread | None = None
-        self._run_once = False
+        self._active = False
+        self._shutdown_requested = False
+        self._request_id = 0
         self._snapshot = MonitorSnapshot(False, "idle", "尚未开始本次识别。", 0)
 
-    def start(self) -> None:
-        self._start(run_once=False)
-
     def start_once(self) -> None:
-        self._start(run_once=True)
-
-    def _start(self, *, run_once: bool) -> None:
-        with self._lock:
-            if self._thread is not None and self._thread.is_alive():
+        with self._condition:
+            if self._shutdown_requested:
                 return
-            self._stop.clear()
+            if self._active:
+                return
+            if self._thread is None:
+                self._thread = threading.Thread(
+                    target=self._run,
+                    name="ti-live-roll-ocr",
+                    daemon=True,
+                )
+                self._thread.start()
+            elif not self._thread.is_alive():
+                generation = self._snapshot.generation + 1
+                self._snapshot = MonitorSnapshot(
+                    False,
+                    "error",
+                    "识别线程已经退出；请重启本地顾问。",
+                    generation,
+                )
+                return
             self._gate.reset()
-            self._run_once = run_once
+            self._request_id += 1
+            self._active = True
             generation = self._snapshot.generation + 1
-            message = (
-                "一次识别已就绪；请切回 Dota 并停在完整的 Group Roll 页面。"
-                if run_once
-                else "正在等待稳定的 Dota 画面…"
+            self._snapshot = MonitorSnapshot(
+                True,
+                "capturing",
+                "一次识别已就绪；请切回 Dota 并停在完整的 Group Roll 页面。",
+                generation,
             )
-            self._snapshot = MonitorSnapshot(True, "capturing", message, generation)
-            self._thread = threading.Thread(
-                target=self._run,
-                name="ti-live-roll-ocr",
-                daemon=True,
-            )
-            self._thread.start()
+            self._condition.notify_all()
 
     def stop(self, *, join_timeout: float = 2.0) -> None:
-        self._stop.set()
-        thread = self._thread
-        if thread is not None and thread is not threading.current_thread():
-            thread.join(timeout=join_timeout)
-        with self._lock:
+        del join_timeout  # Kept for compatibility with the previous public method.
+        with self._condition:
+            self._request_id += 1
+            self._active = False
             generation = self._snapshot.generation + 1
             self._snapshot = MonitorSnapshot(False, "idle", "本次识别已取消；手填仍可使用。", generation)
-            # A recognition pass can outlive the short UI join timeout. Keep its
-            # handle until it actually exits so start() cannot clear the shared
-            # stop event and launch a second worker beside it.
-            if thread is None or not thread.is_alive():
-                self._thread = None
+            self._condition.notify_all()
+
+    def shutdown(self, *, join_timeout: float = 2.0) -> None:
+        with self._condition:
+            self._request_id += 1
+            self._active = False
+            self._shutdown_requested = True
+            self._condition.notify_all()
+            thread = self._thread
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(timeout=join_timeout)
 
     def snapshot(self) -> MonitorSnapshot:
         with self._lock:
@@ -1316,20 +1330,30 @@ class LiveRollMonitor:
         observation: dict[str, Any] | None = None,
         advance: bool = True,
         running: bool | None = None,
-    ) -> None:
-        with self._lock:
-            # stop() owns the final idle snapshot. A slow OCR pass that began
-            # before the user disabled monitoring must never publish over it.
-            if self._stop.is_set():
-                return
+        request_id: int,
+    ) -> bool:
+        with self._condition:
+            # A canceled or superseded request must never publish over the
+            # current UI state after a slow capture or OCR pass returns.
+            if (
+                self._shutdown_requested
+                or not self._active
+                or request_id != self._request_id
+            ):
+                return False
+            next_running = self._active if running is None else running
+            self._active = next_running
             generation = self._snapshot.generation + (1 if advance else 0)
             self._snapshot = MonitorSnapshot(
-                running=not self._stop.is_set() if running is None else running,
+                running=next_running,
                 stage=stage,
                 message=message,
                 generation=generation,
                 observation=copy.deepcopy(observation),
             )
+            if not next_running:
+                self._condition.notify_all()
+            return True
 
     def _persist_latest(self, frame: CapturedFrame, observation: RollScreenObservation) -> None:
         self._cache_dir.mkdir(parents=True, exist_ok=True)
@@ -1345,68 +1369,117 @@ class LiveRollMonitor:
         )
         json_tmp.replace(json_path)
 
-    def _run(self) -> None:
+    def _request_is_active(self, request_id: int) -> bool:
+        with self._lock:
+            return (
+                not self._shutdown_requested
+                and self._active
+                and request_id == self._request_id
+            )
+
+    def _wait_for_poll(self, request_id: int, poll_seconds: float) -> bool:
+        with self._condition:
+            self._condition.wait_for(
+                lambda: self._shutdown_requested
+                or not self._active
+                or request_id != self._request_id,
+                timeout=poll_seconds,
+            )
+            return (
+                not self._shutdown_requested
+                and self._active
+                and request_id == self._request_id
+            )
+
+    def _close_capturer(self) -> None:
+        close = getattr(self._capturer, "close", None)
+        if callable(close):
+            close()
+
+    def _serve_request(self, request_id: int) -> None:
         poll_seconds = float(self.profile.capture["poll_seconds"])
         title = str(self.profile.capture["window_title"])
-        run_once = self._run_once
-        completed_normally = False
-        try:
-            while not self._stop.is_set():
-                try:
-                    frame = self._capturer(window_title=title)
-                    decision = self._gate.observe(frame.image)
-                    if decision == "accepted":
-                        self._publish("recognizing", "检测到稳定的新画面，正在识别…")
-                        observation = self._reader.inspect(frame)
-                        payload = observation.to_payload()
-                        if observation.status != "not_target":
-                            self._persist_latest(frame, observation)
-                        messages = {
-                            "not_target": "已经看到 Dota，但还不是完整的 Group Roll 页面；继续等待。",
-                            "incomplete": "识别到 Roll 页面，但仍有字段需要人工确认。",
-                            "confirmed": "完整画面已确认，准备自动录入并重新计算。",
-                            "error": "识别器返回错误状态。",
-                        }
-                        if run_once and observation.status == "not_target":
-                            self._publish(
-                                "capturing",
-                                messages["not_target"],
-                                advance=False,
-                            )
-                        else:
-                            self._publish(
-                                observation.status,
-                                messages[observation.status],
-                                observation=payload,
-                                running=False if run_once else None,
-                            )
-                            if run_once:
-                                completed_normally = True
-                                return
-                    elif decision == "unstable":
+        while self._request_is_active(request_id):
+            try:
+                frame = self._capturer(window_title=title)
+                decision = self._gate.observe(frame.image)
+                if decision == "accepted":
+                    self._publish(
+                        "recognizing",
+                        "检测到稳定的新画面，正在识别…",
+                        request_id=request_id,
+                    )
+                    observation = self._reader.inspect(frame)
+                    payload = observation.to_payload()
+                    if observation.status != "not_target":
+                        self._persist_latest(frame, observation)
+                    messages = {
+                        "not_target": "已经看到 Dota，但还不是完整的 Group Roll 页面；继续等待。",
+                        "incomplete": "识别到 Roll 页面，但仍有字段需要人工确认。",
+                        "confirmed": "完整画面已确认，准备自动录入并重新计算。",
+                        "error": "识别器返回错误状态。",
+                    }
+                    if observation.status == "not_target":
                         self._publish(
                             "capturing",
-                            "画面仍在变化，等待稳定后再识别…",
+                            messages["not_target"],
                             advance=False,
-                        )
-                except ScreenCaptureError as error:
-                    if run_once:
-                        self._publish(
-                            "capturing",
-                            f"等待 Dota 画面：{error}",
-                            advance=False,
+                            request_id=request_id,
                         )
                     else:
-                        self._publish("error", str(error))
-                except (OSError, RuntimeError, ValueError) as error:
-                    self._publish("error", str(error))
-                self._stop.wait(poll_seconds)
+                        self._publish(
+                            observation.status,
+                            messages[observation.status],
+                            observation=payload,
+                            running=False,
+                            request_id=request_id,
+                        )
+                        return
+                elif decision == "unstable":
+                    self._publish(
+                        "capturing",
+                        "画面仍在变化，等待稳定后再识别…",
+                        advance=False,
+                        request_id=request_id,
+                    )
+            except ScreenCaptureError as error:
+                self._publish(
+                    "capturing",
+                    f"等待 Dota 画面：{error}",
+                    advance=False,
+                    request_id=request_id,
+                )
+            except (OSError, RuntimeError, ValueError) as error:
+                self._publish("error", str(error), request_id=request_id)
+            if not self._wait_for_poll(request_id, poll_seconds):
+                return
+
+    def _run(self) -> None:
+        try:
+            while True:
+                with self._condition:
+                    self._condition.wait_for(
+                        lambda: self._shutdown_requested or self._active
+                    )
+                    if self._shutdown_requested:
+                        return
+                    request_id = self._request_id
+                try:
+                    self._serve_request(request_id)
+                except Exception as error:  # noqa: BLE001 - keep the persistent worker alive
+                    self._publish(
+                        "error",
+                        f"识别线程错误：{error}",
+                        running=False,
+                        request_id=request_id,
+                    )
+                finally:
+                    # WinRT capture resources are both created and released on
+                    # this one persistent owner thread. Between requests the
+                    # worker sleeps and performs no screen capture.
+                    self._close_capturer()
         finally:
-            close = getattr(self._capturer, "close", None)
-            if callable(close):
-                close()
-            if not self._stop.is_set() and not completed_normally:
-                self._publish("error", "识别线程意外结束。")
+            self._close_capturer()
 
 
 def observation_widget_updates(observation: dict[str, Any], rules: RollRuleSet) -> dict[str, Any]:

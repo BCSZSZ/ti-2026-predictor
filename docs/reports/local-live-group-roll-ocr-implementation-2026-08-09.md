@@ -1,6 +1,7 @@
 # Local live Group Roll OCR implementation report
 
 Date: 2026-08-09
+Last updated: 2026-08-10
 
 ## Outcome
 
@@ -26,6 +27,9 @@ and Title calculation, then stops. It never applies an operation inside Dota.
 - Opt-in Streamlit one-shot button, wait/cancel status, missing-field list, automatic fill and
   recalculation. Clicking arms the next stable target page, which supports a same-monitor Alt+Tab
   workflow without keeping a permanent watcher enabled.
+- One persistent sleeping worker owns the Windows capture lifecycle. Every click wakes that same
+  thread; after the request it releases capture resources on the owner thread and sleeps without
+  taking screenshots.
 - The live controls exist only on local Windows. Linux or hosted Streamlit keeps the original manual
   form and does not expose a nonfunctional capture button.
 
@@ -49,17 +53,17 @@ and Title calculation, then stops. It never applies an operation inside Dota.
   keep a one-shot request armed, while the next incomplete or confirmed target page stops it exactly
   once.
 - A lifecycle regression test confirms that a slow OCR pass cannot overwrite the stopped state or
-  create a second worker after a rapid off/on sequence.
+  create a second worker after a rapid cancel/rearm sequence. Two sequential one-shot requests also
+  confirm that capture and release stay on the same worker thread.
 - The user-supplied 2560×1440 full Dota client screenshot passed the real RapidOCR engine end to end:
   31/31 fields, the exact nine visible Emblems, offer `(10, 25, 28)`, and 33 remaining Rolls.
 - The full-screen locator ignored the separate `SUPPORT` text in Dota's left navigation, cropped the
   three aligned Banners, enlarged the detailed region, joined `WATCHERS / TAKEN` and
   `TORMENTOR / KILLS`, and associated each Tier and Trait with the Stat card immediately above it.
 - Final project suite after the one-shot interaction update: 189 tests collected, 188 passed and one
-  pre-existing intentional skip. A fresh local Streamlit browser run also verified the arm, wait on a
-  non-target Dota screen, cancel and return-to-idle states with no console errors. Ruff,
-  JSON parsing, dependency-lock validation and `git diff --check` passed. The only warning is the
-  existing NumPy generic-timedelta deprecation in `forecasting.py`.
+  pre-existing intentional skip. The repeated-request fix adds regression coverage for sequential
+  one-shot use, immediate cancel/rearm and Streamlit widget updates; final project-suite evidence is
+  recorded in the 2026-08-10 closeout below.
 
 ## Dual-monitor defect postmortem
 
@@ -72,8 +76,44 @@ now fails explicitly instead of silently reading another display.
 
 The live hardware smoke check confirmed that the correct `dota2.exe` window is found and that a
 minimized window is rejected with an actionable message. The user-provided real full-screen capture
-closes the OCR-layout gap at 31/31. A final live capture-to-OCR pass requires Dota to be restored and
-left on that page; this is an execution-state check, not a remaining parser defect.
+closes the OCR-layout gap at 31/31. The user then confirmed that live capture filled the page
+correctly, closing the remaining real-client execution-state check.
+
+## Repeated-request native crash postmortem
+
+The second one-shot request could hang and terminate the Streamlit Python process. Windows Error
+Reporting identified an access violation (`0xc0000005`) in
+`_winrt_windows_graphics_capture_interop.cp312-win_amd64.pyd`. The cached `LiveRollMonitor` retained
+one `DotaMonitorCapturer`, but the former lifecycle created a fresh Python worker for every click.
+That moved WinRT capture creation, release and later recreation across different OS threads.
+
+An isolated probe reproduced the failure: 100 create/release cycles on one thread passed, while a
+first request on one thread followed by a second request on another thread crashed consistently.
+The corresponding DXGI cross-thread probe passed. OBS was not the cause: it started after the
+reported hang, the original crash did not load an OBS hook DLL, and same-thread WinRT capture passed
+while OBS was recording.
+
+The minimum correction keeps the one-shot user interaction but changes the internal ownership:
+
+- one cached worker thread is created lazily and retained;
+- each click assigns a new request ID and wakes that worker;
+- capture and release both occur on the same owner thread;
+- after completion or cancellation, capture resources close and the worker sleeps;
+- a canceled or superseded slow OCR result cannot publish over a newer request;
+- Streamlit widgets omit their constructor default when Session State already supplies the OCR value,
+  removing the separate nonfatal duplicate-default warning.
+
+After the correction, two sequential one-shot requests through the real WinRT capture backend passed
+in one process, using one worker object, while OBS was open. Browser QA also passed two consecutive
+arm/cancel cycles and a full advisor calculation.
+
+## 2026-08-10 closeout
+
+The final project suite collected 192 tests: 191 passed and one pre-existing intentional skip.
+Ruff, all 24 tracked JSON documents, the dependency lock, all 98 installed-package compatibility
+checks and `git diff --check` passed. No new Python application crash appeared in Windows Event Log
+after the two-request live WinRT acceptance run. The only test warning remains the unrelated existing
+NumPy generic-timedelta deprecation in `forecasting.py`.
 
 ## Operations and cleanup decision
 

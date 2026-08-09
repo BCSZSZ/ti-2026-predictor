@@ -1,6 +1,7 @@
 # Local live Group Roll OCR plan
 
 Date: 2026-08-09
+Last updated: 2026-08-10
 
 ## Scope boundary
 
@@ -28,9 +29,14 @@ Dota, Steam, the mouse, the keyboard, or client memory.
    - Minimum change: one opt-in, one-shot capture button and status panel above the unchanged manual
      form. Clicking arms the next stable target screen; confirmed or incomplete target OCR stops
      automatically, while minimized, covered and non-target states keep waiting and remain cancelable.
+   - Native ownership: retain one sleeping worker for the cached monitor. Every request must create,
+     use and close WinRT capture resources on that same owner thread; a request ID prevents a canceled
+     or superseded OCR pass from publishing stale results.
    - Accept when a confirmed observation fills all inputs and recalculates, while an incomplete
      observation fills confirmed fields only and leaves manual correction available. A single-monitor
      browser/Dota Alt+Tab flow must not terminate early or read the browser into the form.
+   - Repeated-use acceptance: two sequential one-shot requests and cancel-then-rearm reuse one worker
+     thread, close capture between requests, and leave the Streamlit server alive.
 4. Project review and closeout
    - Acceptance: focused OCR/UI tests, full regression tests, lint, deterministic parse, local visual
      QA, and an explicit real-client validation status. Retain the older upload/screenshot OCR path

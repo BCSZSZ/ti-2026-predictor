@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 
@@ -32,6 +33,23 @@ def test_streamlit_group_advisor_input_page_has_no_runtime_exception() -> None:
     assert any(button.label == "计算现在应该怎么选" for button in app.button)
     assert sum(select.label.startswith("选项 ") for select in app.selectbox) == 3
     assert not app.error
+
+
+def test_streamlit_ocr_widget_update_has_no_duplicate_default_warning(caplog) -> None:
+    app_path = Path(__file__).resolve().parents[1] / "src/ti_predictor/web_app.py"
+    app = AppTest.from_file(str(app_path)).run(timeout=20)
+    app.sidebar.radio[0].set_value("Group Roll 实时顾问").run(timeout=20)
+
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, logger="streamlit.elements.lib.policies"):
+        app.session_state["current_advisor_offer_1"] = 23
+        app.run(timeout=20)
+
+    assert not app.exception
+    assert not any(
+        "created with a default value" in record.getMessage()
+        for record in caplog.records
+    )
 
 
 def test_streamlit_group_advisor_manual_lineup_uses_three_team_dropdowns() -> None:

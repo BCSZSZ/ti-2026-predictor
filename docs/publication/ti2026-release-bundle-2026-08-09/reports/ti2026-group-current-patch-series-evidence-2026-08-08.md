@@ -11,7 +11,8 @@
 - 逐赛事明细：最近赛事在前，日期为系列赛最后一局的 UTC 日期；小版本队伍表另按版本内成绩排名
 
 综合排名、模型对位和填写建议见 [最终预测正文](ti2026-group-forecast-publication-2026-08-09.md)，
-一页版本见 [易懂总结](ti2026-group-forecast-publication-summary-2026-08-09.md)。
+综合排名、队伍关系和填写建议见
+[小组赛正式预测](ti2026-group-forecast-publication-2026-08-09.md)。
 
 ## 这份表能说明什么
 

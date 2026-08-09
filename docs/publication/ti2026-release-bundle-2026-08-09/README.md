@@ -1,66 +1,46 @@
 # TI 2026 玩家发布包（2026-08-09）
 
-本文件夹只收录当前仍有效的玩家版 Markdown。核心变化是：7.41e 的单局证据在所有中央权重使用处
-额外乘 2；其他大版本、赛事目录等级和时间衰减不变。Stat、Title 和小组赛 Forecast 已重新生成。
-
-## 本包统一采用的加权方式
-
-队伍实力、胜负关系、Fantasy Stat/Top 3 和 Title 统一使用：
-
-`单局证据权重 = 大版本权重 × 当前精确版本倍率 × 赛事目录等级权重 × 2^(-距 as_of 天数/60)`
-
-- 7.41 为 1.00，其中当前精确版本 7.41e 再乘 2.00；其他 7.41 字母版本不额外放大；
-- 7.40 为 0.15，更早大版本为 0；
-- OpenDota `premium` / `professional` 分别为 1.00 / 0.75，其他目录等级为 0；
-- 时间每 60 天减半；社区 Tier、奖金和名次不参与加权。
-
-完整解释、示例、适用范围和可信度边界见 [统一加权方式](WEIGHTING.md)。2 倍是明确的模型政策，
-不是声称它已经被证明为理论最优值。
-
-## 最短阅读顺序
-
-1. [方法极简速查](reports/ti2026-methodology-quick-reference-2026-08-09.md)：数据、计分、平均分、
-   Series 和 7.41e 权重怎样算。
-2. [Fantasy Stat Top 3](playbooks/group-roll/stat-team-top3-publication-v3.md)：查 42 项排名、建议和
-   前三队伍；先看[易懂说明](reports/group-stat-team-top3-publication-summary-2026-08-09.md)也可以。
-3. [Title 分析与推荐](reports/ti2026-fantasy-title-recommendation-2026-08-09.md)：默认仍是
-   `Cerulean + the Clutch`，并解释两个一血内部字段为什么暂时排除。
-4. [Roll 手册易懂总结](reports/group-roll-publication-manual-summary-2026-08-09.md)：先看明确的
-   Stat/Tier/Trait 接受与拒绝标准，以及 Trait 配方、追逐概率和停止线；完整条件见
-   [Roll 玩家手册](playbooks/group-roll/group-roll-publication-manual-v3.md)。
-5. [小组赛预测易懂总结](reports/ti2026-group-forecast-publication-summary-2026-08-09.md)：当前第一集团
-   是 Liquid 与 Yandex；完整排名和矩阵见[完整预测](reports/ti2026-group-forecast-publication-2026-08-09.md)。
-6. [2026 年战队已获奖金累计](reports/ti2026-team-prize-ytd-2026-08-08.md)：查看每队今年实际获得
-   的奖金累计与逐赛事明细。
+本文件夹只保留当前有效、能够独立提供完整信息的正式文档。同一主题只保留一个入口，避免重复
+文件让人难以判断应该打开哪一份。移出的转述版仍保留在仓库原报告目录中，发布包没有删除正式
+完整版或底层证据。
 
 ## Fantasy
 
-- [Stat Top 3 易懂说明](reports/group-stat-team-top3-publication-summary-2026-08-09.md)
-- [Stat Top 3 完整发布表](playbooks/group-roll/stat-team-top3-publication-v3.md)
-- [Title 分析、排名与内部字段说明](reports/ti2026-fantasy-title-recommendation-2026-08-09.md)
-- [Roll 玩家手册易懂总结](reports/group-roll-publication-manual-summary-2026-08-09.md)
-- [Roll 玩家手册完整发布版](playbooks/group-roll/group-roll-publication-manual-v3.md)
+1. [Stat 与队伍 Top 3 完整表](playbooks/group-roll/stat-team-top3-publication-v3.md)：42 个
+   位置×颜色×Stat 组合的明确排名、保留/改善建议、前三队伍和稳定性。
+2. [Title 分析与推荐](reports/ti2026-fantasy-title-recommendation-2026-08-09.md)：Prefix、Suffix、
+   触发率、默认选择和客户端条件冲突。
+3. [Group 40 Roll 玩家手册](playbooks/group-roll/group-roll-publication-manual-v3.md)：Stat、Tier、
+   Trait 的接受/拒绝标准，Trait 配方计算、追逐概率和停止线。
 
-## 小组赛预测
+## 小组赛预测与赛果证据
 
-- [7.41e 权重版易懂总结](reports/ti2026-group-forecast-publication-summary-2026-08-09.md)
-- [综合实力排名、按队名拆分的完整对局表与填写建议](reports/ti2026-group-forecast-publication-2026-08-09.md)
-- [7.41 完整系列赛证据展开](reports/ti2026-group-current-patch-series-evidence-2026-08-08.md)
-- [2026 年战队已获奖金累计](reports/ti2026-team-prize-ytd-2026-08-08.md)
-- [赛事 Tier 与赛事总奖池说明](reports/ti2026-group-event-tier-prize-summary-2026-08-08.md)
+1. [综合实力、队伍对局关系与填写建议](reports/ti2026-group-forecast-publication-2026-08-09.md)：
+   正式排名、实力带、按队名展开的胜负关系和 16 个预测槽位。
+2. [7.41 完整系列赛证据](reports/ti2026-group-current-patch-series-evidence-2026-08-08.md)：
+   按版本、赛事和对手展开的 Series 与单局记录。
+3. [2026 年战队已获奖金累计](reports/ti2026-team-prize-ytd-2026-08-08.md)：每队今年已经确认获得
+   的奖金及逐赛事明细。
+4. [赛事档位与赛事总奖池](reports/ti2026-group-event-tier-prize-2026-08-08.md)：社区赛事
+   Tier、赛事性质和总奖池；它与战队实际获得的奖金不是同一个指标。
 
-## 方法与可信度
+## 方法、权重与可信度
 
-- [统一加权方式](WEIGHTING.md)
-- [方法极简速查](reports/ti2026-methodology-quick-reference-2026-08-09.md)
-- [方法与证据易懂总结](reports/ti2026-methodology-and-evidence-summary-2026-08-09.md)
-- [方法与证据权威性报告](reports/ti2026-methodology-and-evidence-authority-report-2026-08-09.md)
+1. [方法速查](reports/ti2026-methodology-quick-reference-2026-08-09.md)：数据来源、计分公式、均值、
+   Series 和权重的简要定义。
+2. [统一加权方式](WEIGHTING.md)：7.41e 双倍权重及大版本、赛事级别、时间衰减的完整政策。
+3. [方法与证据权威性报告](reports/ti2026-methodology-and-evidence-authority-report-2026-08-09.md)：
+   数据基础、分析方法、复算入口、可信范围和已知限制。
+
+本包统一使用：
+
+`单局证据权重 = 大版本权重 × 当前精确版本倍率 × 赛事目录等级权重 × 2^(-距 as_of 天数/60)`
+
+其中 7.41e 在其他条件相同时额外乘 2；社区 Tier、奖金和名次不进入模型权重。
 
 ## 版本边界
 
 - 7.41e 乘 2 是明确的建模政策，不是已证明最优的自然常数；
-- 旧 Roll v2 的完整 standalone/cross-audit 没有在新权重下重跑；v3 新增的 Trait 追逐线是精确
-  一步算术门槛，不冒充整段 40 Roll 已验证核心规则，原 B/C/D 规则继续沿用原验证身份；
-- Group Forecast 在历史留出集上只有 56.25% 单局命中率，概率未校准；
-- “赛事总奖池”和“战队今年实际获得的奖金”是两份不同表；
-- 所有百分比、排名和槽位仍是决策辅助，不是 Valve 保证答案。
+- v3 Trait 追逐线是精确的一步算术门槛，不冒充整段 40 Roll 已验证核心规则；
+- Group Forecast 的历史留出集单局命中率为 56.25%，概率未校准；
+- 所有百分比、排名和槽位都是决策辅助，不是 Valve 保证答案。

@@ -1,6 +1,7 @@
 {
   "profile_id": "fantasy-group-roll-screen-v1",
   "period": "group",
+  "language_priority": ["en", "zh-Hans"],
   "source": {
     "client_build": "6891:10893022",
     "rule_snapshot_sha256": "a6265cd07001e2a7710f23622f3bbe855b32d61445f17f4c941578c53a3275dc",

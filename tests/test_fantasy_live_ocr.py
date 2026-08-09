@@ -71,6 +71,34 @@ def _complete_tokens(*, weak_field: str | None = None) -> tuple[OCRToken, ...]:
     return tuple(tokens)
 
 
+def _complete_schinese_tokens() -> tuple[OCRToken, ...]:
+    tokens: list[OCRToken] = []
+    roles = {
+        "core": (0.2, ("击杀数", "眩晕时间", "GPM")),
+        "mid": (0.5, ("死亡数", "放置侦察守卫数", "第一滴血")),
+        "support": (0.8, ("野怪堆叠次数", "痛苦魔方消灭次数", "开雾次数")),
+    }
+    role_labels = {"core": "核心", "mid": "中单", "support": "辅助"}
+    qualities = ("第1阶", "第2阶", "第3阶")
+    traits = ("友好", "吸血鬼", "唯一")
+    for role, (x, stats) in roles.items():
+        tokens.append(_token(role_labels[role], 0.99, x, 0.08))
+        for index, (stat, quality, trait) in enumerate(zip(stats, qualities, traits, strict=True)):
+            y = 0.2 + index * 0.16
+            tokens.append(_token(stat, 0.98, x, y, width=0.12))
+            tokens.append(_token(quality, 0.98, x - 0.04, y + 0.04))
+            tokens.append(_token(trait, 0.98, x + 0.04, y + 0.07))
+    tokens.extend(
+        (
+            _token("重新生成红色徽标的品质", 0.98, 0.34, 0.74, width=0.2),
+            _token("随机提升一项品质", 0.98, 0.5, 0.74, width=0.18),
+            _token("重新生成绿色徽标的统计数据", 0.98, 0.66, 0.74, width=0.2),
+            _token("重选代币：37", 0.99, 0.5, 0.88, width=0.12),
+        )
+    )
+    return tuple(tokens)
+
+
 def _parse(tokens: tuple[OCRToken, ...], *, captured_at: datetime | None = None):
     return parse_roll_screen_tokens(
         tokens,
@@ -115,6 +143,21 @@ def test_complete_structured_tokens_build_a_valid_group_roll_state() -> None:
         "friendly",
         "vampiric",
         "unique",
+    ]
+
+
+def test_complete_simplified_chinese_tokens_build_the_same_valid_state() -> None:
+    observation = _parse(_complete_schinese_tokens())
+
+    assert observation.status == "confirmed"
+    assert observation.missing_field_ids == ()
+    assert observation.state is not None
+    assert observation.state.remaining_rolls == 37
+    assert observation.state.offer.operation_ids == (9, 23, 17)
+    assert [emblem.stat_id for emblem in observation.state.banners[0].emblems] == [
+        "kills",
+        "stuns",
+        "gpm",
     ]
 
 
@@ -178,6 +221,7 @@ def test_ocr_profile_covers_every_current_positive_weight_offer() -> None:
     profile = load_live_ocr_profile()
     rules = load_current_advisor_roll_rules()
 
+    assert profile.language_priority == ("en", "zh-Hans")
     assert set(profile.operations) == {
         operation.operation_id for operation in rules.offered_operations
     }

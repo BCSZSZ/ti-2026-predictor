@@ -14,6 +14,8 @@ and Title calculation. It never applies an operation inside Dota.
 - Read-only Windows capture of the window titled `Dota 2`.
 - Two-frame stability gate and meaningful-change deduplication before OCR.
 - Finite English/Chinese vocabulary tied to the current client snapshot.
+- Explicit language contract `("en", "zh-Hans")`: English is primary and Simplified Chinese is the
+  supported fallback; both cover roles, Stats, qualities, Traits, offers and remaining Rolls.
 - Per-field evidence and confidence for 31 required fields.
 - Legal color/Stat, duplicate-Stat, distinct-offer and full-state validation.
 - Partial fill only for confirmed fields; no automatic calculation from an incomplete observation.
@@ -25,10 +27,14 @@ and Title calculation. It never applies an operation inside Dota.
 ## Acceptance evidence
 
 - Structured complete fixture creates a valid state and maps all 31 advisor widgets.
+- Complete English and Simplified Chinese token screens both create the same legal state in regression
+  tests.
 - A rendered 2560×1440 complete screen passed the real RapidOCR engine end to end: 31/31 fields,
   legal state, offer `(9, 23, 17)`, and 37 remaining Rolls. Downscaling the same sample to 1920 lost
   one small `Tier I` label, so the production profile keeps a 2560-pixel OCR width (about six seconds
   in the local smoke run).
+- A separate 2560×1440 Simplified Chinese pixel screen also passed RapidOCR end to end with 31/31
+  fields and the same legal state, rather than relying only on pre-tokenised Chinese parser input.
 - Weak, conflicting or missing evidence produces `incomplete` and blocks automatic calculation.
 - A real 2560×1440 Dota match screen produced `not_target` with zero advisor fields.
 - Starting the browser toggle while that match screen was present displayed “当前不是完整的 Group
@@ -36,7 +42,7 @@ and Title calculation. It never applies an operation inside Dota.
 - Turning monitoring off displayed the stopped state and preserved the form.
 - A lifecycle regression test confirms that a slow OCR pass cannot overwrite the stopped state or
   create a second worker after a rapid off/on sequence.
-- Final project suite: 183 tests collected, 182 passed and one pre-existing intentional skip; Ruff,
+- Final project suite: 184 tests collected, 183 passed and one pre-existing intentional skip; Ruff,
   JSON parsing, offer-profile parity and `git diff --check` passed. The only warning is the existing
   NumPy generic-timedelta deprecation in `forecasting.py`.
 

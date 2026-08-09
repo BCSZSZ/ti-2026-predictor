@@ -151,6 +151,7 @@ def _render_live_monitor_status() -> None:
 
 def _render_live_controls() -> None:
     st.subheader("自动读取游戏画面")
+    st.caption("识别语言：英文优先，同时支持简体中文客户端。")
     enabled = st.toggle(
         "实时监视 Dota 2 的 Group Roll 页面",
         value=False,

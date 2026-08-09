@@ -147,6 +147,7 @@ class CapturedFrame:
 @dataclass(frozen=True)
 class LiveOCRProfile:
     profile_id: str
+    language_priority: tuple[str, ...]
     source: dict[str, str]
     capture: dict[str, float | int | str]
     recognition: dict[str, float | int]
@@ -164,6 +165,7 @@ def load_live_ocr_profile(
     raw = json.loads(path.read_text(encoding="utf-8"))
     return LiveOCRProfile(
         profile_id=str(raw["profile_id"]),
+        language_priority=tuple(str(value) for value in raw["language_priority"]),
         source={str(key): str(value) for key, value in raw["source"].items()},
         capture=dict(raw["capture"]),
         recognition=dict(raw["recognition"]),

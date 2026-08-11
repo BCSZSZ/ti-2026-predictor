@@ -45,9 +45,14 @@ git clone https://github.com/BCSZSZ/ti-2026-predictor.git
 Set-Location ti-2026-predictor
 uv python install 3.12
 uv sync --locked --extra ocr
+$ruleAsOf = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'")
+uv run ti rules snapshot --as-of $ruleAsOf
+uv run ti rules validate
 uv run ti web
 ```
 
+规则快照命令会读取本机 Dota 客户端；若 Dota 或 ValveResourceFormat CLI 不在默认位置，传入
+`--dota-path` / `--vrf-cli`，或设置 `DOTA_PATH` / `VRF_CLI`。规则校验未通过时不要继续计算。
 然后打开终端显示的 `http://127.0.0.1:8501`，进入 `Group Roll 实时顾问`。点击识别后切回完整
 Dota Roll 页面；程序只读窗口画面，确认一个稳定页面后自动停止。它不会保存 Steam 凭据、控制
 鼠标键盘或提交游戏内选择。OCR 截图与识别 JSON 只写入被 Git 忽略的本机

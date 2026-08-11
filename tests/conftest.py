@@ -1,12 +1,43 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+import zstandard as zstd
 
-from ti_predictor.paths import ProjectPaths
+from ti_predictor.paths import PATHS, ProjectPaths
+
+_CURRENT_ADVISOR_RULE_SHA256 = "eb3c30f542a2ee7fde1d101fdf57bd9f2f729730ccf6707c893d4e9b938cccb3"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _install_current_advisor_rule_fixture() -> Iterator[None]:
+    """Make the pinned client Rule freeze available without depending on local raw data."""
+
+    fixture = Path(__file__).parent / "fixtures/current_advisor_rule_snapshot-v2.json.zst"
+    payload = zstd.ZstdDecompressor().decompress(fixture.read_bytes())
+    assert hashlib.sha256(payload).hexdigest() == _CURRENT_ADVISOR_RULE_SHA256
+
+    target_dir = PATHS.raw / "rules" / "zzzz-pytest-current-advisor-v2"
+    target = target_dir / "rule_snapshot.json"
+    previous = target.read_bytes() if target.is_file() else None
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(payload)
+    try:
+        yield
+    finally:
+        if previous is None:
+            target.unlink(missing_ok=True)
+            try:
+                target_dir.rmdir()
+            except OSError:
+                pass
+        else:
+            target.write_bytes(previous)
 
 
 @pytest.fixture

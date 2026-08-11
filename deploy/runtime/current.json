@@ -1,0 +1,10 @@
+{
+  "as_of": "2026-08-10T13:45:12Z",
+  "bytes": 369705,
+  "file": "releases/group-roll-20260810T134512Z-9d3b7851fae0.json.zst",
+  "file_sha256": "23c4d85e24a82c44b1ead2af782517c59ef41079d97372560869fc20436ef990",
+  "release_id": "ti2026-group-current-screen-solver-v2",
+  "release_schema_version": 2,
+  "release_sha256": "9d3b7851fae0960284f002edcfbc333b740f75ebe8acc0925d8556ad2b9f7c0f",
+  "schema_version": 1
+}

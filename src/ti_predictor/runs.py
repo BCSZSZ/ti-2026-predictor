@@ -9,7 +9,7 @@ from typing import Any
 from ti_predictor.config import manifest_hash, rules_hash
 from ti_predictor.hashing import file_manifest, sha256_json
 from ti_predictor.paths import PATHS, ProjectPaths
-from ti_predictor.rules import latest_rule_snapshot
+from ti_predictor.rules import rule_snapshot_at
 from ti_predictor.schemas import ForecastRun, StrategyProfile, as_utc
 from ti_predictor.storage import DataStore
 
@@ -74,7 +74,7 @@ def make_run_id(
         "data": DataStore(paths).data_hash(),
         "source": source_version(paths),
     }
-    snapshot_result = latest_rule_snapshot(paths)
+    snapshot_result = rule_snapshot_at(as_of, paths)
     if snapshot_result is None:
         hashes["rule_snapshot"] = "missing"
         hashes["rule_snapshot_id"] = "missing"

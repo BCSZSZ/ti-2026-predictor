@@ -152,6 +152,35 @@ def _breakdown(frame: pd.DataFrame, column: str) -> dict[str, dict[str, float | 
     return result
 
 
+def _identity_bridge_breakdown(
+    frame: pd.DataFrame,
+    included: pd.DataFrame,
+) -> dict[str, dict[str, float | int | str]]:
+    columns = (
+        "radiant_team_identity_bridge_id",
+        "dire_team_identity_bridge_id",
+    )
+    if not set(columns).issubset(frame.columns):
+        return {}
+    labels = sorted(
+        {str(value) for column in columns for value in frame[column].dropna().astype(str).unique()}
+    )
+    result: dict[str, dict[str, float | int | str]] = {}
+    for label in labels:
+        all_mask = frame[columns[0]].eq(label).fillna(False) | frame[columns[1]].eq(label).fillna(False)
+        selected_mask = included[columns[0]].eq(label).fillna(False) | included[columns[1]].eq(label).fillna(
+            False
+        )
+        selected = included.loc[selected_mask]
+        result[label] = {
+            "games": int(all_mask.sum()),
+            "included_games": int(selected_mask.sum()),
+            "effective_weight": float(selected["evidence_weight"].sum()),
+            "selected_match_ids_sha256": sha256_json(sorted({int(value) for value in selected["match_id"]})),
+        }
+    return result
+
+
 def _stable_id_hash(values: Collection[int]) -> str:
     payload = ",".join(str(value) for value in sorted({int(value) for value in values}))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -417,6 +446,7 @@ def build_evidence_set(
         "selected_by_patch_family": _breakdown(included, "patch_family"),
         "selected_by_exact_patch_multiplier": _breakdown(included, "exact_patch_multiplier"),
         "selected_by_league_tier": _breakdown(included, "normalized_league_tier"),
+        "selected_by_team_identity_bridge": _identity_bridge_breakdown(frame, included),
     }
     return EvidenceSet(
         matches=included,

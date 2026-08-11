@@ -16,7 +16,16 @@ from typing import Any, Literal
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from ti_predictor.config import load_rules, load_team_strength_policy, load_tournament_manifest
+from ti_predictor.backtesting import evaluate_bo3_probability_transform, evaluate_league_holdout
+from ti_predictor.config import (
+    load_rules,
+    load_swiss_format,
+    load_swiss_simulation_policy,
+    load_team_strength_policy,
+    load_tournament_manifest,
+    swiss_hash,
+    swiss_policy_hash,
+)
 from ti_predictor.fantasy.advisor import action_identity, action_label
 from ti_predictor.fantasy.roll import (
     BannerState,
@@ -45,9 +54,9 @@ from ti_predictor.models.evidence import build_evidence_set
 from ti_predictor.models.policy import EvidenceScopePolicy
 from ti_predictor.paths import PATHS, ProjectPaths
 from ti_predictor.rules import latest_rule_snapshot
-from ti_predictor.schemas import as_utc
+from ti_predictor.schemas import RuleSnapshot, as_utc
 from ti_predictor.storage import read_parquet_if_exists
-from ti_predictor.tournament.group import GroupSimulator
+from ti_predictor.tournament.group import SwissGroupSimulator
 
 
 class CurrentAdvisorError(ValueError):
@@ -153,17 +162,96 @@ def load_current_advisor_policy(path: Path) -> CurrentAdvisorPolicy:
     return CurrentAdvisorPolicy.model_validate_json(path.read_text(encoding="utf-8"))
 
 
-def load_current_advisor_roll_rules(*, paths: ProjectPaths = PATHS) -> RollRuleSet:
-    """Build current Group Roll rules without importing the historical v1 advisor."""
+def _resolve_current_advisor_rule_snapshot(
+    policy: CurrentAdvisorPolicy,
+    *,
+    paths: ProjectPaths = PATHS,
+) -> tuple[RuleSnapshot, Path]:
+    """Resolve the exact freeze while allowing a metadata-only client refresh."""
 
-    snapshot_result = latest_rule_snapshot(paths)
-    if snapshot_result is None:
-        raise FileNotFoundError("advisor requires the frozen local Dota Rule snapshot")
-    snapshot, _ = snapshot_result
+    cutoff = as_utc(policy.as_of)
+    if cutoff is None:
+        raise CurrentAdvisorError("advisor policy requires an explicit Rule snapshot cutoff")
+
+    frozen_matches: list[tuple[RuleSnapshot, Path]] = []
+    for snapshot_path in sorted((paths.raw / "rules").glob("*/rule_snapshot.json")):
+        try:
+            if sha256_file(snapshot_path) != policy.source.rule_snapshot_sha256:
+                continue
+            snapshot = RuleSnapshot.model_validate_json(snapshot_path.read_text(encoding="utf-8"))
+        except OSError:
+            continue
+        except ValueError as exc:
+            raise CurrentAdvisorError("the frozen local client Rule snapshot is invalid") from exc
+        frozen_matches.append((snapshot, snapshot_path))
+
+    if not frozen_matches:
+        raise CurrentAdvisorError("the frozen local client Rule snapshot is unavailable")
+    frozen_snapshot, frozen_path = frozen_matches[-1]
+    if frozen_snapshot.as_of > cutoff or frozen_snapshot.created_at > cutoff:
+        raise CurrentAdvisorError("the frozen local client Rule snapshot is later than the v2 cutoff")
+
+    latest_result = latest_rule_snapshot(paths)
+    if latest_result is None:
+        raise FileNotFoundError("advisor requires the current local Dota Rule snapshot")
+    latest_snapshot, _ = latest_result
+    if latest_snapshot.status == "blocked":
+        raise CurrentAdvisorError("the latest local client Rule snapshot is blocked")
+    if latest_snapshot.snapshot_sha256 != frozen_snapshot.snapshot_sha256:
+        raise CurrentAdvisorError("local client Rule semantics drifted from the v2 freeze")
+    return frozen_snapshot, frozen_path
+
+
+def _build_current_advisor_roll_rules(
+    snapshot: RuleSnapshot,
+    *,
+    paths: ProjectPaths,
+) -> RollRuleSet:
     client_roll = snapshot.observed.get("fantasy_roll")
     if not isinstance(client_roll, dict):
         raise CurrentAdvisorError("local Rule snapshot lacks normalized Fantasy Roll operations")
     return build_group_roll_rules(load_rules(paths.rules), client_roll)
+
+
+def load_current_advisor_roll_rules(*, paths: ProjectPaths = PATHS) -> RollRuleSet:
+    """Build current Group Roll rules without importing the historical v1 advisor."""
+
+    policy = load_current_advisor_policy(
+        paths.config / "models" / "fantasy-group-current-screen-advisor-v2.json"
+    )
+    snapshot, _ = _resolve_current_advisor_rule_snapshot(policy, paths=paths)
+    return _build_current_advisor_roll_rules(snapshot, paths=paths)
+
+
+def load_current_advisor_team_options(
+    *,
+    paths: ProjectPaths = PATHS,
+) -> dict[str, tuple[tuple[int, str], ...]]:
+    policy = load_current_advisor_policy(
+        paths.config / "models" / "fantasy-group-current-screen-advisor-v2.json"
+    )
+    p3_evidence = _find_verified_artifact(
+        paths,
+        filename="group-fantasy-evidence.json",
+        hash_field="evidence_package_sha256",
+        expected_sha256=policy.source.p3_evidence_sha256,
+    )
+    unavailable = {
+        (int(item["target_team_id"]), str(item["role"]))
+        for item in p3_evidence.get("scenario_set", {}).get("unavailable_team_roles", [])
+    }
+    manifest = load_tournament_manifest(paths.tournament)
+    options = {
+        role: tuple(
+            (int(team.team_id), team.name)
+            for team in manifest.teams
+            if (int(team.team_id), role) not in unavailable
+        )
+        for role in ROLE_IDS
+    }
+    if any(not values for values in options.values()):
+        raise CurrentAdvisorError("current P3 evidence leaves a Fantasy role without Team options")
+    return options
 
 
 def _find_verified_artifact(
@@ -242,18 +330,19 @@ def prepare_current_advisor_context(
     if title_evidence.get("as_of") != cutoff_text:
         raise CurrentAdvisorError("Title evidence as_of differs from the Roll evidence cutoff")
 
-    snapshot_result = latest_rule_snapshot(paths)
-    if snapshot_result is None:
-        raise FileNotFoundError("advisor requires the frozen local Dota Rule snapshot")
-    _, snapshot_path = snapshot_result
-    if sha256_file(snapshot_path) != policy.source.rule_snapshot_sha256:
-        raise CurrentAdvisorError("local client Rule snapshot drifted from the v2 freeze")
+    rule_snapshot, _ = _resolve_current_advisor_rule_snapshot(policy, paths=paths)
 
     manifest = load_tournament_manifest(paths.tournament)
     canonical_rules = load_rules(paths.rules)
-    roll_rules = load_current_advisor_roll_rules(paths=paths)
-    scenario_policy_path = paths.config / "models" / "fantasy-group-scenarios-v1.json"
+    roll_rules = _build_current_advisor_roll_rules(rule_snapshot, paths=paths)
+    scenario_policy_path = paths.config / "models" / "fantasy-group-scenarios-v2.json"
     scenario_policy = load_group_scenario_policy(scenario_policy_path)
+    swiss_format = load_swiss_format(as_of=cutoff, manifest=manifest, path=paths.swiss)
+    swiss_policy = load_swiss_simulation_policy(
+        as_of=cutoff,
+        manifest=manifest,
+        path=paths.swiss_policy,
+    )
     matches_path = paths.processed / "matches.parquet"
     observations_path = paths.processed / "fantasy_performance_samples.parquet"
     patches_path = paths.processed / "patches.parquet"
@@ -266,6 +355,27 @@ def prepare_current_advisor_context(
     patches = _available_by_as_of(read_parquet_if_exists(patches_path), cutoff)
     model, model_report = _load_strength_model(paths, cutoff)
     strength_policy = load_team_strength_policy(manifest, config_root=paths.config)
+    holdout_model, holdout_model_report, _, holdout_issues = evaluate_league_holdout(
+        matches,
+        patches,
+        policy=strength_policy,
+        league_id=strength_policy.ti2025_holdout.league_id,
+    )
+    holdout_blocking = [
+        issue.message
+        for issue in [*holdout_issues, *holdout_model_report.issues]
+        if issue.severity == "blocking"
+    ]
+    if holdout_blocking:
+        raise CurrentAdvisorError("current BO3 holdout is blocked: " + "; ".join(holdout_blocking))
+    bo3_details = evaluate_bo3_probability_transform(
+        holdout_model,
+        matches.loc[matches["league_id"].eq(strength_policy.ti2025_holdout.league_id)],
+    )
+    if bo3_details["evaluated_series"] < swiss_policy.bo3_selection.minimum_holdout_series:
+        raise CurrentAdvisorError(
+            "current BO3 transform has fewer complete holdout Series than the Swiss policy requires"
+        )
     fantasy_policy = strength_policy.model_copy(
         update={
             "policy_id": f"{strength_policy.policy_id}-fantasy-player-history",
@@ -292,6 +402,8 @@ def prepare_current_advisor_context(
             "rules_sha256": sha256_file(paths.rules),
             "manifest_sha256": sha256_file(paths.tournament),
             "scenario_policy_sha256": sha256_file(scenario_policy_path),
+            "swiss_format_sha256": swiss_hash(paths.swiss),
+            "swiss_policy_sha256": swiss_policy_hash(paths.swiss_policy),
             "selected_match_ids_sha256": evidence.audit["selected_match_ids_sha256"],
             "weight_policy_sha256": evidence.audit["weight_policy_sha256"],
             "target_patch_family": evidence.target_patch_family,
@@ -312,10 +424,17 @@ def prepare_current_advisor_context(
     if pool_result.semantic_hash != policy.source.pool_set_sha256:
         raise CurrentAdvisorError("current Series pool drifted from the v2 freeze")
 
-    group_simulation = GroupSimulator(model, manifest).simulate(
+    group_simulation = SwissGroupSimulator(
+        model,
+        manifest,
+        swiss_format=swiss_format,
+        policy=swiss_policy,
+        as_of=cutoff,
+        series_probability_mode=bo3_details["selected_mode"],
+    ).simulate(
         samples=scenario_policy.scenario_count,
         seed=policy.seed,
-        scenario=scenario_policy.group_outcome_model,
+        scenario=swiss_policy.primary_scenario,
     )
     full_scenarios = build_common_scenario_set(
         pool_result,
@@ -337,6 +456,7 @@ def prepare_current_advisor_context(
     warnings = {
         "只评估当前三个选项的一步直接结果；不生成或估计下一轮未知选项。",
         "Title 是按当前队伍与位置历史触发率计算的纸面估算，未进入 Roll 分值。",
+        "Group 机会数使用 Valve 官方首轮与规则驱动 Swiss 情景；非唯一后续决定仍是显式代理。",
         *(issue.message for issue in evidence.issues if issue.severity == "warning"),
         *(issue.message for issue in model_report.issues if issue.severity == "warning"),
     }
@@ -354,9 +474,7 @@ def prepare_current_advisor_context(
     )
 
 
-def _replace_banner(
-    banners: tuple[BannerState, ...], replacement: BannerState
-) -> tuple[BannerState, ...]:
+def _replace_banner(banners: tuple[BannerState, ...], replacement: BannerState) -> tuple[BannerState, ...]:
     return tuple(replacement if banner.role == replacement.role else banner for banner in banners)
 
 
@@ -395,9 +513,7 @@ def _evaluate_group(
             (matrices[role].outcomes[index] for role, index in zip(ROLE_IDS, indexes, strict=True)),
             start=np.zeros(len(context.scenarios.scenario_ids), dtype=float),
         )
-        maximum_mean = float(
-            sum(float(matrices[role].outcomes.mean(axis=1).max()) for role in ROLE_IDS)
-        )
+        maximum_mean = float(sum(float(matrices[role].outcomes.mean(axis=1).max()) for role in ROLE_IDS))
     role_base_means = {}
     for role, team_id in zip(ROLE_IDS, team_ids, strict=True):
         matrix = matrices[role]
@@ -413,9 +529,7 @@ def _evaluate_group(
     )
 
 
-def _preferred_action(
-    rows: Sequence[Mapping[str, Any]], *, mean_retention_epsilon: float
-) -> str:
+def _preferred_action(rows: Sequence[Mapping[str, Any]], *, mean_retention_epsilon: float) -> str:
     maximum_mean = max(float(row["mean"]) for row in rows)
     floor = maximum_mean - abs(maximum_mean) * mean_retention_epsilon - 1e-12
     eligible = [row for row in rows if float(row["mean"]) >= floor]
@@ -526,11 +640,7 @@ def rank_title_for_lineup(
         summary = analysis.get("prefixes" if kind == "prefix" else "suffixes")
         if not isinstance(summary, Sequence):
             raise CurrentAdvisorError(f"Title evidence has no {kind} summary")
-        metadata = {
-            str(row["id"]): row
-            for row in summary
-            if isinstance(row, Mapping) and "id" in row
-        }
+        metadata = {str(row["id"]): row for row in summary if isinstance(row, Mapping) and "id" in row}
         bonus_key = f"{kind}_paper_bonus_percent"
         rate_key = f"{kind}_trigger_rates"
         rows = []
@@ -567,9 +677,7 @@ def rank_title_for_lineup(
     suffixes = ranked("suffix", excluded=set(excluded_suffix_ids))
     if not prefixes or not suffixes:
         raise CurrentAdvisorError("Title evidence produced no recommendable Prefix or Suffix")
-    pair_bonus = float(prefixes[0]["paper_bonus_percent"]) + float(
-        suffixes[0]["paper_bonus_percent"]
-    )
+    pair_bonus = float(prefixes[0]["paper_bonus_percent"]) + float(suffixes[0]["paper_bonus_percent"])
     return {
         "recommended_prefix": prefixes[0],
         "recommended_suffix": suffixes[0],
@@ -645,9 +753,7 @@ def analyze_current_screen(
                 )
                 support_count = 1
             else:
-                current_banner = next(
-                    banner for banner in state.banners if banner.role == action.banner_role
-                )
+                current_banner = next(banner for banner in state.banners if banner.role == action.banner_role)
                 mutations = mutation_distribution(
                     current_banner,
                     action.operation_id,
@@ -677,8 +783,7 @@ def analyze_current_screen(
                 "mean": distribution.mean,
                 "cvar10": distribution.cvar(context.policy.analysis.cvar_alpha),
                 "mean_delta": distribution.mean - current.mean,
-                "cvar10_delta": distribution.cvar(context.policy.analysis.cvar_alpha)
-                - current.cvar10,
+                "cvar10_delta": distribution.cvar(context.policy.analysis.cvar_alpha) - current.cvar10,
                 "support_lower": lower,
                 "support_upper": upper,
                 "support_count": support_count,
@@ -689,11 +794,7 @@ def analyze_current_screen(
             selected = _preferred_action(model_rows, mean_retention_epsilon=epsilon)
             preferred_by_model.append({"model_id": model_id, "action_id": selected})
 
-    primary_rows = [
-        row
-        for row in action_rows
-        if row["model_id"] == context.policy.analysis.primary_model
-    ]
+    primary_rows = [row for row in action_rows if row["model_id"] == context.policy.analysis.primary_model]
     if primary_rows:
         selected_action_id = next(
             row["action_id"]

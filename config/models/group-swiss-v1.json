@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "policy_id": "ti2026-swiss-simulation-v1",
+  "as_of": "2026-08-10T13:45:12Z",
+  "primary_scenario": "roster_shock_0_60",
+  "pairing_tie_break": "seeded_random",
+  "bo3_selection": {
+    "minimum_holdout_series": 30,
+    "selection_rule": "independent_games_only_if_lower_log_loss_and_brier",
+    "fallback_mode": "direct_series"
+  },
+  "roster_shock": {
+    "target_team_id": 10150538,
+    "effective_from": "2026-08-10T06:10:26Z",
+    "transform": "positive_strength_odds",
+    "provenance": "derived",
+    "source": "dota_client_build_6893:event_fantasy_roster"
+  },
+  "duration_proxy": {
+    "distribution": "clipped_normal",
+    "mean_seconds": 2400.0,
+    "standard_deviation_seconds": 420.0,
+    "minimum_seconds": 900,
+    "maximum_seconds": 5400
+  },
+  "scenarios": [
+    {
+      "scenario_id": "baseline_1_00",
+      "roster_strength_multiplier": 1.0,
+      "elimination_choice_strategy": "model_optimal"
+    },
+    {
+      "scenario_id": "roster_shock_0_90",
+      "roster_strength_multiplier": 0.9,
+      "elimination_choice_strategy": "model_optimal"
+    },
+    {
+      "scenario_id": "roster_shock_0_75",
+      "roster_strength_multiplier": 0.75,
+      "elimination_choice_strategy": "model_optimal"
+    },
+    {
+      "scenario_id": "roster_shock_0_60",
+      "roster_strength_multiplier": 0.6,
+      "elimination_choice_strategy": "model_optimal"
+    },
+    {
+      "scenario_id": "roster_shock_0_60_random_choice",
+      "roster_strength_multiplier": 0.6,
+      "elimination_choice_strategy": "seeded_random"
+    },
+    {
+      "scenario_id": "roster_shock_0_60_adversarial_choice",
+      "roster_strength_multiplier": 0.6,
+      "elimination_choice_strategy": "adversarial"
+    }
+  ]
+}

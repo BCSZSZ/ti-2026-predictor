@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import streamlit as st
 
-from ti_predictor.config import load_rules, load_tournament_manifest
+from ti_predictor.config import load_rules
 from ti_predictor.fantasy.advisor import operation_label
 from ti_predictor.fantasy.current_advisor import (
     CurrentAdvisorContext,
     analyze_current_screen,
-    load_current_advisor_policy,
-    load_current_advisor_roll_rules,
-    prepare_current_advisor_context,
 )
 from ti_predictor.fantasy.live_ocr import (
     LiveRollMonitor,
@@ -23,7 +21,11 @@ from ti_predictor.fantasy.live_ocr import (
     observation_widget_updates,
 )
 from ti_predictor.fantasy.roll import BannerState, EmblemState, GroupRollState, RollOffer
-from ti_predictor.paths import PATHS
+from ti_predictor.fantasy.solver_release import (
+    default_solver_release_path,
+    load_solver_release_context,
+    solver_release_team_options,
+)
 
 _ROLE_LABELS = {"core": "核心位", "mid": "中单", "support": "辅助位"}
 _COLOR_LABELS = {"red": "红", "blue": "蓝", "green": "绿"}
@@ -56,26 +58,16 @@ _TITLE_LABEL_OVERRIDES = {
 
 
 @st.cache_resource(show_spinner=False)
-def _cached_roll_rules():
-    return load_current_advisor_roll_rules()
+def _cached_solver_release_context(path: str) -> CurrentAdvisorContext:
+    return load_solver_release_context(Path(path))
 
 
 @st.cache_resource(show_spinner=False)
-def _cached_context(as_of: str) -> CurrentAdvisorContext:
-    return prepare_current_advisor_context(as_of=as_of)
-
-
-def _policy():
-    return load_current_advisor_policy(
-        PATHS.config / "models" / "fantasy-group-current-screen-advisor-v2.json"
-    )
-
-
-@st.cache_resource(show_spinner=False)
-def _cached_live_monitor() -> LiveRollMonitor:
+def _cached_live_monitor(release_path: str) -> LiveRollMonitor:
+    context = _cached_solver_release_context(release_path)
     return LiveRollMonitor(
         profile=load_live_ocr_profile(),
-        rules=_cached_roll_rules(),
+        rules=context.roll_rules,
     )
 
 
@@ -88,11 +80,6 @@ def _public_operation_label(operation_id: int, rules) -> str:
     return operation_label(operation_id, rules).replace(f"#{operation_id} · ", "").replace(" / ", " · ")
 
 
-def _team_options() -> tuple[tuple[int, str], ...]:
-    manifest = load_tournament_manifest(PATHS.tournament)
-    return tuple((int(team.team_id), team.name) for team in manifest.teams)
-
-
 def _clear_result() -> None:
     st.session_state.pop("current_advisor_result", None)
 
@@ -101,9 +88,7 @@ def _field_label(field_id: str) -> str:
     parts = field_id.split(".")
     if len(parts) == 4 and parts[0] == "banner":
         role = _ROLE_LABELS.get(parts[1], parts[1])
-        attribute = {"stat": "Stat", "quality": "品质", "trait": "Trait"}.get(
-            parts[3], parts[3]
-        )
+        attribute = {"stat": "Stat", "quality": "品质", "trait": "Trait"}.get(parts[3], parts[3])
         return f"{role}第 {int(parts[2]) + 1} 格 {attribute}"
     if len(parts) == 2 and parts[0] == "offer":
         return f"选项 {int(parts[1]) + 1}"
@@ -125,8 +110,8 @@ def _consume_pending_observation(rules) -> None:
 
 
 @st.fragment(run_every=1.0)
-def _render_live_monitor_status() -> None:
-    monitor = _cached_live_monitor()
+def _render_live_monitor_status(release_path: str) -> None:
+    monitor = _cached_live_monitor(release_path)
     snapshot = monitor.snapshot()
     stage = snapshot.stage
     if stage == "error":
@@ -149,13 +134,12 @@ def _render_live_monitor_status() -> None:
     st.rerun()
 
 
-def _render_live_controls() -> None:
+def _render_live_controls(release_path: str) -> None:
     st.subheader("自动读取游戏画面")
     st.caption(
-        "点击后切回 Dota；程序读取下一张稳定的完整页面一次，然后自动停止。"
-        "英文优先，同时支持简体中文。"
+        "点击后切回 Dota；程序读取下一张稳定的完整页面一次，然后自动停止。英文优先，同时支持简体中文。"
     )
-    monitor = _cached_live_monitor()
+    monitor = _cached_live_monitor(release_path)
     snapshot = monitor.snapshot()
     if snapshot.running:
         if st.button("取消本次识别", use_container_width=True):
@@ -165,14 +149,11 @@ def _render_live_controls() -> None:
         "识别下一次稳定的 Dota 画面",
         type="primary",
         use_container_width=True,
-        help=(
-            "单屏时点击后用 Alt+Tab 切回 Dota；双屏时可以直接点击。"
-            "只读取一次，不控制游戏。"
-        ),
+        help=("单屏时点击后用 Alt+Tab 切回 Dota；双屏时可以直接点击。只读取一次，不控制游戏。"),
     ):
         monitor.start_once()
         st.rerun()
-    _render_live_monitor_status()
+    _render_live_monitor_status(release_path)
     observation = st.session_state.get("current_advisor_last_observation")
     if observation is None:
         st.caption("等待期间可切回 Dota；识别完成后回到本页查看，也可以始终使用下方手填。")
@@ -182,8 +163,8 @@ def _render_live_controls() -> None:
     if observation.get("status") == "incomplete":
         missing = [_field_label(item) for item in observation.get("missing_field_ids", [])]
         st.warning(
-            "已自动填入可信字段；以下字段没有覆盖原值，也没有自动计算："
-            + "、".join(missing)
+            "已自动填入能够安全定位的字段；含未确认 Stat 的整面战旗保留原值，"
+            "且没有自动计算。未确认字段：" + "、".join(missing)
         )
     else:
         st.caption("完整观测已自动写入表单；无需再点计算按钮。")
@@ -193,12 +174,11 @@ def _render_live_controls() -> None:
 def _input_form(
     rules,
     *,
+    team_options: dict[str, tuple[tuple[int, str], ...]],
     manual_team_mode: bool,
     auto_calculate: bool = False,
 ) -> tuple[GroupRollState | None, Any, str, bool]:
     stat_labels = _stat_labels()
-    team_options = _team_options()
-    team_names = dict(team_options)
     positive_ids = tuple(item.operation_id for item in rules.offered_operations)
     with st.form("current_advisor_form"):
         st.subheader("1. 录入当前三面战旗")
@@ -275,13 +255,14 @@ def _input_form(
             team_columns = st.columns(3)
             selected = []
             for role, column in zip(rules.group_roles, team_columns, strict=True):
+                role_team_names = dict(team_options[role])
                 with column:
                     selected.append(
                         st.selectbox(
                             _ROLE_LABELS[role],
-                            tuple(team_names),
+                            tuple(role_team_names),
                             key=f"current_advisor_team_{role}",
-                            format_func=lambda item, names=team_names: names[item],
+                            format_func=lambda item, names=role_team_names: names[item],
                         )
                     )
             selected_team_ids = tuple(selected)
@@ -391,9 +372,7 @@ def _render_lineup_and_title(result: dict[str, Any]) -> None:
 def _render_details(result: dict[str, Any], context: CurrentAdvisorContext) -> None:
     with st.expander("模型分歧与计算边界"):
         model_rows = []
-        action_labels = {
-            row["action_id"]: row["action_label"] for row in result["primary_action_values"]
-        }
+        action_labels = {row["action_id"]: row["action_label"] for row in result["primary_action_values"]}
         for row in result["preferred_by_model"]:
             model_rows.append(
                 {
@@ -410,21 +389,33 @@ def _render_details(result: dict[str, Any], context: CurrentAdvisorContext) -> N
         st.caption(f"数据截止：{result['as_of']} · 分析指纹：{result['analysis_sha256'][:12]}")
 
 
-def render_advisor_page() -> None:
-    st.title("Group Roll 实时顾问")
-    st.write("本机可自动读取完整 Roll 页面，也可以继续手填；页面只推荐这一步怎么做。")
-    st.caption("本地只读辅助：不控制 Dota、不猜下一轮选项。仅支持 Group 三格战旗。")
+def render_advisor_page(
+    *,
+    manual_only: bool = False,
+    release_bundle_path: Path | None = None,
+) -> None:
+    if manual_only:
+        st.title("Group Roll 手动求解器")
+        st.write("手动录入当前九格、三个选项和剩余 Roll；页面只推荐这一步怎么做。")
+        st.caption("公开只读版：不截图、不运行 OCR、不控制 Dota、不猜下一轮选项。仅支持 Group。")
+    else:
+        st.title("Group Roll 实时顾问")
+        st.write("本机可自动读取完整 Roll 页面，也可以继续手填；页面只推荐这一步怎么做。")
+        st.caption("本地只读辅助：不控制 Dota、不猜下一轮选项。仅支持 Group 三格战旗。")
 
     try:
-        rules = _cached_roll_rules()
-        policy = _policy()
+        selected_release_path = (release_bundle_path or default_solver_release_path()).resolve()
+        release_path_text = str(selected_release_path)
+        release_context = _cached_solver_release_context(release_path_text)
+        rules = release_context.roll_rules
+        team_options = solver_release_team_options(release_context)
     except (OSError, ValueError) as error:
-        st.error(f"当前客户端规则不可用：{error}")
+        st.error(f"当前冻结求解上下文不可用：{error}")
         return
 
-    if live_capture_supported():
+    if not manual_only and live_capture_supported():
         _consume_pending_observation(rules)
-        _render_live_controls()
+        _render_live_controls(release_path_text)
         st.divider()
 
     manual_team_mode = st.radio(
@@ -438,15 +429,15 @@ def render_advisor_page() -> None:
     auto_calculate = bool(st.session_state.pop("current_advisor_autocalculate", False))
     state, selected_team_ids, risk_profile, submitted = _input_form(
         rules,
+        team_options=team_options,
         manual_team_mode=manual_team_mode,
         auto_calculate=auto_calculate,
     )
     if submitted and state is not None:
         try:
-            with st.spinner("载入当前证据并计算所有可执行选择…首次打开约需十几秒。"):
-                context = _cached_context(policy.as_of)
+            with st.spinner("使用冻结求解发布包计算所有可执行选择…"):
                 result = analyze_current_screen(
-                    context,
+                    release_context,
                     state,
                     risk_profile=risk_profile,
                     selected_team_ids=selected_team_ids,
@@ -460,17 +451,15 @@ def render_advisor_page() -> None:
     if result is None:
         st.info("完成输入后点击“计算现在应该怎么选”。")
         return
-    try:
-        context = _cached_context(policy.as_of)
-    except (OSError, ValueError) as error:
-        st.error(f"结果来源已经不可用：{error}")
-        return
     st.divider()
     st.subheader("现在的结论")
     _render_recommendation(result)
     _render_lineup_and_title(result)
-    _render_details(result, context)
-    st.info(
-        "在游戏里完成操作后，再点击一次“识别下一次稳定的 Dota 画面”并切回游戏；"
-        "也可以手动修改实际发生变化的字段后重新计算。"
-    )
+    _render_details(result, release_context)
+    if manual_only:
+        st.info("在游戏里完成操作后，把表单改成实际出现的新状态，再重新计算。")
+    else:
+        st.info(
+            "在游戏里完成操作后，再点击一次“识别下一次稳定的 Dota 画面”并切回游戏；"
+            "也可以手动修改实际发生变化的字段后重新计算。"
+        )

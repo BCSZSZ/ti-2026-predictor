@@ -455,7 +455,9 @@ class ExactFixedStatConfigurationEvaluator:
         multipliers: np.ndarray,
         risk: RiskConfiguration,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        team_ids = self.scenario_set.team_ids
+        team_ids = tuple(team_id for team_id in self.scenario_set.team_ids if (team_id, role) in self._pools)
+        if not team_ids:
+            raise SolverEvaluationError(f"no Fantasy Team is available for role {role}")
         team_outcomes = np.stack(
             [
                 self._team_chunk_outcomes(

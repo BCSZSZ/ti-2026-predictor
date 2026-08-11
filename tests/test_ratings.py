@@ -212,3 +212,30 @@ def test_target_connected_component_requires_explicit_target_ids() -> None:
             as_of="2026-06-02T00:00:00Z",
             policy=_policy(),
         )
+
+
+def test_evidence_audits_canonical_identity_bridge_weight() -> None:
+    frame = pd.DataFrame(
+        [
+            {
+                **_game(),
+                "radiant_raw_team_id": 99,
+                "dire_raw_team_id": 2,
+                "radiant_team_identity_bridge_id": "alias-to-team-1",
+                "dire_team_identity_bridge_id": pd.NA,
+            }
+        ]
+    )
+
+    evidence = build_evidence_set(
+        frame,
+        _patches(),
+        as_of="2026-06-02T00:00:00Z",
+        policy=_policy(),
+        target_team_ids={1, 2},
+    )
+
+    bridge = evidence.audit["selected_by_team_identity_bridge"]["alias-to-team-1"]
+    assert bridge["games"] == 1
+    assert bridge["included_games"] == 1
+    assert bridge["effective_weight"] == evidence.matches.iloc[0]["evidence_weight"]

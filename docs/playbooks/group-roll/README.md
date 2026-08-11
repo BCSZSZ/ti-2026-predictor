@@ -1,15 +1,17 @@
 # Group Roll 人工手册索引
 
-## 当前发布版（7.41e 1.5 倍证据权重）
+## 当前发布版（2026-08-10 VISION 身份与 0.60 Swiss 更新）
 
-- [Group 40 Roll 玩家手册 v3](group-roll-publication-manual-v3.md)：Stat、队伍 Top 3 与 Title 已按
-  7.41e 1.5 倍权重刷新；B/C/D 操作规则仍沿用原 v2 验证，不冒充重新认证。
-- [Stat 队伍 Top 3 v3](stat-team-top3-publication-v3.md)：当前 42 行排名、基础建议、前三队伍与
-  400 次 Series 重采样稳定率。
-- [Title 推荐](../../reports/ti2026-fantasy-title-recommendation-2026-08-09.md)：默认仍为
-  `Cerulean + the Clutch`，并说明一血内部配置为什么不能按变量名直接解释。
-- [本轮实施与影响报告](../../reports/ti2026-current-exact-patch-weight-v4-implementation-2026-08-09.md)：
-  记录中央权重实现、四个正式 run、验收、变化与剩余边界。
+- [Group 40 Roll 玩家手册 v4](group-roll-publication-manual-v4.md)：Stat、队伍 Top 3 与 Title 已按
+  当前 47 个可用队伍×位置池刷新；B/C/D 操作规则仍沿用冻结验证，不冒充重新认证。
+- [Stat 队伍 Top 3 v4](stat-team-top3-publication-v4.md)：当前 47 个合格池的排名、基础建议、
+  前三队伍与 400 次 Series 重采样稳定率；预计 Series 机会数已按 LGD odds `×0.60` 重算，
+  并接入经稳定选手 ID 核验的 TEAM VISION 双 ID 身份桥；LGD 中单保持 `unavailable`，不会被
+  当作 0 分。
+- [Title 推荐](../../reports/ti2026-fantasy-title-recommendation-2026-08-10.md)：默认仍为
+  `Cerulean + the Clutch`，已按 47 个可用池重新计算。
+- [Swiss、VISION 与 LGD 更新报告](../../reports/ti2026-swiss-round1-roster-update-2026-08-10.md)：
+  记录官方首轮、规范身份桥、LGD 未来胜算情景、Fantasy 候选边界、正式 run 与验收结果。
 
 以下内容是原 v2 冻结验证与历史报告。
 

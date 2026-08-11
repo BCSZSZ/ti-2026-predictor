@@ -3,8 +3,8 @@ from __future__ import annotations
 import threading
 import time
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 
-from ti_predictor.fantasy.current_advisor import load_current_advisor_roll_rules
 from ti_predictor.fantasy.live_ocr import (
     CapturedFrame,
     LiveRollMonitor,
@@ -18,6 +18,12 @@ from ti_predictor.fantasy.live_ocr import (
     observation_widget_updates,
     parse_roll_screen_tokens,
 )
+from ti_predictor.fantasy.solver_release import load_solver_release_context
+
+
+@lru_cache(maxsize=1)
+def _release_roll_rules():
+    return load_solver_release_context().roll_rules
 
 
 class FakeImage:
@@ -66,9 +72,7 @@ def _complete_tokens(*, weak_field: str | None = None) -> tuple[OCRToken, ...]:
             y = 0.2 + index * 0.16
             tokens.append(_token(stat, 0.98, x, y, width=0.12))
             quality_id = f"{role}.{index}.quality"
-            tokens.append(
-                _token(quality, 0.5 if weak_field == quality_id else 0.98, x - 0.04, y + 0.04)
-            )
+            tokens.append(_token(quality, 0.5 if weak_field == quality_id else 0.98, x - 0.04, y + 0.04))
             tokens.append(_token(trait, 0.98, x + 0.04, y + 0.07))
     tokens.extend(
         (
@@ -174,7 +178,7 @@ def _parse(tokens: tuple[OCRToken, ...], *, captured_at: datetime | None = None)
         image_sha256="a" * 64,
         viewport=(2560, 1440),
         profile=load_live_ocr_profile(),
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
     )
 
 
@@ -271,6 +275,56 @@ def test_current_client_multiline_layout_builds_the_exact_visible_state() -> Non
     ]
 
 
+def test_multiline_roll_option_does_not_merge_the_operations_heading() -> None:
+    tokens = list(_current_client_layout_tokens()[:-4])
+    tokens.extend(
+        (
+            _token("REROLL QUALITY FOR RED", 0.993, 0.3594, 0.7664, width=0.136),
+            _token("EMBLEMS", 1.0, 0.3596, 0.7817, width=0.051),
+            _token("REROLL QUALITY FOR THE", 0.995, 0.5396, 0.7660, width=0.138),
+            _token("FIRST RED EMBLEM", 0.993, 0.5396, 0.7821, width=0.099),
+            _token("REROLL STAT FOR THE LAST", 0.998, 0.7195, 0.7664, width=0.145),
+            _token("GREEN EMBLEM", 0.966, 0.7195, 0.7821, width=0.081),
+            _token("REROLL OPERATIONS", 1.0, 0.4728, 0.8392, width=0.121),
+            _token("ROLL TOKENS: 32", 0.958, 0.6220, 0.8384, width=0.095),
+        )
+    )
+
+    observation = _parse(tuple(tokens))
+
+    assert observation.status == "confirmed"
+    assert observation.state is not None
+    assert observation.state.offer.operation_ids == (9, 26, 33)
+    assert observation.state.remaining_rolls == 32
+
+
+def test_stat_joined_with_percentage_stays_in_its_banner_column() -> None:
+    tokens = list(_current_client_layout_tokens())
+    index = next(index for index, token in enumerate(tokens) if token.text == "Teamfight")
+    original = tokens[index]
+    tokens[index] = OCRToken(
+        text="TEAMFIGHT 240%",
+        confidence=original.confidence,
+        # The label starts inside Core's card, but the appended percentage
+        # moves the combined OCR box center just across the Core/Mid midpoint.
+        box=(0.306, original.box[1], 0.396, original.box[3]),
+    )
+
+    observation = _parse(tuple(tokens))
+
+    assert observation.status == "confirmed"
+    assert observation.missing_field_ids == ()
+    assert observation.state is not None
+    assert [
+        (emblem.stat_id, emblem.quality_tier, emblem.trait_id)
+        for emblem in observation.state.banners[0].emblems
+    ] == [
+        ("tower_kills", 2, "unique"),
+        ("teamfight_participation", 4, "vampiric"),
+        ("deaths", 5, "benevolent"),
+    ]
+
+
 def test_reader_locates_and_upscales_fantasy_region_before_detailed_ocr() -> None:
     class SequencedEngine:
         def __init__(self) -> None:
@@ -296,7 +350,7 @@ def test_reader_locates_and_upscales_fantasy_region_before_detailed_ocr() -> Non
     )
     observation = RollScreenReader(
         profile=load_live_ocr_profile(),
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
         token_engine=engine,
     ).inspect(frame)
 
@@ -317,10 +371,26 @@ def test_low_confidence_field_allows_partial_autofill_but_blocks_auto_calculatio
     assert "banner.mid.1.quality" in observation.missing_field_ids
     updates = observation_widget_updates(
         observation.to_payload(),
-        load_current_advisor_roll_rules(),
+        _release_roll_rules(),
     )
     assert "current_advisor_mid_1_quality" not in updates
     assert updates["current_advisor_mid_1_stat"] == "wards_placed"
+    assert updates["current_advisor_remaining"] == 37
+
+
+def test_missing_stat_anchor_preserves_that_entire_banner_during_partial_autofill() -> None:
+    tokens = tuple(token for token in _complete_tokens() if token.text != "Stuns")
+    observation = _parse(tokens)
+
+    assert observation.status == "incomplete"
+    updates = observation_widget_updates(
+        observation.to_payload(),
+        _release_roll_rules(),
+    )
+
+    assert not any(key.startswith("current_advisor_core_") for key in updates)
+    assert updates["current_advisor_mid_0_stat"] == "deaths"
+    assert updates["current_advisor_support_0_stat"] == "camps_stacked"
     assert updates["current_advisor_remaining"] == 37
 
 
@@ -346,7 +416,7 @@ def test_observation_semantic_hash_ignores_capture_time_and_image_identity() -> 
         image_sha256="b" * 64,
         viewport=(2560, 1440),
         profile=load_live_ocr_profile(),
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
     )
 
     assert first.to_payload()["observation_sha256"] == second.to_payload()["observation_sha256"]
@@ -356,7 +426,7 @@ def test_confirmed_observation_maps_to_all_advisor_widget_keys() -> None:
     observation = _parse(_complete_tokens())
     updates = observation_widget_updates(
         observation.to_payload(),
-        load_current_advisor_roll_rules(),
+        _release_roll_rules(),
     )
 
     assert len(updates) == 31
@@ -367,12 +437,10 @@ def test_confirmed_observation_maps_to_all_advisor_widget_keys() -> None:
 
 def test_ocr_profile_covers_every_current_positive_weight_offer() -> None:
     profile = load_live_ocr_profile()
-    rules = load_current_advisor_roll_rules()
+    rules = _release_roll_rules()
 
     assert profile.language_priority == ("en", "zh-Hans")
-    assert set(profile.operations) == {
-        operation.operation_id for operation in rules.offered_operations
-    }
+    assert set(profile.operations) == {operation.operation_id for operation in rules.offered_operations}
 
 
 def test_stop_prevents_a_slow_recognition_from_overwriting_idle_state() -> None:
@@ -409,7 +477,7 @@ def test_stop_prevents_a_slow_recognition_from_overwriting_idle_state() -> None:
 
     monitor = LiveRollMonitor(
         profile=profile,
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
         capturer=Capturer(),
         reader=BlockingReader(),  # type: ignore[arg-type]
     )
@@ -475,7 +543,7 @@ def test_one_shot_waits_through_minimized_and_non_target_then_stops_after_result
     reader = ConfirmedReader()
     monitor = LiveRollMonitor(
         profile=profile,
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
         capturer=capturer,
         reader=reader,  # type: ignore[arg-type]
         cache_dir=tmp_path,
@@ -521,7 +589,7 @@ def test_one_shot_stops_after_an_incomplete_target_observation(tmp_path) -> None
 
     monitor = LiveRollMonitor(
         profile=profile,
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
         capturer=capture,
         reader=IncompleteReader(),  # type: ignore[arg-type]
         cache_dir=tmp_path,
@@ -586,7 +654,7 @@ def test_sequential_one_shot_requests_reuse_one_worker_thread(tmp_path) -> None:
     reader = ConfirmedReader()
     monitor = LiveRollMonitor(
         profile=profile,
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
         capturer=capturer,
         reader=reader,  # type: ignore[arg-type]
         cache_dir=tmp_path,
@@ -641,7 +709,7 @@ def test_cancelled_slow_request_can_rearm_on_the_same_worker(tmp_path) -> None:
 
     monitor = LiveRollMonitor(
         profile=profile,
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
         capturer=capture,
         reader=BlockingThenConfirmedReader(),  # type: ignore[arg-type]
         cache_dir=tmp_path,
@@ -655,10 +723,7 @@ def test_cancelled_slow_request_can_rearm_on_the_same_worker(tmp_path) -> None:
         release_first.set()
 
         assert second_read.wait(timeout=2)
-        assert _wait_until(
-            lambda: monitor.snapshot().stage == "confirmed"
-            and not monitor.snapshot().running
-        )
+        assert _wait_until(lambda: monitor.snapshot().stage == "confirmed" and not monitor.snapshot().running)
         assert len({id(thread) for thread in capture_threads}) == 1
     finally:
         monitor.shutdown()

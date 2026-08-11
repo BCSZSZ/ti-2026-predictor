@@ -29,6 +29,14 @@ class ProjectPaths:
         return self.config / "ti2026.yaml"
 
     @property
+    def swiss(self) -> Path:
+        return self.config / "tournaments" / "ti2026-swiss-v1.json"
+
+    @property
+    def swiss_policy(self) -> Path:
+        return self.config / "models" / "group-swiss-v1.json"
+
+    @property
     def data(self) -> Path:
         return self.root / "data"
 

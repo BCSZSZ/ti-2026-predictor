@@ -9,6 +9,7 @@ src/ti_replay_parser/target/
 .streamlit/secrets.toml
 .env
 .scratch/
+docs/publication/ti2026-release-bundle-2026-08-09.zip
 
 # Local data and generated runs
 data/raw/

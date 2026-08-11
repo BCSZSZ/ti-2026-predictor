@@ -4,8 +4,17 @@ import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ti_predictor.config import load_rules, load_tournament_manifest
-from ti_predictor.rules import create_rule_snapshot, validate_rules, validate_snapshot
+from ti_predictor.config import load_rules, load_tournament_manifest, rules_hash
+from ti_predictor.rules import (
+    create_rule_snapshot,
+    inspect_client_sources,
+    latest_rule_snapshot,
+    rule_snapshot_at,
+    rule_snapshot_issues,
+    validate_rules,
+    validate_snapshot,
+)
+from ti_predictor.schemas import RuleSnapshot
 
 
 def test_golden_rules_have_expected_shapes(project_paths) -> None:
@@ -70,6 +79,51 @@ def test_manifest_has_sixteen_unique_complete_teams(project_paths) -> None:
     assert len(manifest.teams) == 16
     assert len({team.team_id for team in manifest.teams}) == 16
     assert all(sum(len(players) for players in team.players.values()) == 5 for team in manifest.teams)
+
+
+def test_client_roster_keeps_inactive_entries_for_audit_but_compares_only_active(tmp_path: Path) -> None:
+    crafting = tmp_path / "scripts/fantasy_crafting.vdata"
+    crafting.parent.mkdir(parents=True)
+    crafting.write_text(
+        """
+        m_eEvent = "EVENT_ID_INTERNATIONAL_2026"
+        m_vecPlayers = [
+            {
+                m_unAccountID = 1026694469
+                m_unTeamID = 10150538
+                m_strPlayerName = "TaiLung"
+                m_bIsValid = false
+            },
+            {
+                m_unAccountID = 94054712
+                m_unTeamID = 10150538
+                m_strPlayerName = "Topson"
+                m_bIsValid = true
+            },
+        ]
+        """,
+        encoding="utf-8",
+    )
+
+    observed = inspect_client_sources(tmp_path)
+
+    assert observed["event_account_ids"] == [94054712]
+    assert observed["event_roster_pairs"] == [[94054712, 10150538]]
+    assert observed["event_inactive_account_ids"] == [1026694469]
+    assert observed["event_roster_entries"] == [
+        {
+            "account_id": 94054712,
+            "team_id": 10150538,
+            "player_name": "Topson",
+            "is_valid": True,
+        },
+        {
+            "account_id": 1026694469,
+            "team_id": 10150538,
+            "player_name": "TaiLung",
+            "is_valid": False,
+        },
+    ]
 
 
 def test_client_snapshot_records_sources_and_conflict(tmp_path: Path, project_paths) -> None:
@@ -170,3 +224,34 @@ def test_client_snapshot_records_sources_and_conflict(tmp_path: Path, project_pa
     status, issues = validate_snapshot(paths=project_paths)
     assert status == "warning"
     assert not [issue for issue in issues if issue.severity == "blocking"]
+
+
+def test_historical_rule_resolution_uses_latest_snapshot_available_at_as_of(project_paths) -> None:
+    def write_snapshot(snapshot_id: str, created_at: str, semantic_hash: str) -> None:
+        snapshot = RuleSnapshot(
+            snapshot_id=snapshot_id,
+            event_id="international_2026",
+            as_of=created_at,
+            created_at=created_at,
+            source="dota_client",
+            source_files=[],
+            canonical_rules_sha256=rules_hash(project_paths.rules),
+            snapshot_sha256=semantic_hash,
+            status="publishable",
+            observed={},
+        )
+        path = project_paths.raw / "rules" / snapshot_id / "rule_snapshot.json"
+        path.parent.mkdir(parents=True)
+        path.write_text(snapshot.model_dump_json(indent=2) + "\n", encoding="utf-8")
+
+    write_snapshot("20260810T134439Z-aaaaaaaaaaaa", "2026-08-10T13:44:39Z", "a" * 64)
+    write_snapshot("20260811T025356Z-bbbbbbbbbbbb", "2026-08-11T02:53:56Z", "b" * 64)
+    cutoff = datetime(2026, 8, 10, 13, 45, 12, tzinfo=UTC)
+
+    assert latest_rule_snapshot(project_paths)[0].snapshot_sha256 == "b" * 64
+    resolved = rule_snapshot_at(cutoff, project_paths)
+    assert resolved is not None
+    assert resolved[0].snapshot_sha256 == "a" * 64
+    assert not [
+        issue for issue in rule_snapshot_issues(cutoff, project_paths) if issue.severity == "blocking"
+    ]

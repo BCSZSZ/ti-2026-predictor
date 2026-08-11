@@ -2,15 +2,15 @@
   "schema_version": 2,
   "policy_id": "fantasy-group-current-screen-advisor-v2",
   "period": "group",
-  "as_of": "2026-08-08T13:12:00Z",
+  "as_of": "2026-08-10T13:45:12Z",
   "seed": 20260813,
   "source": {
-    "p3_evidence_sha256": "94c3313c62f812b492661682fbe85673104377862384eb511d0d185c1fe40d7a",
-    "data_snapshot_sha256": "a39586e01b3b06ba5a382ef15ccb4789128194ae962f99152149b6f858cad542",
-    "pool_set_sha256": "1bd1e6d35baad5b09e1aa8f8163fe72dd222370a76b994019ba92dc3d297b5f3",
-    "full_scenario_sha256": "5f30e21bd8b2a7a3dd8eafe989a6f3108aca737d7d97aadd581ea123f75c7960",
-    "title_evidence_sha256": "d9a57ea0d57cd4873be88422f4a5fdb7dbf1ee9b7a68baab16d18754ddd50483",
-    "rule_snapshot_sha256": "4bbcce56e047a008118fdb5e1ea6cf870070f58f5fe2fec3ad68c7521e5aea3d"
+    "p3_evidence_sha256": "2fdde6cb016e1c256234eddaaabd5af428443f6e94c0b54b1e25e68e1cf6e05d",
+    "data_snapshot_sha256": "9208c15c173b7ee0fc05b0e04cc9e89f5aac8d78c1a2b4905d550e2abaf4bc7b",
+    "pool_set_sha256": "6a01d321a8956211ebeb27a0537e8a311b7d6d6c6d90fb15843715901d2ed72d",
+    "full_scenario_sha256": "f1c869662b3bf1f170ac68b843beb90a866c5bf4e46facf1047ecd95de7b7f8c",
+    "title_evidence_sha256": "03cde760c24316030d83af0d6b92b999f1a9deb8292c34001dea41f96ca90da6",
+    "rule_snapshot_sha256": "eb3c30f542a2ee7fde1d101fdf57bd9f2f729730ccf6707c893d4e9b938cccb3"
   },
   "responsive_scenarios": {
     "count": 256,
@@ -43,7 +43,7 @@
     "main_execution": "fail_closed"
   },
   "performance_targets_seconds": {
-    "context_load": 30.0,
+    "context_load": 45.0,
     "analysis": 10.0,
     "cached_repeat": 1.0
   }

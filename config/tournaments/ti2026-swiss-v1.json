@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "event_id": "international_2026",
+  "league_id": 19719,
+  "format_version": "valve-ti15-swiss-2026-08-10-v1",
+  "as_of": "2026-08-10T13:45:12Z",
+  "league_source": {
+    "url": "https://www.dota2.com/webapi/IDOTA2League/GetLeagueData/v001?league_id=19719",
+    "fetched_at": "2026-08-10T13:45:12Z",
+    "sha256": "73519bcb40a40a02de7a3b343ce3daf4a5786d449d058d3300569b1bbea84c2a"
+  },
+  "rules_source": {
+    "url": "https://www.dota2.com/public/javascript/dota_react/6777.js?contenthash=652ea487b0024989f20b&l=english&_cdn=fastly",
+    "fetched_at": "2026-08-10T13:45:12Z",
+    "sha256": "e55e2d979f0de1f2b16890b4ea6ed4d1e8ba0c47752a2bfdb1dc86e8829bbf6c"
+  },
+  "initial_group_provenance": "derived",
+  "rounds": 5,
+  "win_loss_limit": 4,
+  "series_best_of": 3,
+  "first_round": [
+    {"node_id": "Match 1.A", "initial_group": "A", "start_at": "2026-08-13T02:00:00Z", "team_a_id": 9247354, "team_b_id": 10150538},
+    {"node_id": "Match 2.A", "initial_group": "A", "start_at": "2026-08-13T02:00:00Z", "team_a_id": 10150413, "team_b_id": 10136357},
+    {"node_id": "Match 3.A", "initial_group": "A", "start_at": "2026-08-13T02:00:00Z", "team_a_id": 8255888, "team_b_id": 2586976},
+    {"node_id": "Match 4.A", "initial_group": "A", "start_at": "2026-08-13T02:00:00Z", "team_a_id": 9572001, "team_b_id": 5017210},
+    {"node_id": "Match 1.B", "initial_group": "B", "start_at": "2026-08-13T05:00:00Z", "team_a_id": 7119388, "team_b_id": 8261500},
+    {"node_id": "Match 2.B", "initial_group": "B", "start_at": "2026-08-13T05:00:00Z", "team_a_id": 2163, "team_b_id": 726228},
+    {"node_id": "Match 3.B", "initial_group": "B", "start_at": "2026-08-13T05:00:00Z", "team_a_id": 9467224, "team_b_id": 9964962},
+    {"node_id": "Match 4.B", "initial_group": "B", "start_at": "2026-08-13T05:00:00Z", "team_a_id": 9823272, "team_b_id": 10149530}
+  ]
+}

@@ -21,7 +21,7 @@ from ti_predictor.hashing import sha256_bytes, sha256_file, sha256_json
 from ti_predictor.models.evidence import build_evidence_set, ordered_patch_families
 from ti_predictor.models.policy import EvidenceScopePolicy
 from ti_predictor.paths import PATHS, ProjectPaths
-from ti_predictor.rules import latest_rule_snapshot
+from ti_predictor.rules import rule_snapshot_at
 from ti_predictor.runs import ArtifactWriter, make_run_id
 from ti_predictor.schemas import ForecastRun, as_utc
 from ti_predictor.storage import read_parquet_if_exists, timestamp_slug
@@ -189,7 +189,8 @@ def render_title_evidence_markdown(payload: dict[str, Any]) -> str:
         [
             "",
             "由于最终只能选一个 Prefix，而不是三个位置各选一个，上述分位置结果只用来解释阵容依赖。",
-            "48 个“队伍×位置”池中，默认第一并没有覆盖过半，因此 Prefix 只能给中等偏低确定度。",
+            f"{analysis['pool_count']} 个“队伍×位置”池中，默认第一并没有覆盖过半，"
+            "因此 Prefix 只能给中等偏低确定度。",
             "",
             "## 你截图里的当前组合",
             "",
@@ -452,7 +453,7 @@ def generate_group_title_evidence(
     writer = ArtifactWriter(run_id, paths)
     evidence_path = writer.write_json("group-fantasy-title-evidence.json", payload)
     report_path = writer.write_text("group-fantasy-title-report.md", render_title_evidence_markdown(payload))
-    snapshot_result = latest_rule_snapshot(paths)
+    snapshot_result = rule_snapshot_at(cutoff, paths)
     snapshot = snapshot_result[0] if snapshot_result is not None else None
     run = ForecastRun(
         run_id=run_id,

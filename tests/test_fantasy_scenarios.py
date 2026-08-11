@@ -34,7 +34,7 @@ from ti_predictor.fantasy.valuation import (
 )
 from ti_predictor.tournament.group import SLOT_CATEGORIES
 
-CUTOFF = datetime(2026, 8, 6, 8, 15, tzinfo=UTC)
+CUTOFF = datetime(2026, 8, 10, 13, 45, 12, tzinfo=UTC)
 
 
 def _small_policy(project_paths, *, scenarios: int = 8, replicates: int = 6) -> GroupScenarioPolicy:
@@ -174,6 +174,77 @@ def test_series_blocks_keep_games_pairs_and_provenance_together(project_paths, r
     assert core.blocks[0].game_stat_scores.flags.writeable is False
     with pytest.raises(ValueError):
         core.blocks[0].game_stat_scores[0, 0] = 0.0
+
+
+def test_unavailable_mid_pool_is_audited_without_excluding_other_lgd_roles(
+    project_paths,
+    rules_payload,
+) -> None:
+    manifest = load_tournament_manifest(project_paths.tournament)
+    policy = _small_policy(project_paths)
+    matches, observations, evidence = _synthetic_frames(manifest, rules_payload)
+    lgd = next(team for team in manifest.teams if team.team_id == 10150538)
+    top_id = lgd.players["mid"][0].account_id
+    observations = observations.loc[~observations["account_id"].eq(top_id)].copy()
+
+    pools = build_series_block_pools(
+        observations,
+        matches,
+        evidence,
+        manifest,
+        rules_payload,
+        policy,
+        as_of=CUTOFF,
+    )
+    outcomes = np.stack([np.roll(SLOT_CATEGORIES, offset) for offset in range(policy.scenario_count)])
+    team_ids = np.asarray([team.team_id for team in manifest.teams], dtype=np.int64)
+    scenarios = build_common_scenario_set(
+        pools,
+        group_team_ids=team_ids,
+        group_outcomes=outcomes,
+        policy=policy,
+        data_snapshot_sha256="b" * 64,
+        as_of=CUTOFF,
+        seed=73,
+    )
+
+    assert (10150538, "mid") not in pools.by_key()
+    assert (10150538, "core") in pools.by_key()
+    unavailable = next(
+        item
+        for item in pools.audit["team_role_availability"]
+        if item["target_team_id"] == 10150538 and item["role"] == "mid"
+    )
+    assert unavailable["status"] == "unavailable"
+    assert unavailable["complete_series_blocks"] == 0
+    assert scenarios.draw_record_for(10150538, "core").target_team_id == 10150538
+    with pytest.raises(KeyError, match="no common Scenario draws"):
+        scenarios.draw_record_for(10150538, "mid")
+
+    mid_matrix = evaluate_banner_teams(pools, scenarios, _banner("mid"), rules_payload)
+    core_matrix = evaluate_banner_teams(pools, scenarios, _banner("core"), rules_payload)
+    support_matrix = evaluate_banner_teams(pools, scenarios, _banner("support"), rules_payload)
+    assert 10150538 not in mid_matrix.team_ids
+    assert 10150538 in core_matrix.team_ids
+    matched = match_group_roles(
+        {"core": core_matrix, "mid": mid_matrix, "support": support_matrix},
+        RiskConfiguration(),
+    )
+    assert matched.selected_team_ids[1] != 10150538
+    stat_forecasts = build_stat_forecast_package(pools, scenarios, rules_payload)
+    bootstrap = cluster_bootstrap_stat_intervals(
+        pools,
+        scenarios,
+        stat_forecasts,
+        rules_payload,
+        policy,
+        seed=74,
+        include_team_rankings=True,
+    )
+    assert bootstrap["team_rankings"]["rows"]
+    assert all(
+        row["team_id"] != 10150538 for row in bootstrap["team_rankings"]["rows"] if row["role"] == "mid"
+    )
 
 
 def test_pool_builder_audits_excluded_format_future_capture_and_wrong_provenance(

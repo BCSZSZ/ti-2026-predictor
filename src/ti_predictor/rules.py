@@ -348,22 +348,16 @@ def inspect_client_sources(source_root: Path) -> dict[str, Any]:
         event_start = text.find('m_eEvent = "EVENT_ID_INTERNATIONAL_2026"')
         if event_start >= 0:
             event_text = text[event_start:]
-            observed["event_team_ids"] = sorted(
-                {int(value) for value in re.findall(r"m_unTeamID\s*=\s*(\d+)", event_text)}
-            )
-            observed["event_account_ids"] = sorted(
-                {int(value) for value in re.findall(r"m_unAccountID\s*=\s*(\d+)", event_text)}
-            )
+            roster_entries = _event_roster_entries(event_text)
+            active_entries = [entry for entry in roster_entries if entry["is_valid"]]
+            inactive_entries = [entry for entry in roster_entries if not entry["is_valid"]]
+            observed["event_roster_entries"] = roster_entries
+            observed["event_team_ids"] = sorted({entry["team_id"] for entry in active_entries})
+            observed["event_account_ids"] = sorted(entry["account_id"] for entry in active_entries)
             observed["event_roster_pairs"] = sorted(
-                [
-                    [int(account), int(team)]
-                    for account, team in re.findall(
-                        r"m_unAccountID\s*=\s*(\d+).*?m_unTeamID\s*=\s*(\d+)",
-                        event_text,
-                        flags=re.DOTALL,
-                    )
-                ]
+                [entry["account_id"], entry["team_id"]] for entry in active_entries
             )
+            observed["event_inactive_account_ids"] = sorted(entry["account_id"] for entry in inactive_entries)
 
     localization_path = source_root / "resource/localization/dota_schinese.txt"
     if localization_path.exists():
@@ -372,6 +366,27 @@ def inspect_client_sources(source_root: Path) -> dict[str, Any]:
             re.search(r"(?:10|１０)\s*分钟", text, flags=re.IGNORECASE)
         )
     return observed
+
+
+def _event_roster_entries(event_text: str) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    for match in re.finditer(r"\{(?P<body>[^{}]*m_unAccountID\s*=\s*\d+[^{}]*)\}", event_text):
+        body = match.group("body")
+        account = re.search(r"m_unAccountID\s*=\s*(\d+)", body)
+        team = re.search(r"m_unTeamID\s*=\s*(\d+)", body)
+        if account is None or team is None:
+            continue
+        name = re.search(r'm_strPlayerName\s*=\s*"([^"]*)"', body)
+        validity = re.search(r"m_bIsValid\s*=\s*(true|false)", body, flags=re.IGNORECASE)
+        entries.append(
+            {
+                "account_id": int(account.group(1)),
+                "team_id": int(team.group(1)),
+                "player_name": name.group(1) if name else "",
+                "is_valid": validity is None or validity.group(1).lower() == "true",
+            }
+        )
+    return sorted(entries, key=lambda entry: entry["account_id"])
 
 
 def _value_after_block(text: str, block: str, key: str) -> int | None:
@@ -948,9 +963,40 @@ def latest_rule_snapshot(paths: ProjectPaths = PATHS) -> tuple[RuleSnapshot, Pat
     return None
 
 
+def rule_snapshot_at(
+    as_of: datetime,
+    paths: ProjectPaths = PATHS,
+) -> tuple[RuleSnapshot, Path] | None:
+    """Return the newest snapshot that was both observed and captured by the UTC cutoff."""
+
+    cutoff = as_utc(as_of)
+    if cutoff is None:
+        raise ValueError("rule snapshot resolution requires an explicit UTC as_of")
+    available: list[tuple[RuleSnapshot, Path]] = []
+    for snapshot_path in (paths.raw / "rules").glob("*/rule_snapshot.json"):
+        try:
+            snapshot = RuleSnapshot.model_validate_json(snapshot_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if snapshot.as_of <= cutoff and snapshot.created_at <= cutoff:
+            available.append((snapshot, snapshot_path))
+    if not available:
+        return None
+    return max(available, key=lambda item: (item[0].created_at, item[0].snapshot_id))
+
+
 def rule_snapshot_issues(as_of: datetime, paths: ProjectPaths = PATHS) -> list[AuditIssue]:
-    current = latest_rule_snapshot(paths)
+    current = rule_snapshot_at(as_of, paths)
     if current is None:
+        latest = latest_rule_snapshot(paths)
+        if latest is not None:
+            return [
+                AuditIssue(
+                    code="rule-snapshot-after-as-of",
+                    severity="blocking",
+                    message="No rule snapshot had been captured by the forecast as_of",
+                )
+            ]
         return [
             AuditIssue(
                 code="rule-snapshot-missing",
@@ -966,14 +1012,6 @@ def rule_snapshot_issues(as_of: datetime, paths: ProjectPaths = PATHS) -> list[A
                 code="rule-snapshot-blocked",
                 severity="blocking",
                 message=f"Latest Dota client rule snapshot {snapshot.snapshot_id} is blocked",
-            )
-        )
-    if snapshot.created_at > as_utc(as_of):
-        issues.append(
-            AuditIssue(
-                code="rule-snapshot-after-as-of",
-                severity="blocking",
-                message="Latest rule snapshot was captured after the forecast as_of",
             )
         )
     if snapshot.canonical_rules_sha256 != rules_hash(paths.rules):

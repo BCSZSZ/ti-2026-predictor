@@ -9,24 +9,77 @@
 
 LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统计模型和固定随机种子产生。
 
+## 两种发布方式
+
+### 1. 公开 Streamlit：仅手动输入
+
+公开版入口是 [`streamlit_app.py`](streamlit_app.py)。玩家手动录入当前九格、同屏三个 Roll 选项和
+剩余次数；页面返回唯一的一步建议、队伍组合与 Title 排名。它明确不包含：
+
+- 截图或画面识别；
+- Dota/Steam 控制和自动填写；
+- 原始数据同步、规则抓取或下一轮选项猜测；
+- 本机 `data/raw`、`data/processed` 或 `artifacts` 目录依赖。
+
+云端使用 [`deploy/runtime/current.json`](deploy/runtime/current.json) 指向的内容寻址
+**冻结求解发布包**，数据截止为 `2026-08-10T13:45:12Z`。发布包只含求解所需的紧凑派生证据，
+不含也不会下载约 188 GB 的原始数据。本地预览：
+
+```powershell
+uv sync --locked
+uv run streamlit run streamlit_app.py
+```
+
+Streamlit Community Cloud 选择本仓库、Python 3.12，并把 Main file path 设为
+`streamlit_app.py`；项目根目录的 `uv.lock` 是唯一依赖锁文件，不需要 secrets 或
+`packages.txt`。完整部署与快照更新流程见
+[`deploy/streamlit/README.md`](deploy/streamlit/README.md)。
+
+### 2. GitHub 仓库：Windows 本地 OCR
+
+画面识别是可选的 Windows 本地能力，不进入公开 Streamlit。推荐安装步骤：
+
+```powershell
+winget install --id=astral-sh.uv -e
+git clone https://github.com/BCSZSZ/ti-2026-predictor.git
+Set-Location ti-2026-predictor
+uv python install 3.12
+uv sync --locked --extra ocr
+uv run ti app local-ocr
+```
+
+打开终端显示的 `http://127.0.0.1:8501`。这个用户入口与公开手动版读取同一个冻结求解发布包，
+不需要规则快照、ValveResourceFormat、OpenDota、`data/` 或 `artifacts/`。点击识别后切回完整
+Dota Roll 页面；程序只读窗口画面，确认一个稳定页面后自动停止。它不会保存 Steam 凭据、控制
+鼠标键盘或提交游戏内选择。OCR 截图与识别 JSON 只写入被 Git 忽略的本机
+`data/cache/ocr/live-roll/`。
+
+开发者需要测试工具时使用：
+
+```powershell
+uv sync --locked --extra dev --extra ocr
+uv run pytest
+```
+
+uv 的官方安装入口见 [Astral uv Installation](https://docs.astral.sh/uv/getting-started/installation/)；
+`uv sync --locked` 会拒绝过期锁文件，避免安装时静默改变依赖集合。
+
 梦幻挑战与赛事预测共同使用的数据基础、分析方法、证据等级、复现身份和可信边界，统一见
-[TI 2026 梦幻挑战与赛事预测：方法与证据权威性报告](docs/reports/ti2026-methodology-and-evidence-authority-report-2026-08-09.md)。
+[TI 2026 当前方法与证据权威性报告](docs/reports/ti2026-methodology-and-evidence-authority-report-2026-08-10.md)。
 当前 7.41e 1.5 倍权重的完整公式与适用范围另见
-[统一加权方式](docs/reports/ti2026-weighting-policy-2026-08-09.md)。
+[统一加权方式](docs/reports/ti2026-weighting-policy-2026-08-10.md)。
 它逐项区分 Valve/客户端事实、`exact`/`derived` 观测、模型推断和仍未闭合的草案，不把
-`publishable` 误写成“预测一定正确”；[7.41e 权重实施、影响与验收记录](docs/reports/ti2026-current-exact-patch-weight-v4-implementation-2026-08-09.md)
-保存本阶段的中央实现、正式重跑、Title 冲突解释和全项目检查；
-[易懂总结](docs/reports/ti2026-methodology-and-evidence-summary-2026-08-09.md)用玩家语言说明用了什么、
-怎么算、能信到什么程度以及下一步最值得补什么；只想看数据来源、计分、平均分与 Series 时，
-使用[方法极简速查](docs/reports/ti2026-methodology-quick-reference-2026-08-09.md)。本轮所有仍然有效的
+`publishable` 误写成“预测一定正确”；[首轮与 LGD 实装、重算及验收记录](docs/reports/ti2026-swiss-round1-roster-update-2026-08-10.md)
+保存本阶段的正式运行和数学闭合检查；只想看数据来源、计分、平均分与 Series 时，
+使用[方法极简速查](docs/reports/ti2026-methodology-quick-reference-2026-08-10.md)。本轮所有仍然有效的
 玩家版 Markdown 已集中到
-[TI 2026 玩家发布包](docs/publication/ti2026-release-bundle-2026-08-09/README.md)。
+[TI 2026 玩家发布包](docs/publication/ti2026-release-bundle-2026-08-11/README.md)。
 
 当前面向玩家的小组赛结论见
-[TI 2026 小组赛预测：7.41e 1.5 倍权重版](docs/reports/ti2026-group-forecast-publication-2026-08-09.md)。
-它以 16 队综合排名、实力带和两两胜负关系为主，明确披露正式模型在 TI 2025 留出集上只有
-56.25% 的胜负准确率；游戏内 16 槽填写放在报告末尾，不把微弱模型优势包装成确定答案。
-[易懂总结](docs/reports/ti2026-group-forecast-publication-summary-2026-08-09.md)提供一页速读，
+[TI 2026 瑞士轮 Forecast：16 队身份归一与 LGD 0.60 主情景](docs/reports/ti2026-group-forecast-publication-2026-08-10.md)。
+它使用 Valve 官方首轮和规则驱动的五轮 Swiss 模拟，给出 BO3 胜率、16 槽类别概率以及
+**期望正确 5.1561 / 16（最终期望正确比例 32.23%）**；正式模型在 TI 2025 的 144 局留出集上命中率为
+56.25%，所以不把微弱优势包装成确定答案。
 [赛事档位与奖金易懂总结](docs/reports/ti2026-group-event-tier-prize-summary-2026-08-08.md)单独说明
 当前 7.41 赛事的社区 Tier、总奖金和资格赛缺失值该怎样理解，
 [7.41 系列赛证据展开](docs/reports/ti2026-group-current-patch-series-evidence-2026-08-08.md)列出
@@ -35,21 +88,51 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 失败门禁、数值追溯与项目级审查；[系列赛证据 v3 实施记录](docs/reports/ti2026-group-series-evidence-v3-implementation-2026-08-08.md)
 单独保存赛事档位、奖金、资格赛缺失值语义及这次发布增强的验收。
 
+## 16 队身份处理
+
+- 当前 16 队逐项审计确认四个博彩品牌相关展示别名：BoomBoys/BetBoom、TEAM VISION/PARIVISION、
+  HULIGANI/L1GA、Iron Wing/1win；另有 Team Resilience、Xtreme Gaming 与 LGD Gaming 的赛事
+  临时注册 ID。
+- 正式模型不按队名字符串猜测。当前配置使用 **9 条带有效期的 identity bridge**，在冻结比赛中
+  映射 **203 场不同比赛**；原始比赛与 raw team ID 全部保留。
+- `10150413 Iron Wing` 只从 `2026-06-01T00:00:00Z` 起承认当前身份，排除此前 24 场 Tundra
+  阶段比赛；`5017210 Team Resilience` 也有防止历史 ID 复用的身份窗口。
+- `8291895 Tundra`、`9303484 HEROIC` 和无关同名 BoomBoys 明确不合并。阵容连续性不能跨越真实
+  组织转会边界。
+
+完整证据、每条映射的有效期和反例见
+[16 队身份审计](docs/research/ti2026-team-display-alias-audit-2026-08-11.md)、
+[VISION 专项审计](docs/research/ti2026-yandex-liquid-vision-rating-audit-2026-08-11.md)与
+[当前赛事报告](docs/reports/ti2026-group-forecast-publication-2026-08-10.md)。
+
+## LGD 阵容变更处理
+
+- 本机 Dota 客户端 TI 事件名单确认 TaiLung 已无效、Topson `94054712` 为 LGD 当前有效中单；
+  阵容使用半开生效区间，不把新阵容回填到更早比赛。
+- 赛事 Forecast 不把绝对 Elo/Glicko rating 直接乘 0.60，而是在未来 BO3 对局中将 LGD 的模型
+  胜算 odds 乘 **0.60**。这是正式下行情景；同时保留 `1.00`、`0.90`、`0.75` 及不同选对手策略
+  作为敏感性。Falcons–LGD 的未调整概率为 65.02%–34.98%，应用 0.60 胜算乘数后为
+  **75.65%–24.35%**。
+- Fantasy 不为 Topson 编造分数。虽然公开数据存在 14 局 7.41c/d，但当前正式
+  `premium/professional` 口径下合格完整 Series 为 0，因此 **LGD 中单不可选**；LGD 核心位和
+  辅助位仍可选。缺失保持 `unavailable/null`，不填 0，也不继承 TaiLung 数据。
+- LGD 公告只公开称“赛事诚信信息”和禁赛安排，没有公开确认具体假赛事实；本项目不扩大表述。
+
+完整证据与判断见[调查记录](docs/research/ti2026-swiss-round1-lgd-roster-2026-08-10.md)和
+[当前方法报告](docs/reports/ti2026-methodology-and-evidence-authority-report-2026-08-10.md)。
+
 ## 快速开始
 
 ```powershell
 uv sync --extra dev
-uv run ti rules snapshot --as-of 2026-08-12T23:00:00Z
 uv run ti rules validate
-uv run ti data sync --as-of 2026-08-12T23:00:00Z --year 2026 --team-detail-limit 20 --request-limit 500
-uv run ti forecast group --as-of 2026-08-12T23:00:00Z --profile all
-uv run ti fantasy recommend --as-of 2026-08-12T23:00:00Z --period group --profile all
-uv run ti fantasy group-evidence --as-of 2026-08-12T23:00:00Z --bootstrap
-uv run ti fantasy group-evidence --as-of 2026-08-12T23:00:00Z --bootstrap --team-rank-bootstrap
+uv run ti forecast group --as-of 2026-08-10T13:45:12Z --profile all --samples 100000 --sensitivity-samples 20000 --seed 20260813
+uv run ti fantasy recommend --as-of 2026-08-10T13:45:12Z --period group --profile all
+uv run ti fantasy group-evidence --as-of 2026-08-10T13:45:12Z --seed 20260813 --bootstrap --team-rank-bootstrap
 uv run ti fantasy group-playbook-evidence --as-of 2026-08-06T17:27:00Z --playbook-version v2
 uv run ti fantasy group-cross-audit --as-of 2026-08-06T17:27:00Z --cross-audit-version v2
 uv run ti fantasy group-advisor-evidence --as-of 2026-08-06T08:15:00Z
-uv run ti web
+uv run ti dev web
 ```
 
 默认网页只监听 `127.0.0.1`。首次同步会访问 OpenDota；测试永远不访问实时 API。
@@ -90,10 +173,11 @@ Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策
 
 `fantasy group-evidence` 是 P3 的 Group 专用证据入口：它用完整 Series 块、8,192 个公共情景
 和 400 次 Series 分组重采样生成可复现的 Stat 表及终局估值哈希；它不是人工手册或重随求解器。
-可选的 `--team-rank-bootstrap` 会再为 42 个位置/颜色/Stat 组生成全部 16 队的排名记录和
+可选的 `--team-rank-bootstrap` 会再为 42 个位置/颜色/Stat 组生成当前可用队伍的排名记录和
 可读 Top 3 附表。默认关闭以保持冻结 v2 schema 与哈希兼容；发布版以“平均分、低迷分、
 样本、落后第一、第一稳定率、前三稳定率”呈现，稳定率不是未来真实排名概率。正式附表见
-[v3 Stat 队伍 Top 3 发布版](docs/playbooks/group-roll/stat-team-top3-publication-v3.md)。
+[v4 Stat 队伍 Top 3 发布版](docs/playbooks/group-roll/stat-team-top3-publication-v4.md)。当前核心位和
+辅助位各 16 队，中单因 LGD 不可用而为 15 队，共 47 个队伍×位置池。
 两版 v2 人工手册、完整 Stat/Quality/Trait 表、最终证据包和当前发布状态见
 [Group Roll 手册索引](docs/playbooks/group-roll/README.md)。v2 standalone 在约 25 分钟内完成，
 完整 held-out 只读交叉审计在约 45 分钟内完成 108/108；二者合计约 70 分钟，不需要再追加
@@ -103,7 +187,7 @@ Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策
 [易懂总结](docs/reports/group-roll-playbook-v2-summary-2026-08-07.md)。
 
 面向玩家直接查阅的保守版本见
-[Group 40 Roll 玩家手册（7.41e 权重更新版）](docs/playbooks/group-roll/group-roll-publication-manual-v3.md)：
+[Group 40 Roll 玩家手册（2026-08-10 阵容更新版）](docs/playbooks/group-roll/group-roll-publication-manual-v4.md)：
 它用易懂语言说明 Roll 机制，并按证据确定度排列规则，不把仍为 `draft` 的两本候选包装成
 可靠或全局最优策略。
 
@@ -116,12 +200,12 @@ planner。v1 手册、P5/P6 产物和默认 CLI 路径继续作为不可变兼�
 九格、当前三个共享选项和剩余 Roll 后，
 会自动填入本页并重新计算。页面给出唯一的一步建议、风险说明、当前三个位置的队伍组合及
 自动 Title 排名。它直接使用
-2026-08-08 的当前 P3/Title 冻结证据，不依赖旧 P4/P5/P6 手册门禁；不会生成下一轮选项，
+2026-08-10 的当前 P3/Title/Swiss 冻结证据，不依赖旧 P4/P5/P6 手册门禁；不会生成下一轮选项，
 也不会向 Dota 发送鼠标、键盘或内存操作。每次识别完成后会自动停止；玩家在游戏内操作后，
 需要再次点击识别按钮读取实际新画面。
-真实数据冷启动约 18 秒，首次一步
-计算约 0.6 秒，缓存重算约 0.05 秒。旧 P7 v1 会话与证据命令作为历史兼容证据保留，不再是
-页面运行路径。实装范围和验收标准见
+两个玩家入口都直接加载仓库内的冻结求解发布包，不再执行约 40 秒的真实数据冷启动；一步计算
+仍约 0.6 秒，缓存重算约 0.05 秒。旧 P7 v1 会话与证据命令作为历史兼容证据保留，不再是
+玩家页面运行路径。实装范围和验收标准见
 [v2 实装计划](docs/plans/current-screen-roll-advisor-v2.md)，完成结果见
 [易懂总结](docs/reports/current-screen-roll-advisor-v2-implementation-2026-08-09.md)。
 完整操作顺序、主赛事种子导入和状态含义见 [docs/runbook.md](docs/runbook.md)。模型的时间
@@ -130,8 +214,8 @@ planner。v1 手册、P5/P6 产物和默认 CLI 路径继续作为不可变兼�
 ## 本地实时 OCR（可选）
 
 ```powershell
-uv sync --extra dev --extra ocr
-uv run ti web
+uv sync --locked --extra ocr
+uv run ti app local-ocr
 ```
 
 打开 `Group Roll 实时顾问`，点击“识别下一次稳定的 Dota 画面”，再切回完整 Roll 页面。
@@ -159,8 +243,12 @@ Dota。Dota 最小化、尚未切回或不在完整 Roll 页面时只会继续�
 
 ## 当前边界
 
-- 2026 瑞士轮的精确执行尚未进入本地可哈希的一手规则快照，因此小组结果保留容量情景的
-  模型近似警告。
+- 2026 首轮已经按 Valve 官方节点冻结，五轮 Swiss 规则已经进入可哈希模拟器；A/B 归属仍由
+  `.A/.B` 节点名与组内规则派生，后续非唯一合法配对、选对手、平均时长和掷币继续保留 warning。
+- 9 条身份桥和 2 个 registration identity window 只在稳定选手 ID、时间区间与冻结证据共同支持时
+  生效；名称相似本身不足以合并，未来超出生效区间的比赛不会自动继承。
+- LGD `0.60` 是显式 roster-shock 情景而非已验证效应量；Fantasy 的 LGD 中单保持不可用，不以
+  0 分或旧中单历史填补。
 - 主赛事实际八队与种子未写入前，14 节点网格会生成但保持 `blocked`。
 - Fantasy 默认只用覆盖充分的 `exact/derived` 字段；五项原生 replay 统计只有通过逐场状态、
   字段存在性和 Watcher build 门槛后才参与，OpenDota proxy 永不参与默认最优解。

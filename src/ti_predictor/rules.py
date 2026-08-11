@@ -357,9 +357,7 @@ def inspect_client_sources(source_root: Path) -> dict[str, Any]:
             observed["event_roster_pairs"] = sorted(
                 [entry["account_id"], entry["team_id"]] for entry in active_entries
             )
-            observed["event_inactive_account_ids"] = sorted(
-                entry["account_id"] for entry in inactive_entries
-            )
+            observed["event_inactive_account_ids"] = sorted(entry["account_id"] for entry in inactive_entries)
 
     localization_path = source_root / "resource/localization/dota_schinese.txt"
     if localization_path.exists():

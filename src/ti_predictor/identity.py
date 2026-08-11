@@ -64,8 +64,7 @@ def canonicalize_match_team_ids(
 
     identity_items = sorted((registration_identities or {}).items())
     registration_payloads = [
-        {"team_id": team_id, **identity.model_dump(mode="json")}
-        for team_id, identity in identity_items
+        {"team_id": team_id, **identity.model_dump(mode="json")} for team_id, identity in identity_items
     ]
     registration_audit: list[dict[str, Any]] = []
     all_excluded_match_ids: set[int] = set()
@@ -146,9 +145,9 @@ def canonicalize_match_team_ids(
             }
         )
 
-    mapped_rows = frame["radiant_team_identity_bridge_id"].notna() | frame[
-        "dire_team_identity_bridge_id"
-    ].notna()
+    mapped_rows = (
+        frame["radiant_team_identity_bridge_id"].notna() | frame["dire_team_identity_bridge_id"].notna()
+    )
     collapsed_self_matches = (
         mapped_rows
         & frame["radiant_team_id"].notna()
@@ -166,9 +165,7 @@ def canonicalize_match_team_ids(
             identity.evidence_as_of <= cutoff for _, identity in identity_items
         ),
         "registration_identity_excluded_games": len(all_excluded_match_ids),
-        "registration_identity_excluded_match_ids_sha256": sha256_json(
-            sorted(all_excluded_match_ids)
-        ),
+        "registration_identity_excluded_match_ids_sha256": sha256_json(sorted(all_excluded_match_ids)),
         "registration_identity_config_sha256": sha256_json(registration_payloads),
         "registration_identities": registration_audit,
         "configured_bridge_count": len(bridges),

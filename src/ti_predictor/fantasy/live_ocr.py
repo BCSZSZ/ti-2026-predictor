@@ -126,9 +126,7 @@ class RollScreenObservation:
         semantic.pop("captured_at")
         semantic.pop("image_sha256")
         payload["observation_sha256"] = sha256_bytes(
-            json.dumps(semantic, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
-                "utf-8"
-            )
+            json.dumps(semantic, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
         )
         return payload
 
@@ -315,14 +313,8 @@ def _select_dxcam_output(factory: Any, monitor_handle: int) -> tuple[int, int, A
         for output_index, output in enumerate(outputs):
             if int(output.hmonitor) == monitor_handle:
                 return device_index, output_index, output
-    available = [
-        int(output.hmonitor)
-        for outputs in factory.outputs
-        for output in outputs
-    ]
-    raise ScreenCaptureError(
-        f"DXcam 没有找到 Dota 所在显示器句柄 {monitor_handle}；可用句柄：{available}。"
-    )
+    available = [int(output.hmonitor) for outputs in factory.outputs for output in outputs]
+    raise ScreenCaptureError(f"DXcam 没有找到 Dota 所在显示器句柄 {monitor_handle}；可用句柄：{available}。")
 
 
 def _crop_monitor_frame_to_window(image: Any, target: DotaCaptureTarget) -> Any:
@@ -403,9 +395,7 @@ class DotaMonitorCapturer:
         failures: list[str] = []
         for backend in self._backend_order:
             try:
-                array = self._camera_for(device_index, output_index, backend).grab(
-                    new_frame_only=False
-                )
+                array = self._camera_for(device_index, output_index, backend).grab(new_frame_only=False)
                 if array is None:
                     raise ScreenCaptureError("没有返回画面。")
                 image = _crop_monitor_frame_to_window(
@@ -417,9 +407,7 @@ class DotaMonitorCapturer:
                 if _capture_is_blank(image):
                     raise ScreenCaptureError("返回了空白画面。")
                 identity = (
-                    image.width.to_bytes(4, "little")
-                    + image.height.to_bytes(4, "little")
-                    + image.tobytes()
+                    image.width.to_bytes(4, "little") + image.height.to_bytes(4, "little") + image.tobytes()
                 )
                 return CapturedFrame(
                     image=image,
@@ -653,13 +641,9 @@ def _deduplicate_vertical_matches(
     return sorted(chosen, key=lambda item: item[0].center_y)
 
 
-def _role_anchors(
-    tokens: tuple[OCRToken, ...], profile: LiveOCRProfile
-) -> dict[str, tuple[OCRToken, float]]:
+def _role_anchors(tokens: tuple[OCRToken, ...], profile: LiveOCRProfile) -> dict[str, tuple[OCRToken, float]]:
     threshold = float(profile.recognition["target_anchor_confidence"])
-    candidates: dict[str, list[tuple[OCRToken, float]]] = {
-        role: [] for role in profile.roles
-    }
+    candidates: dict[str, list[tuple[OCRToken, float]]] = {role: [] for role in profile.roles}
     for token, role, similarity in _matched_tokens(tokens, profile.roles, minimum_similarity=0.72):
         confidence = token.confidence * similarity
         if confidence >= threshold:
@@ -695,8 +679,7 @@ def _is_target_screen(
     roles = _role_anchors(tokens, profile)
     anchor_hit = any(
         token.confidence >= float(profile.recognition["target_anchor_confidence"])
-        and max((_similarity(token.text, alias) for alias in profile.target_anchors), default=0.0)
-        >= 0.68
+        and max((_similarity(token.text, alias) for alias in profile.target_anchors), default=0.0) >= 0.68
         for token in tokens
     )
     stat_count = len(
@@ -746,8 +729,7 @@ def _best_in_row(
     candidates = [
         item
         for item in matches
-        if low <= item[0].center_y < high
-        and _nearest_role(item[0], roles, maximum_distance) == role
+        if low <= item[0].center_y < high and _nearest_role(item[0], roles, maximum_distance) == role
     ]
     if not candidates:
         return None
@@ -820,9 +802,7 @@ def _operation_candidates(
     return sorted(unique.values(), key=lambda item: item.center_x)
 
 
-def _parse_offers(
-    tokens: tuple[OCRToken, ...], profile: LiveOCRProfile
-) -> list[RollFieldReading]:
+def _parse_offers(tokens: tuple[OCRToken, ...], profile: LiveOCRProfile) -> list[RollFieldReading]:
     threshold = float(profile.recognition["operation_confidence"])
     candidates = _operation_candidates(
         tokens,
@@ -879,9 +859,7 @@ def _parse_offers(
     return readings
 
 
-def _parse_remaining(
-    tokens: tuple[OCRToken, ...], profile: LiveOCRProfile
-) -> RollFieldReading:
+def _parse_remaining(tokens: tuple[OCRToken, ...], profile: LiveOCRProfile) -> RollFieldReading:
     threshold = float(profile.recognition["field_confidence"])
     patterns = (
         re.compile(r"roll\s*tokens?\s*[:：]?\s*(\d{1,2})", re.IGNORECASE),
@@ -972,9 +950,7 @@ def parse_roll_screen_tokens(
             bounds = [(0.0, 1 / 3), (1 / 3, 2 / 3), (2 / 3, 1.0)]
         role_stat_values[role] = []
         colors = rules.colors_for(role)[:3]
-        for index, (stat_item, (low, high), color) in enumerate(
-            zip(role_stats, bounds, colors, strict=True)
-        ):
+        for index, (stat_item, (low, high), color) in enumerate(zip(role_stats, bounds, colors, strict=True)):
             stat_token, stat_id, stat_similarity = stat_item
             stat_reading = _reading(
                 f"banner.{role}.{index}.stat",
@@ -1025,9 +1001,7 @@ def parse_roll_screen_tokens(
                 low=low,
                 high=high,
             )
-            trait_token, trait, trait_similarity = (
-                trait_item if trait_item is not None else (None, None, 0.0)
-            )
+            trait_token, trait, trait_similarity = trait_item if trait_item is not None else (None, None, 0.0)
             readings.append(
                 _reading(
                     f"banner.{role}.{index}.trait",
@@ -1071,17 +1045,13 @@ def parse_roll_screen_tokens(
         profile_id=profile.profile_id,
         fields=tuple(readings),
         warnings=(
-            ()
-            if state is not None
-            else ("有字段缺失、冲突或置信度不足；已识别字段可录入，但不会自动计算。",)
+            () if state is not None else ("有字段缺失、冲突或置信度不足；已识别字段可录入，但不会自动计算。",)
         ),
         state=state,
     )
 
 
-def _state_from_readings(
-    readings: list[RollFieldReading], rules: RollRuleSet
-) -> GroupRollState | None:
+def _state_from_readings(readings: list[RollFieldReading], rules: RollRuleSet) -> GroupRollState | None:
     values = {reading.field_id: reading.value for reading in readings}
     try:
         banners = []
@@ -1263,9 +1233,7 @@ class LiveRollMonitor:
         self.profile = profile
         self.rules = rules
         backend_order = tuple(str(item) for item in profile.capture.get("capture_backends", ()))
-        self._capturer = capturer or DotaMonitorCapturer(
-            backend_order=backend_order or ("winrt", "dxgi")
-        )
+        self._capturer = capturer or DotaMonitorCapturer(backend_order=backend_order or ("winrt", "dxgi"))
         self._reader = reader or RollScreenReader(profile=profile, rules=rules)
         self._cache_dir = cache_dir
         self._gate = StableFrameGate(
@@ -1353,11 +1321,7 @@ class LiveRollMonitor:
         with self._condition:
             # A canceled or superseded request must never publish over the
             # current UI state after a slow capture or OCR pass returns.
-            if (
-                self._shutdown_requested
-                or not self._active
-                or request_id != self._request_id
-            ):
+            if self._shutdown_requested or not self._active or request_id != self._request_id:
                 return False
             next_running = self._active if running is None else running
             self._active = next_running
@@ -1389,25 +1353,15 @@ class LiveRollMonitor:
 
     def _request_is_active(self, request_id: int) -> bool:
         with self._lock:
-            return (
-                not self._shutdown_requested
-                and self._active
-                and request_id == self._request_id
-            )
+            return not self._shutdown_requested and self._active and request_id == self._request_id
 
     def _wait_for_poll(self, request_id: int, poll_seconds: float) -> bool:
         with self._condition:
             self._condition.wait_for(
-                lambda: self._shutdown_requested
-                or not self._active
-                or request_id != self._request_id,
+                lambda: self._shutdown_requested or not self._active or request_id != self._request_id,
                 timeout=poll_seconds,
             )
-            return (
-                not self._shutdown_requested
-                and self._active
-                and request_id == self._request_id
-            )
+            return not self._shutdown_requested and self._active and request_id == self._request_id
 
     def _close_capturer(self) -> None:
         close = getattr(self._capturer, "close", None)
@@ -1476,9 +1430,7 @@ class LiveRollMonitor:
         try:
             while True:
                 with self._condition:
-                    self._condition.wait_for(
-                        lambda: self._shutdown_requested or self._active
-                    )
+                    self._condition.wait_for(lambda: self._shutdown_requested or self._active)
                     if self._shutdown_requested:
                         return
                     request_id = self._request_id

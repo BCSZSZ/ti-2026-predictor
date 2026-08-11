@@ -51,23 +51,23 @@ def test_current_release_bundle_is_complete_and_linked_from_root() -> None:
     assert "10150413" in release_readme
     assert "47 / 48" in release_readme
 
-    forecast = (
-        BUNDLE / "reports/ti2026-group-forecast-publication-2026-08-10.md"
-    ).read_text(encoding="utf-8")
+    forecast = (BUNDLE / "reports/ti2026-group-forecast-publication-2026-08-10.md").read_text(
+        encoding="utf-8"
+    )
     assert "0.536381 × 0.60 = 0.321829" in forecast
     assert "5.15608 ÷ 16 = 0.322255 ≈ 32.23%" in forecast
     assert "16 队身份怎样归一" in forecast
 
-    identity_audit = (
-        BUNDLE / "research/ti2026-team-display-alias-audit-2026-08-11.md"
-    ).read_text(encoding="utf-8")
+    identity_audit = (BUNDLE / "research/ti2026-team-display-alias-audit-2026-08-11.md").read_text(
+        encoding="utf-8"
+    )
     assert "应用的 9 条 identity bridge" in identity_audit
     assert "Registration identity windows" in identity_audit
     assert "8291895 Tundra Esports" in identity_audit
 
-    stat_report = (
-        BUNDLE / "playbooks/group-roll/stat-team-top3-publication-v4.md"
-    ).read_text(encoding="utf-8")
+    stat_report = (BUNDLE / "playbooks/group-roll/stat-team-top3-publication-v4.md").read_text(
+        encoding="utf-8"
+    )
     assert "数据截止：`2026-08-10T13:45:12Z`" in stat_report
     assert "排名稳定性检查：400 次完整系列赛重采样" in stat_report
 
@@ -103,20 +103,20 @@ def test_release_zip_matches_the_verified_directory() -> None:
         files = {name for name in archive.namelist() if not name.endswith("/")}
         assert files == REQUIRED_FILES
         for relative_path in files:
-            assert hashlib.sha256(archive.read(relative_path)).digest() == hashlib.sha256(
-                (BUNDLE / relative_path).read_bytes()
-            ).digest()
+            assert (
+                hashlib.sha256(archive.read(relative_path)).digest()
+                == hashlib.sha256((BUNDLE / relative_path).read_bytes()).digest()
+            )
 
 
 def test_lgd_mid_is_unavailable_but_other_lgd_roles_remain() -> None:
     stat_report = (BUNDLE / "playbooks/group-roll/stat-team-top3-publication-v4.md").read_text(
         encoding="utf-8"
     )
-    mid_section = stat_report.split("## 中单 · 红色", maxsplit=1)[1].split(
-        "## 辅助位 · 蓝色", maxsplit=1
-    )[0]
+    mid_section = stat_report.split("## 中单 · 红色", maxsplit=1)[1].split("## 辅助位 · 蓝色", maxsplit=1)[0]
     assert "LGD Gaming" not in mid_section
-    assert "LGD Gaming" in stat_report.split("## 核心位 · 红色", maxsplit=1)[1].split(
-        "## 中单 · 红色", maxsplit=1
-    )[0]
+    assert (
+        "LGD Gaming"
+        in stat_report.split("## 核心位 · 红色", maxsplit=1)[1].split("## 中单 · 红色", maxsplit=1)[0]
+    )
     assert "LGD Gaming" in stat_report.split("## 辅助位 · 蓝色", maxsplit=1)[1]

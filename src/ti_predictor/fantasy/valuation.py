@@ -355,9 +355,7 @@ def evaluate_banner_teams(
     pools = _pool_map(pool_result)
     stat_ids, multipliers = _banner_score_inputs(banner, rules)
     rows: list[np.ndarray] = []
-    team_ids = tuple(
-        team_id for team_id in scenario_set.team_ids if (team_id, banner.role) in pools
-    )
+    team_ids = tuple(team_id for team_id in scenario_set.team_ids if (team_id, banner.role) in pools)
     if not team_ids:
         raise ValueError(f"no Fantasy Team is available for role {banner.role}")
     for team_id in team_ids:
@@ -481,8 +479,7 @@ def match_group_roles(
             start=np.zeros(first.outcomes.shape[1], dtype=float),
         )
         team_ids = tuple(
-            int(matrices[role].team_ids[index])
-            for role, index in zip(ROLE_IDS, indexes, strict=True)
+            int(matrices[role].team_ids[index]) for role, index in zip(ROLE_IDS, indexes, strict=True)
         )
         cvar = lower_tail_cvar(outcomes, risk.cvar_alpha)
         rank_key = (-cvar, -mean, team_ids)

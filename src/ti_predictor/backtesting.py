@@ -72,11 +72,7 @@ def evaluate_bo3_probability_transform(
         if len(games) not in (2, 3):
             continue
         team_ids = sorted(
-            {
-                int(value)
-                for column in ("radiant_team_id", "dire_team_id")
-                for value in games[column]
-            }
+            {int(value) for column in ("radiant_team_id", "dire_team_id") for value in games[column]}
         )
         if len(team_ids) != 2:
             continue

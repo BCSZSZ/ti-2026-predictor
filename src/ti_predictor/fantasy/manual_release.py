@@ -174,8 +174,7 @@ def write_manual_release_bundle(
         },
         "client_roll": client_roll,
         "team_names": [
-            {"team_id": int(team_id), "name": name}
-            for team_id, name in context.team_names.items()
+            {"team_id": int(team_id), "name": name} for team_id, name in context.team_names.items()
         ],
         "pool_result": _pool_result_payload(context.pool_result),
         "scenarios": _scenario_payload(context.scenarios),
@@ -387,9 +386,7 @@ def load_manual_release_context(
 
     manifest = load_tournament_manifest(paths.tournament)
     expected_names = [(int(team.team_id), team.name) for team in manifest.teams]
-    supplied_names = [
-        (int(row["team_id"]), str(row["name"])) for row in payload.get("team_names", [])
-    ]
+    supplied_names = [(int(row["team_id"]), str(row["name"])) for row in payload.get("team_names", [])]
     if supplied_names != expected_names:
         raise CurrentAdvisorError("manual release Team identities differ from the manifest")
     warnings = payload.get("warnings")
@@ -417,9 +414,7 @@ def manual_release_team_options(
     available = {(pool.target_team_id, pool.role) for pool in context.pool_result.pools}
     return {
         role: tuple(
-            (team_id, name)
-            for team_id, name in context.team_names.items()
-            if (team_id, role) in available
+            (team_id, name) for team_id, name in context.team_names.items() if (team_id, role) in available
         )
         for role in ROLE_IDS
     }

@@ -112,9 +112,7 @@ def _field_label(field_id: str) -> str:
     parts = field_id.split(".")
     if len(parts) == 4 and parts[0] == "banner":
         role = _ROLE_LABELS.get(parts[1], parts[1])
-        attribute = {"stat": "Stat", "quality": "品质", "trait": "Trait"}.get(
-            parts[3], parts[3]
-        )
+        attribute = {"stat": "Stat", "quality": "品质", "trait": "Trait"}.get(parts[3], parts[3])
         return f"{role}第 {int(parts[2]) + 1} 格 {attribute}"
     if len(parts) == 2 and parts[0] == "offer":
         return f"选项 {int(parts[1]) + 1}"
@@ -163,8 +161,7 @@ def _render_live_monitor_status() -> None:
 def _render_live_controls() -> None:
     st.subheader("自动读取游戏画面")
     st.caption(
-        "点击后切回 Dota；程序读取下一张稳定的完整页面一次，然后自动停止。"
-        "英文优先，同时支持简体中文。"
+        "点击后切回 Dota；程序读取下一张稳定的完整页面一次，然后自动停止。英文优先，同时支持简体中文。"
     )
     monitor = _cached_live_monitor()
     snapshot = monitor.snapshot()
@@ -176,10 +173,7 @@ def _render_live_controls() -> None:
         "识别下一次稳定的 Dota 画面",
         type="primary",
         use_container_width=True,
-        help=(
-            "单屏时点击后用 Alt+Tab 切回 Dota；双屏时可以直接点击。"
-            "只读取一次，不控制游戏。"
-        ),
+        help=("单屏时点击后用 Alt+Tab 切回 Dota；双屏时可以直接点击。只读取一次，不控制游戏。"),
     ):
         monitor.start_once()
         st.rerun()
@@ -402,9 +396,7 @@ def _render_lineup_and_title(result: dict[str, Any]) -> None:
 def _render_details(result: dict[str, Any], context: CurrentAdvisorContext) -> None:
     with st.expander("模型分歧与计算边界"):
         model_rows = []
-        action_labels = {
-            row["action_id"]: row["action_label"] for row in result["primary_action_values"]
-        }
+        action_labels = {row["action_id"]: row["action_label"] for row in result["primary_action_values"]}
         for row in result["preferred_by_model"]:
             model_rows.append(
                 {

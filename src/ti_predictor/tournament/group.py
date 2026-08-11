@@ -101,7 +101,6 @@ class GroupSimulator:
         result.validate()
         return result
 
-
     @staticmethod
     def _initial_assignment(probabilities: np.ndarray) -> np.ndarray:
         costs = -probabilities[:, SLOT_CATEGORIES]
@@ -224,9 +223,7 @@ class GroupSimulator:
             if simulation.metadata.get("scoreline_probability_proxy") == (
                 "inverse_bo3_from_direct_series_probability"
             ):
-                warnings.append(
-                    "BO3 留出集选择直接系列概率；局分与 Game 胜率使用其逆 BO3 单局代理。"
-                )
+                warnings.append("BO3 留出集选择直接系列概率；局分与 Game 胜率使用其逆 BO3 单局代理。")
         else:
             warnings = [
                 "Valve 尚未完整公布瑞士轮配对细则；当前使用保持 1/2/5/5/2/1 容量的联合排名情景。",
@@ -257,9 +254,7 @@ class GroupSimulator:
                     "p90": float(np.quantile(correct_counts, 0.9)),
                     "distribution": correct_distribution,
                     "monte_carlo_standard_error": round(standard_error, 6),
-                    "monte_carlo_confidence_interval_95": [
-                        round(value, 4) for value in confidence_interval
-                    ],
+                    "monte_carlo_confidence_interval_95": [round(value, 4) for value in confidence_interval],
                 },
                 "score_distribution": {
                     "mean": round(float(best_scores.mean()), 3),
@@ -424,9 +419,7 @@ def scenario_probability_tables(
             "scenario": simulation.scenario,
             "sample_count": len(simulation.outcomes),
             "seed": simulation.seed,
-            "elimination_choice_strategy": simulation.metadata.get(
-                "elimination_choice_strategy"
-            ),
+            "elimination_choice_strategy": simulation.metadata.get("elimination_choice_strategy"),
             "teams": [
                 {
                     "team_id": int(team_id),

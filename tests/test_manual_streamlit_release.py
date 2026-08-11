@@ -17,10 +17,7 @@ from ti_predictor.fantasy.manual_release import (
 def test_manual_release_bundle_is_content_addressed_and_loadable() -> None:
     path = default_manual_release_path()
     expected_hash, expected_name = (
-        path.with_name(path.name + ".sha256")
-        .read_text(encoding="utf-8")
-        .strip()
-        .split("  ", maxsplit=1)
+        path.with_name(path.name + ".sha256").read_text(encoding="utf-8").strip().split("  ", maxsplit=1)
     )
     assert expected_name == path.name
     assert hashlib.sha256(path.read_bytes()).hexdigest() == expected_hash

@@ -163,11 +163,7 @@ def _identity_bridge_breakdown(
     if not set(columns).issubset(frame.columns):
         return {}
     labels = sorted(
-        {
-            str(value)
-            for column in columns
-            for value in frame[column].dropna().astype(str).unique()
-        }
+        {str(value) for column in columns for value in frame[column].dropna().astype(str).unique()}
     )
     result: dict[str, dict[str, float | int | str]] = {}
     for label in labels:
@@ -180,9 +176,7 @@ def _identity_bridge_breakdown(
             "games": int(all_mask.sum()),
             "included_games": int(selected_mask.sum()),
             "effective_weight": float(selected["evidence_weight"].sum()),
-            "selected_match_ids_sha256": sha256_json(
-                sorted({int(value) for value in selected["match_id"]})
-            ),
+            "selected_match_ids_sha256": sha256_json(sorted({int(value) for value in selected["match_id"]})),
         }
     return result
 

@@ -66,9 +66,7 @@ def _complete_tokens(*, weak_field: str | None = None) -> tuple[OCRToken, ...]:
             y = 0.2 + index * 0.16
             tokens.append(_token(stat, 0.98, x, y, width=0.12))
             quality_id = f"{role}.{index}.quality"
-            tokens.append(
-                _token(quality, 0.5 if weak_field == quality_id else 0.98, x - 0.04, y + 0.04)
-            )
+            tokens.append(_token(quality, 0.5 if weak_field == quality_id else 0.98, x - 0.04, y + 0.04))
             tokens.append(_token(trait, 0.98, x + 0.04, y + 0.07))
     tokens.extend(
         (
@@ -436,9 +434,7 @@ def test_ocr_profile_covers_every_current_positive_weight_offer() -> None:
     rules = load_current_advisor_roll_rules()
 
     assert profile.language_priority == ("en", "zh-Hans")
-    assert set(profile.operations) == {
-        operation.operation_id for operation in rules.offered_operations
-    }
+    assert set(profile.operations) == {operation.operation_id for operation in rules.offered_operations}
 
 
 def test_stop_prevents_a_slow_recognition_from_overwriting_idle_state() -> None:
@@ -721,10 +717,7 @@ def test_cancelled_slow_request_can_rearm_on_the_same_worker(tmp_path) -> None:
         release_first.set()
 
         assert second_read.wait(timeout=2)
-        assert _wait_until(
-            lambda: monitor.snapshot().stage == "confirmed"
-            and not monitor.snapshot().running
-        )
+        assert _wait_until(lambda: monitor.snapshot().stage == "confirmed" and not monitor.snapshot().running)
         assert len({id(thread) for thread in capture_threads}) == 1
     finally:
         monitor.shutdown()

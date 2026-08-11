@@ -155,6 +155,4 @@ def test_bo3_holdout_selects_conservative_direct_series_probability() -> None:
 
     assert result["evaluated_series"] == 10
     assert result["selected_mode"] == "direct_series"
-    assert result["metrics"]["direct_series"]["log_loss"] < result["metrics"]["independent_games"][
-        "log_loss"
-    ]
+    assert result["metrics"]["direct_series"]["log_loss"] < result["metrics"]["independent_games"]["log_loss"]

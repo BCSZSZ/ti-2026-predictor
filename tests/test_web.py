@@ -22,9 +22,7 @@ def test_streamlit_group_advisor_input_page_has_no_runtime_exception() -> None:
 
     assert not app.exception
     assert any(title.value == "Group Roll 实时顾问" for title in app.title)
-    capture_buttons = [
-        button for button in app.button if button.label == "识别下一次稳定的 Dota 画面"
-    ]
+    capture_buttons = [button for button in app.button if button.label == "识别下一次稳定的 Dota 画面"]
     if sys.platform == "win32":
         assert len(capture_buttons) == 1
     else:
@@ -46,10 +44,7 @@ def test_streamlit_ocr_widget_update_has_no_duplicate_default_warning(caplog) ->
         app.run(timeout=20)
 
     assert not app.exception
-    assert not any(
-        "created with a default value" in record.getMessage()
-        for record in caplog.records
-    )
+    assert not any("created with a default value" in record.getMessage() for record in caplog.records)
 
 
 def test_streamlit_group_advisor_manual_lineup_uses_three_team_dropdowns() -> None:
@@ -62,9 +57,7 @@ def test_streamlit_group_advisor_manual_lineup_uses_three_team_dropdowns() -> No
 
     assert not app.exception
     role_selects = {
-        select.label: select
-        for select in app.selectbox
-        if select.label in {"核心位", "中单", "辅助位"}
+        select.label: select for select in app.selectbox if select.label in {"核心位", "中单", "辅助位"}
     }
     labels = set(role_selects)
     assert {"核心位", "中单", "辅助位"} <= labels

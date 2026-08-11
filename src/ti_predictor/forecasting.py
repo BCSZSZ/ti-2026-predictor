@@ -469,9 +469,7 @@ def generate_group(
         parameters={
             "primary_samples": samples,
             "sensitivity_samples": sensitivity_sample_count,
-            "scenario_sample_counts": {
-                scenario.scenario: len(scenario.outcomes) for scenario in scenarios
-            },
+            "scenario_sample_counts": {scenario.scenario: len(scenario.outcomes) for scenario in scenarios},
             "primary_scenario": primary.scenario,
             "scenarios": scenario_ids,
             "swiss_format_sha256": swiss_hash(paths.swiss),
@@ -900,9 +898,7 @@ def generate_group_fantasy_evidence(
         "没有完整且情景对齐的 Coach 前缀加后缀候选；P3 生产估值明确排除 Coach。",
     ]
     unavailable = [
-        item
-        for item in pool_result.audit["team_role_availability"]
-        if item["status"] == "unavailable"
+        item for item in pool_result.audit["team_role_availability"] if item["status"] == "unavailable"
     ]
     if unavailable:
         warnings.append(

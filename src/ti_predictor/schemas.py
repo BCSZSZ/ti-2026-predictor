@@ -197,23 +197,18 @@ class TournamentManifest(StrictModel):
             raise ValueError("tournament manifest assigns a player to more than one team")
         unknown_history_teams = {entry.team_id for entry in self.roster_history} - set(team_ids)
         if unknown_history_teams:
-            raise ValueError(
-                f"roster_history contains unknown team IDs: {sorted(unknown_history_teams)}"
-            )
+            raise ValueError(f"roster_history contains unknown team IDs: {sorted(unknown_history_teams)}")
         bridge_ids = [bridge.bridge_id for bridge in self.team_identity_bridges]
         if len(bridge_ids) != len(set(bridge_ids)):
             raise ValueError("team_identity_bridges contain duplicate bridge IDs")
-        unknown_canonical_teams = {
-            bridge.canonical_team_id for bridge in self.team_identity_bridges
-        } - set(team_ids)
+        unknown_canonical_teams = {bridge.canonical_team_id for bridge in self.team_identity_bridges} - set(
+            team_ids
+        )
         if unknown_canonical_teams:
             raise ValueError(
-                "team_identity_bridges contain unknown canonical team IDs: "
-                f"{sorted(unknown_canonical_teams)}"
+                f"team_identity_bridges contain unknown canonical team IDs: {sorted(unknown_canonical_teams)}"
             )
-        raw_target_collisions = {
-            bridge.raw_team_id for bridge in self.team_identity_bridges
-        } & set(team_ids)
+        raw_target_collisions = {bridge.raw_team_id for bridge in self.team_identity_bridges} & set(team_ids)
         if raw_target_collisions:
             raise ValueError(
                 "team_identity_bridges cannot merge a current tournament team: "
@@ -226,9 +221,7 @@ class TournamentManifest(StrictModel):
             ordered = sorted(bridges, key=lambda bridge: bridge.valid_from)
             for previous, current in zip(ordered, ordered[1:], strict=False):
                 if previous.valid_to is None or current.valid_from < previous.valid_to:
-                    raise ValueError(
-                        f"team identity bridges overlap for raw team ID {raw_team_id}"
-                    )
+                    raise ValueError(f"team identity bridges overlap for raw team ID {raw_team_id}")
         if self.main_event_seeds:
             if len(self.main_event_seeds) != 8 or len(set(self.main_event_seeds)) != 8:
                 raise ValueError("main_event_seeds must contain eight unique team IDs")
@@ -309,15 +302,12 @@ class SwissFormat(StrictModel):
         if len(node_ids) != len(set(node_ids)):
             raise ValueError("Swiss Round 1 contains duplicate node IDs")
         team_ids = [
-            team_id
-            for series in self.first_round
-            for team_id in (series.team_a_id, series.team_b_id)
+            team_id for series in self.first_round for team_id in (series.team_a_id, series.team_b_id)
         ]
         if len(team_ids) != 16 or len(team_ids) != len(set(team_ids)):
             raise ValueError("Swiss Round 1 must contain sixteen unique teams")
         group_counts = {
-            group: sum(series.initial_group == group for series in self.first_round)
-            for group in ("A", "B")
+            group: sum(series.initial_group == group for series in self.first_round) for group in ("A", "B")
         }
         if group_counts != {"A": 4, "B": 4}:
             raise ValueError("Swiss initial groups require four Round 1 Series each")

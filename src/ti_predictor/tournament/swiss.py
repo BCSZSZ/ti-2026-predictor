@@ -255,9 +255,7 @@ class SwissEngine:
         if self.duration_maximum_seconds <= self.duration_minimum_seconds:
             raise ValueError("duration proxy bounds are reversed")
         self.team_ids = tuple(
-            team_id
-            for series in swiss_format.first_round
-            for team_id in (series.team_a_id, series.team_b_id)
+            team_id for series in swiss_format.first_round for team_id in (series.team_a_id, series.team_b_id)
         )
         self.initial_groups = {
             team_id: series.initial_group

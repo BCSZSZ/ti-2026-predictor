@@ -474,9 +474,7 @@ def prepare_current_advisor_context(
     )
 
 
-def _replace_banner(
-    banners: tuple[BannerState, ...], replacement: BannerState
-) -> tuple[BannerState, ...]:
+def _replace_banner(banners: tuple[BannerState, ...], replacement: BannerState) -> tuple[BannerState, ...]:
     return tuple(replacement if banner.role == replacement.role else banner for banner in banners)
 
 
@@ -515,9 +513,7 @@ def _evaluate_group(
             (matrices[role].outcomes[index] for role, index in zip(ROLE_IDS, indexes, strict=True)),
             start=np.zeros(len(context.scenarios.scenario_ids), dtype=float),
         )
-        maximum_mean = float(
-            sum(float(matrices[role].outcomes.mean(axis=1).max()) for role in ROLE_IDS)
-        )
+        maximum_mean = float(sum(float(matrices[role].outcomes.mean(axis=1).max()) for role in ROLE_IDS))
     role_base_means = {}
     for role, team_id in zip(ROLE_IDS, team_ids, strict=True):
         matrix = matrices[role]
@@ -533,9 +529,7 @@ def _evaluate_group(
     )
 
 
-def _preferred_action(
-    rows: Sequence[Mapping[str, Any]], *, mean_retention_epsilon: float
-) -> str:
+def _preferred_action(rows: Sequence[Mapping[str, Any]], *, mean_retention_epsilon: float) -> str:
     maximum_mean = max(float(row["mean"]) for row in rows)
     floor = maximum_mean - abs(maximum_mean) * mean_retention_epsilon - 1e-12
     eligible = [row for row in rows if float(row["mean"]) >= floor]
@@ -646,11 +640,7 @@ def rank_title_for_lineup(
         summary = analysis.get("prefixes" if kind == "prefix" else "suffixes")
         if not isinstance(summary, Sequence):
             raise CurrentAdvisorError(f"Title evidence has no {kind} summary")
-        metadata = {
-            str(row["id"]): row
-            for row in summary
-            if isinstance(row, Mapping) and "id" in row
-        }
+        metadata = {str(row["id"]): row for row in summary if isinstance(row, Mapping) and "id" in row}
         bonus_key = f"{kind}_paper_bonus_percent"
         rate_key = f"{kind}_trigger_rates"
         rows = []
@@ -687,9 +677,7 @@ def rank_title_for_lineup(
     suffixes = ranked("suffix", excluded=set(excluded_suffix_ids))
     if not prefixes or not suffixes:
         raise CurrentAdvisorError("Title evidence produced no recommendable Prefix or Suffix")
-    pair_bonus = float(prefixes[0]["paper_bonus_percent"]) + float(
-        suffixes[0]["paper_bonus_percent"]
-    )
+    pair_bonus = float(prefixes[0]["paper_bonus_percent"]) + float(suffixes[0]["paper_bonus_percent"])
     return {
         "recommended_prefix": prefixes[0],
         "recommended_suffix": suffixes[0],
@@ -765,9 +753,7 @@ def analyze_current_screen(
                 )
                 support_count = 1
             else:
-                current_banner = next(
-                    banner for banner in state.banners if banner.role == action.banner_role
-                )
+                current_banner = next(banner for banner in state.banners if banner.role == action.banner_role)
                 mutations = mutation_distribution(
                     current_banner,
                     action.operation_id,
@@ -797,8 +783,7 @@ def analyze_current_screen(
                 "mean": distribution.mean,
                 "cvar10": distribution.cvar(context.policy.analysis.cvar_alpha),
                 "mean_delta": distribution.mean - current.mean,
-                "cvar10_delta": distribution.cvar(context.policy.analysis.cvar_alpha)
-                - current.cvar10,
+                "cvar10_delta": distribution.cvar(context.policy.analysis.cvar_alpha) - current.cvar10,
                 "support_lower": lower,
                 "support_upper": upper,
                 "support_count": support_count,
@@ -809,11 +794,7 @@ def analyze_current_screen(
             selected = _preferred_action(model_rows, mean_retention_epsilon=epsilon)
             preferred_by_model.append({"model_id": model_id, "action_id": selected})
 
-    primary_rows = [
-        row
-        for row in action_rows
-        if row["model_id"] == context.policy.analysis.primary_model
-    ]
+    primary_rows = [row for row in action_rows if row["model_id"] == context.policy.analysis.primary_model]
     if primary_rows:
         selected_action_id = next(
             row["action_id"]

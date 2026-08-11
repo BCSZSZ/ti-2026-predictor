@@ -243,9 +243,7 @@ def test_unavailable_mid_pool_is_audited_without_excluding_other_lgd_roles(
     )
     assert bootstrap["team_rankings"]["rows"]
     assert all(
-        row["team_id"] != 10150538
-        for row in bootstrap["team_rankings"]["rows"]
-        if row["role"] == "mid"
+        row["team_id"] != 10150538 for row in bootstrap["team_rankings"]["rows"] if row["role"] == "mid"
     )
 
 

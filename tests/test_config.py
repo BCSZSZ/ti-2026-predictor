@@ -44,9 +44,7 @@ def test_manifest_records_verified_registration_identity_bridges(project_paths) 
     manifest = load_tournament_manifest(project_paths.tournament)
 
     bridges = {bridge.raw_team_id: bridge for bridge in manifest.team_identity_bridges}
-    assert {
-        raw_team_id: bridge.canonical_team_id for raw_team_id, bridge in bridges.items()
-    } == {
+    assert {raw_team_id: bridge.canonical_team_id for raw_team_id, bridge in bridges.items()} == {
         9303383: 10149530,
         9316703: 5017210,
         9824702: 9572001,
@@ -58,8 +56,7 @@ def test_manifest_records_verified_registration_identity_bridges(project_paths) 
         10208071: 8261500,
     }
     assert all(
-        bridge.valid_to == datetime(2026, 8, 10, 13, 45, 12, tzinfo=UTC)
-        for bridge in bridges.values()
+        bridge.valid_to == datetime(2026, 8, 10, 13, 45, 12, tzinfo=UTC) for bridge in bridges.values()
     )
     assert all(bridge.provenance == "derived" for bridge in bridges.values())
     assert set(bridges[9824702].verified_account_ids) == {
@@ -71,13 +68,9 @@ def test_manifest_records_verified_registration_identity_bridges(project_paths) 
     }
     teams = {team.team_id: team for team in manifest.teams}
     assert teams[10150413].registration_identity is not None
-    assert teams[10150413].registration_identity.valid_from == datetime(
-        2026, 6, 1, tzinfo=UTC
-    )
+    assert teams[10150413].registration_identity.valid_from == datetime(2026, 6, 1, tzinfo=UTC)
     assert teams[5017210].registration_identity is not None
-    assert teams[5017210].registration_identity.valid_from == datetime(
-        2026, 4, 8, 9, 8, 1, tzinfo=UTC
-    )
+    assert teams[5017210].registration_identity.valid_from == datetime(2026, 4, 8, 9, 8, 1, tzinfo=UTC)
 
 
 def test_swiss_format_has_official_round_one_pairs_and_stable_ids(project_paths) -> None:

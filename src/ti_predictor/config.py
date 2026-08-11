@@ -39,9 +39,7 @@ def load_swiss_format(
     if selected.event_id != tournament.event_id or selected.league_id != tournament.league_id:
         raise ValueError("Swiss format event identity differs from tournament manifest")
     scheduled = {
-        team_id
-        for series in selected.first_round
-        for team_id in (series.team_a_id, series.team_b_id)
+        team_id for series in selected.first_round for team_id in (series.team_a_id, series.team_b_id)
     }
     declared = {team.team_id for team in tournament.teams}
     if scheduled != declared:
@@ -117,8 +115,7 @@ def roster_intervals(manifest: TournamentManifest, *, as_of) -> list[RosterInter
         raise ValueError("roster intervals require an explicit UTC as_of")
     if manifest.roster_snapshot_as_of is not None and cutoff < manifest.roster_snapshot_as_of:
         raise ValueError(
-            "roster snapshot was not available at as_of: "
-            f"{manifest.roster_snapshot_as_of.isoformat()}"
+            f"roster snapshot was not available at as_of: {manifest.roster_snapshot_as_of.isoformat()}"
         )
     intervals: list[RosterInterval] = []
     for entry in manifest.roster_history:

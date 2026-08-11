@@ -57,7 +57,8 @@ def test_group_simulation_is_joint_capacity_preserving_and_repeatable(project_pa
     assert len(expected_correct["monte_carlo_confidence_interval_95"]) == 2
     assert sum(item["probability"] for item in expected_correct["distribution"]) == pytest.approx(1.0)
     assert all(
-        item["category_probability_percent"] == pytest.approx(
+        item["category_probability_percent"]
+        == pytest.approx(
             item["category_probability"] * 100,
             abs=0.01,
         )

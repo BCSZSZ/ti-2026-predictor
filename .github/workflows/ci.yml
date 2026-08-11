@@ -33,10 +33,45 @@ jobs:
         run: uv sync --locked --extra dev
 
       - name: Check formatting
-        run: uv run ruff format --check src tests
+        run: uv run ruff format --check src tests streamlit_app.py local_ocr_app.py
 
       - name: Lint
-        run: uv run ruff check src tests
+        run: uv run ruff check src tests streamlit_app.py local_ocr_app.py
 
       - name: Test
         run: uv run pytest
+
+  consumer-runtime:
+    name: consumer-runtime (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            sync_args: --extra dev
+          - os: windows-latest
+            sync_args: --extra dev --extra ocr
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install Python
+        run: uv python install 3.12
+
+      - name: Install consumer test dependencies
+        run: uv sync --locked ${{ matrix.sync_args }}
+
+      - name: Verify clean-clone consumer runtimes
+        run: >-
+          uv run pytest
+          tests/test_solver_release.py
+          tests/test_web.py
+          tests/test_fantasy_live_ocr.py

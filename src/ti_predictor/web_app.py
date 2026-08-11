@@ -10,6 +10,7 @@ import streamlit as st
 from ti_predictor.audit import audit_run
 from ti_predictor.config import load_rules, load_tournament_manifest
 from ti_predictor.fantasy.advisor_ui import render_advisor_page
+from ti_predictor.fantasy.solver_release import default_solver_release_path
 from ti_predictor.hashing import sha256_bytes
 from ti_predictor.match_catalog import filter_match_catalog, utc_year_bounds
 from ti_predictor.ocr import inspect_screenshot
@@ -243,6 +244,6 @@ elif page == "预测":
 elif page == "Fantasy":
     recommendation_page("fantasy")
 elif page == "Group Roll 实时顾问":
-    render_advisor_page()
+    render_advisor_page(release_bundle_path=default_solver_release_path())
 else:
     audit_page()

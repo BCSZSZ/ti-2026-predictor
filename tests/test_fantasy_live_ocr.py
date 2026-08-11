@@ -3,8 +3,8 @@ from __future__ import annotations
 import threading
 import time
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 
-from ti_predictor.fantasy.current_advisor import load_current_advisor_roll_rules
 from ti_predictor.fantasy.live_ocr import (
     CapturedFrame,
     LiveRollMonitor,
@@ -18,6 +18,12 @@ from ti_predictor.fantasy.live_ocr import (
     observation_widget_updates,
     parse_roll_screen_tokens,
 )
+from ti_predictor.fantasy.solver_release import load_solver_release_context
+
+
+@lru_cache(maxsize=1)
+def _release_roll_rules():
+    return load_solver_release_context().roll_rules
 
 
 class FakeImage:
@@ -172,7 +178,7 @@ def _parse(tokens: tuple[OCRToken, ...], *, captured_at: datetime | None = None)
         image_sha256="a" * 64,
         viewport=(2560, 1440),
         profile=load_live_ocr_profile(),
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
     )
 
 
@@ -344,7 +350,7 @@ def test_reader_locates_and_upscales_fantasy_region_before_detailed_ocr() -> Non
     )
     observation = RollScreenReader(
         profile=load_live_ocr_profile(),
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
         token_engine=engine,
     ).inspect(frame)
 
@@ -365,7 +371,7 @@ def test_low_confidence_field_allows_partial_autofill_but_blocks_auto_calculatio
     assert "banner.mid.1.quality" in observation.missing_field_ids
     updates = observation_widget_updates(
         observation.to_payload(),
-        load_current_advisor_roll_rules(),
+        _release_roll_rules(),
     )
     assert "current_advisor_mid_1_quality" not in updates
     assert updates["current_advisor_mid_1_stat"] == "wards_placed"
@@ -379,7 +385,7 @@ def test_missing_stat_anchor_preserves_that_entire_banner_during_partial_autofil
     assert observation.status == "incomplete"
     updates = observation_widget_updates(
         observation.to_payload(),
-        load_current_advisor_roll_rules(),
+        _release_roll_rules(),
     )
 
     assert not any(key.startswith("current_advisor_core_") for key in updates)
@@ -410,7 +416,7 @@ def test_observation_semantic_hash_ignores_capture_time_and_image_identity() -> 
         image_sha256="b" * 64,
         viewport=(2560, 1440),
         profile=load_live_ocr_profile(),
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
     )
 
     assert first.to_payload()["observation_sha256"] == second.to_payload()["observation_sha256"]
@@ -420,7 +426,7 @@ def test_confirmed_observation_maps_to_all_advisor_widget_keys() -> None:
     observation = _parse(_complete_tokens())
     updates = observation_widget_updates(
         observation.to_payload(),
-        load_current_advisor_roll_rules(),
+        _release_roll_rules(),
     )
 
     assert len(updates) == 31
@@ -431,7 +437,7 @@ def test_confirmed_observation_maps_to_all_advisor_widget_keys() -> None:
 
 def test_ocr_profile_covers_every_current_positive_weight_offer() -> None:
     profile = load_live_ocr_profile()
-    rules = load_current_advisor_roll_rules()
+    rules = _release_roll_rules()
 
     assert profile.language_priority == ("en", "zh-Hans")
     assert set(profile.operations) == {operation.operation_id for operation in rules.offered_operations}
@@ -471,7 +477,7 @@ def test_stop_prevents_a_slow_recognition_from_overwriting_idle_state() -> None:
 
     monitor = LiveRollMonitor(
         profile=profile,
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
         capturer=Capturer(),
         reader=BlockingReader(),  # type: ignore[arg-type]
     )
@@ -537,7 +543,7 @@ def test_one_shot_waits_through_minimized_and_non_target_then_stops_after_result
     reader = ConfirmedReader()
     monitor = LiveRollMonitor(
         profile=profile,
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
         capturer=capturer,
         reader=reader,  # type: ignore[arg-type]
         cache_dir=tmp_path,
@@ -583,7 +589,7 @@ def test_one_shot_stops_after_an_incomplete_target_observation(tmp_path) -> None
 
     monitor = LiveRollMonitor(
         profile=profile,
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
         capturer=capture,
         reader=IncompleteReader(),  # type: ignore[arg-type]
         cache_dir=tmp_path,
@@ -648,7 +654,7 @@ def test_sequential_one_shot_requests_reuse_one_worker_thread(tmp_path) -> None:
     reader = ConfirmedReader()
     monitor = LiveRollMonitor(
         profile=profile,
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
         capturer=capturer,
         reader=reader,  # type: ignore[arg-type]
         cache_dir=tmp_path,
@@ -703,7 +709,7 @@ def test_cancelled_slow_request_can_rearm_on_the_same_worker(tmp_path) -> None:
 
     monitor = LiveRollMonitor(
         profile=profile,
-        rules=load_current_advisor_roll_rules(),
+        rules=_release_roll_rules(),
         capturer=capture,
         reader=BlockingThenConfirmedReader(),  # type: ignore[arg-type]
         cache_dir=tmp_path,

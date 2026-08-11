@@ -21,9 +21,9 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 - 原始数据同步、规则抓取或下一轮选项猜测；
 - 本机 `data/raw`、`data/processed` 或 `artifacts` 目录依赖。
 
-云端使用内容寻址的冻结求解上下文
-[`deploy/streamlit/frozen/manual-advisor-v1.json.zst`](deploy/streamlit/frozen/manual-advisor-v1.json.zst)，
-数据截止为 `2026-08-10T13:45:12Z`。本地预览：
+云端使用 [`deploy/runtime/current.json`](deploy/runtime/current.json) 指向的内容寻址
+**冻结求解发布包**，数据截止为 `2026-08-10T13:45:12Z`。发布包只含求解所需的紧凑派生证据，
+不含也不会下载约 188 GB 的原始数据。本地预览：
 
 ```powershell
 uv sync --locked
@@ -45,15 +45,11 @@ git clone https://github.com/BCSZSZ/ti-2026-predictor.git
 Set-Location ti-2026-predictor
 uv python install 3.12
 uv sync --locked --extra ocr
-$ruleAsOf = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'")
-uv run ti rules snapshot --as-of $ruleAsOf
-uv run ti rules validate
-uv run ti web
+uv run ti app local-ocr
 ```
 
-规则快照命令会读取本机 Dota 客户端；若 Dota 或 ValveResourceFormat CLI 不在默认位置，传入
-`--dota-path` / `--vrf-cli`，或设置 `DOTA_PATH` / `VRF_CLI`。规则校验未通过时不要继续计算。
-然后打开终端显示的 `http://127.0.0.1:8501`，进入 `Group Roll 实时顾问`。点击识别后切回完整
+打开终端显示的 `http://127.0.0.1:8501`。这个用户入口与公开手动版读取同一个冻结求解发布包，
+不需要规则快照、ValveResourceFormat、OpenDota、`data/` 或 `artifacts/`。点击识别后切回完整
 Dota Roll 页面；程序只读窗口画面，确认一个稳定页面后自动停止。它不会保存 Steam 凭据、控制
 鼠标键盘或提交游戏内选择。OCR 截图与识别 JSON 只写入被 Git 忽略的本机
 `data/cache/ocr/live-roll/`。
@@ -136,7 +132,7 @@ uv run ti fantasy group-evidence --as-of 2026-08-10T13:45:12Z --seed 20260813 --
 uv run ti fantasy group-playbook-evidence --as-of 2026-08-06T17:27:00Z --playbook-version v2
 uv run ti fantasy group-cross-audit --as-of 2026-08-06T17:27:00Z --cross-audit-version v2
 uv run ti fantasy group-advisor-evidence --as-of 2026-08-06T08:15:00Z
-uv run ti web
+uv run ti dev web
 ```
 
 默认网页只监听 `127.0.0.1`。首次同步会访问 OpenDota；测试永远不访问实时 API。
@@ -207,9 +203,9 @@ planner。v1 手册、P5/P6 产物和默认 CLI 路径继续作为不可变兼�
 2026-08-10 的当前 P3/Title/Swiss 冻结证据，不依赖旧 P4/P5/P6 手册门禁；不会生成下一轮选项，
 也不会向 Dota 发送鼠标、键盘或内存操作。每次识别完成后会自动停止；玩家在游戏内操作后，
 需要再次点击识别按钮读取实际新画面。
-真实数据冷启动约 40 秒，首次一步
-计算约 0.6 秒，缓存重算约 0.05 秒。旧 P7 v1 会话与证据命令作为历史兼容证据保留，不再是
-页面运行路径。实装范围和验收标准见
+两个玩家入口都直接加载仓库内的冻结求解发布包，不再执行约 40 秒的真实数据冷启动；一步计算
+仍约 0.6 秒，缓存重算约 0.05 秒。旧 P7 v1 会话与证据命令作为历史兼容证据保留，不再是
+玩家页面运行路径。实装范围和验收标准见
 [v2 实装计划](docs/plans/current-screen-roll-advisor-v2.md)，完成结果见
 [易懂总结](docs/reports/current-screen-roll-advisor-v2-implementation-2026-08-09.md)。
 完整操作顺序、主赛事种子导入和状态含义见 [docs/runbook.md](docs/runbook.md)。模型的时间
@@ -218,8 +214,8 @@ planner。v1 手册、P5/P6 产物和默认 CLI 路径继续作为不可变兼�
 ## 本地实时 OCR（可选）
 
 ```powershell
-uv sync --extra dev --extra ocr
-uv run ti web
+uv sync --locked --extra ocr
+uv run ti app local-ocr
 ```
 
 打开 `Group Roll 实时顾问`，点击“识别下一次稳定的 Dota 画面”，再切回完整 Roll 页面。

@@ -1,7 +1,7 @@
 # Streamlit 手动版发布说明
 
-本目录只服务公开的 Group Roll 手动求解器。OCR、屏幕捕获、Dota 进程检查和本地数据同步均不在
-这条发布路径中。
+本目录只说明公开的 Group Roll 手动求解器部署。OCR、屏幕捕获、Dota 进程检查和本地数据同步均
+不在这条部署路径中；手动版和本地 OCR 版的求解事实来源统一放在 `deploy/runtime/`。
 
 ## Community Cloud 参数
 
@@ -24,22 +24,19 @@ Streamlit 当前会优先识别仓库根目录的 `uv.lock` 并使用 uv 安装�
 
 公开入口只读取：
 
-- `frozen/manual-advisor-v1.json.zst`；
-- `frozen/manual-advisor-v1.json.zst.sha256`；
+- `../runtime/current.json`；
+- `../runtime/releases/` 中由该清单指向的 `.json.zst` 与 `.sha256`；
 - 仓库中的版本化 `src/` 与 `config/`。
 
-当前文件身份：
+当前文件身份以 `../runtime/current.json` 为准。发布包包含：
 
-- 数据截止：`2026-08-10T13:45:12Z`
-- 文件 SHA-256：`c93c701b54e503432fdb69db9851bed10d94cd0949c8944c514b35ae3e2a7363`
-- 发布内容 SHA-256：`5fde1fb015e6bc185b481cdc46d3ba82a82275bc429ac1f743fd2972e50706ed`
-- 响应情景：256
-- 可用队伍×位置池：47（核心 16、中单 15、辅助 16）
+- 响应情景 256 个；
+- 可用队伍×位置池 47 个（核心 16、中单 15、辅助 16）；
+- 客户端 Roll 规则片段、Series 数值块、Title 边际证据和完整来源哈希。
 
-该文件是从已验证本地上下文生成的紧凑部署资产。它保留 Series 数值块、情景索引、客户端 Roll
-规则片段、Title 边际证据和来源哈希，但不提供原始 API 响应、截图、OCR 模型或写入接口。加载时
-会依次验证文件清单、发布内容、源码树、配置、P3、Title、规则快照、Pool 和 Scenario 身份；任一
-不一致即停止计算。
+它不提供原始 API 响应、处理后数据集、运行产物、截图、OCR 模型或写入接口。加载时会依次验证
+当前指针、文件清单、发布内容、源码树、配置、P3、Title、规则快照、Pool 和 Scenario 身份；任一
+不一致即停止计算。缺失时也不会尝试联网下载或从本机数据重建。
 
 ## 重新生成
 
@@ -47,12 +44,13 @@ Streamlit 当前会优先识别仓库根目录的 `uv.lock` 并使用 uv 安装�
 
 ```powershell
 uv sync --locked --extra dev
-uv run ti fantasy manual-release --as-of 2026-08-10T13:45:12Z
-uv run pytest tests/test_manual_streamlit_release.py
+uv run ti fantasy solver-release --as-of 2026-08-10T13:45:12Z
+uv run pytest tests/test_solver_release.py
 ```
 
 生成命令必须接收显式 UTC `as_of`，不会从系统当前时间猜测数据截止。若 `src/` 或 `config/` 在
-生成后变化，云端加载器会因源码树或配置哈希漂移而 fail closed，必须重新审计并生成快照。
+生成后变化，云端加载器会因源码树或配置哈希漂移而 fail closed，必须重新审计并发布一个新的
+内容寻址文件。旧文件保持不可变；只更新 `current.json` 指向已审核的新文件。
 
 ## 本地烟雾测试
 

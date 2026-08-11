@@ -14,11 +14,12 @@ from ti_predictor.backtesting import run_ti2025_backtest
 from ti_predictor.fantasy.advisor_reporting import generate_group_advisor_evidence
 from ti_predictor.fantasy.cross_audit_reporting import generate_group_cross_audit_evidence
 from ti_predictor.fantasy.current_advisor import prepare_current_advisor_context
-from ti_predictor.fantasy.manual_release import (
-    default_manual_release_path,
-    write_manual_release_bundle,
-)
 from ti_predictor.fantasy.playbook_reporting import generate_group_playbook_evidence
+from ti_predictor.fantasy.solver_release import (
+    SOLVER_RELEASE_ID,
+    default_solver_release_path,
+    write_solver_release_bundle,
+)
 from ti_predictor.fantasy.solver_reporting import generate_group_solver_evidence
 from ti_predictor.fantasy.title_reporting import generate_group_title_evidence
 from ti_predictor.forecasting import (
@@ -61,11 +62,15 @@ data_app = typer.Typer(help="同步、缓存和规范化数据。", no_args_is_h
 forecast_app = typer.Typer(help="生成小组或主赛事预测。", no_args_is_help=True)
 fantasy_app = typer.Typer(help="生成 Fantasy 推荐。", no_args_is_help=True)
 ocr_app = typer.Typer(help="识别用户提供的 Fantasy 截图。", no_args_is_help=True)
+consumer_app = typer.Typer(help="运行不依赖原始数据的玩家应用。", no_args_is_help=True)
+dev_app = typer.Typer(help="运行需要本地构建数据的维护者工具。", no_args_is_help=True)
 app.add_typer(rules_app, name="rules")
 app.add_typer(data_app, name="data")
 app.add_typer(forecast_app, name="forecast")
 app.add_typer(fantasy_app, name="fantasy")
 app.add_typer(ocr_app, name="ocr")
+app.add_typer(consumer_app, name="app")
+app.add_typer(dev_app, name="dev")
 
 
 def _echo(payload) -> None:
@@ -679,33 +684,48 @@ def fantasy_group_advisor_evidence(
     _exit_for_status(result.run.status)
 
 
-@fantasy_app.command("manual-release")
-def fantasy_manual_release(
-    as_of: Annotated[
-        str,
-        typer.Option("--as-of", help="手动 Streamlit 发布上下文截止时间，必须带时区。"),
-    ],
-    output: Annotated[
-        Path | None,
-        typer.Option("--output", help="默认写入 deploy/streamlit/frozen 下的内容寻址发布文件。"),
-    ] = None,
-) -> None:
+def _write_current_solver_release(*, as_of: str, output: Path | None) -> None:
     cutoff = parse_as_of(as_of)
     context = prepare_current_advisor_context(as_of=cutoff)
-    result = write_manual_release_bundle(
+    result = write_solver_release_bundle(
         context,
-        output_path=output or default_manual_release_path(),
+        output_path=output,
     )
     _echo(
         {
-            "release_id": "ti2026-group-current-screen-manual-v1",
+            "release_id": SOLVER_RELEASE_ID,
             "as_of": context.policy.as_of,
             "path": str(result.path),
+            "pointer_path": str(result.pointer_path) if result.pointer_path else None,
             "bytes": result.bytes,
             "file_sha256": result.file_sha256,
             "release_sha256": result.release_sha256,
         }
     )
+
+
+@fantasy_app.command("solver-release")
+def fantasy_solver_release(
+    as_of: Annotated[
+        str,
+        typer.Option("--as-of", help="冻结求解发布包的数据截止时间，必须带时区。"),
+    ],
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="默认写入 deploy/runtime/releases 并更新 current.json。"),
+    ] = None,
+) -> None:
+    _write_current_solver_release(as_of=as_of, output=output)
+
+
+@fantasy_app.command("manual-release", hidden=True)
+def fantasy_manual_release_compatibility(
+    as_of: Annotated[str, typer.Option("--as-of")],
+    output: Annotated[Path | None, typer.Option("--output")] = None,
+) -> None:
+    """Compatibility alias for the former manual-only release name."""
+
+    _write_current_solver_release(as_of=as_of, output=output)
 
 
 @app.command("audit")
@@ -720,8 +740,40 @@ def ocr_inspect(image: Annotated[Path, typer.Argument(exists=True, dir_okay=Fals
     _echo(inspect_screenshot(image))
 
 
-@app.command("web")
-def web(
+def _run_streamlit(entrypoint: Path, *, port: int) -> None:
+    default_solver_release_path()
+    command = [
+        sys.executable,
+        "-m",
+        "streamlit",
+        "run",
+        str(entrypoint),
+        "--server.address=127.0.0.1",
+        f"--server.port={port}",
+        "--server.headless=true",
+        "--browser.gatherUsageStats=false",
+    ]
+    raise typer.Exit(code=subprocess.run(command, check=False).returncode)
+
+
+@consumer_app.command("local-ocr")
+def local_ocr_app(
+    port: Annotated[int, typer.Option("--port", min=1024, max=65535)] = 8501,
+) -> None:
+    if sys.platform != "win32":
+        raise typer.BadParameter("本地画面识别仅支持 Windows；其他系统可运行 ti app manual")
+    _run_streamlit(PATHS.root / "local_ocr_app.py", port=port)
+
+
+@consumer_app.command("manual")
+def manual_app(
+    port: Annotated[int, typer.Option("--port", min=1024, max=65535)] = 8501,
+) -> None:
+    _run_streamlit(PATHS.root / "streamlit_app.py", port=port)
+
+
+@dev_app.command("web")
+def developer_web(
     port: Annotated[int, typer.Option("--port", min=1024, max=65535)] = 8501,
 ) -> None:
     command = [

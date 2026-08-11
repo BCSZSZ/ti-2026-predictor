@@ -13,10 +13,6 @@ from ti_predictor.fantasy.advisor import operation_label
 from ti_predictor.fantasy.current_advisor import (
     CurrentAdvisorContext,
     analyze_current_screen,
-    load_current_advisor_policy,
-    load_current_advisor_roll_rules,
-    load_current_advisor_team_options,
-    prepare_current_advisor_context,
 )
 from ti_predictor.fantasy.live_ocr import (
     LiveRollMonitor,
@@ -24,12 +20,12 @@ from ti_predictor.fantasy.live_ocr import (
     load_live_ocr_profile,
     observation_widget_updates,
 )
-from ti_predictor.fantasy.manual_release import (
-    load_manual_release_context,
-    manual_release_team_options,
-)
 from ti_predictor.fantasy.roll import BannerState, EmblemState, GroupRollState, RollOffer
-from ti_predictor.paths import PATHS
+from ti_predictor.fantasy.solver_release import (
+    default_solver_release_path,
+    load_solver_release_context,
+    solver_release_team_options,
+)
 
 _ROLE_LABELS = {"core": "核心位", "mid": "中单", "support": "辅助位"}
 _COLOR_LABELS = {"red": "红", "blue": "蓝", "green": "绿"}
@@ -62,31 +58,16 @@ _TITLE_LABEL_OVERRIDES = {
 
 
 @st.cache_resource(show_spinner=False)
-def _cached_roll_rules():
-    return load_current_advisor_roll_rules()
+def _cached_solver_release_context(path: str) -> CurrentAdvisorContext:
+    return load_solver_release_context(Path(path))
 
 
 @st.cache_resource(show_spinner=False)
-def _cached_context(as_of: str) -> CurrentAdvisorContext:
-    return prepare_current_advisor_context(as_of=as_of)
-
-
-@st.cache_resource(show_spinner=False)
-def _cached_manual_release_context(path: str) -> CurrentAdvisorContext:
-    return load_manual_release_context(Path(path))
-
-
-def _policy():
-    return load_current_advisor_policy(
-        PATHS.config / "models" / "fantasy-group-current-screen-advisor-v2.json"
-    )
-
-
-@st.cache_resource(show_spinner=False)
-def _cached_live_monitor() -> LiveRollMonitor:
+def _cached_live_monitor(release_path: str) -> LiveRollMonitor:
+    context = _cached_solver_release_context(release_path)
     return LiveRollMonitor(
         profile=load_live_ocr_profile(),
-        rules=_cached_roll_rules(),
+        rules=context.roll_rules,
     )
 
 
@@ -97,11 +78,6 @@ def _stat_labels() -> dict[str, str]:
 
 def _public_operation_label(operation_id: int, rules) -> str:
     return operation_label(operation_id, rules).replace(f"#{operation_id} · ", "").replace(" / ", " · ")
-
-
-@st.cache_data(show_spinner=False)
-def _cached_team_options() -> dict[str, tuple[tuple[int, str], ...]]:
-    return load_current_advisor_team_options()
 
 
 def _clear_result() -> None:
@@ -134,8 +110,8 @@ def _consume_pending_observation(rules) -> None:
 
 
 @st.fragment(run_every=1.0)
-def _render_live_monitor_status() -> None:
-    monitor = _cached_live_monitor()
+def _render_live_monitor_status(release_path: str) -> None:
+    monitor = _cached_live_monitor(release_path)
     snapshot = monitor.snapshot()
     stage = snapshot.stage
     if stage == "error":
@@ -158,12 +134,12 @@ def _render_live_monitor_status() -> None:
     st.rerun()
 
 
-def _render_live_controls() -> None:
+def _render_live_controls(release_path: str) -> None:
     st.subheader("自动读取游戏画面")
     st.caption(
         "点击后切回 Dota；程序读取下一张稳定的完整页面一次，然后自动停止。英文优先，同时支持简体中文。"
     )
-    monitor = _cached_live_monitor()
+    monitor = _cached_live_monitor(release_path)
     snapshot = monitor.snapshot()
     if snapshot.running:
         if st.button("取消本次识别", use_container_width=True):
@@ -177,7 +153,7 @@ def _render_live_controls() -> None:
     ):
         monitor.start_once()
         st.rerun()
-    _render_live_monitor_status()
+    _render_live_monitor_status(release_path)
     observation = st.session_state.get("current_advisor_last_observation")
     if observation is None:
         st.caption("等待期间可切回 Dota；识别完成后回到本页查看，也可以始终使用下方手填。")
@@ -418,7 +394,6 @@ def render_advisor_page(
     manual_only: bool = False,
     release_bundle_path: Path | None = None,
 ) -> None:
-    release_context: CurrentAdvisorContext | None = None
     if manual_only:
         st.title("Group Roll 手动求解器")
         st.write("手动录入当前九格、三个选项和剩余 Roll；页面只推荐这一步怎么做。")
@@ -429,22 +404,18 @@ def render_advisor_page(
         st.caption("本地只读辅助：不控制 Dota、不猜下一轮选项。仅支持 Group 三格战旗。")
 
     try:
-        if release_bundle_path is None:
-            rules = _cached_roll_rules()
-            policy = _policy()
-            team_options = _cached_team_options()
-        else:
-            release_context = _cached_manual_release_context(str(release_bundle_path.resolve()))
-            rules = release_context.roll_rules
-            policy = release_context.policy
-            team_options = manual_release_team_options(release_context)
+        selected_release_path = (release_bundle_path or default_solver_release_path()).resolve()
+        release_path_text = str(selected_release_path)
+        release_context = _cached_solver_release_context(release_path_text)
+        rules = release_context.roll_rules
+        team_options = solver_release_team_options(release_context)
     except (OSError, ValueError) as error:
         st.error(f"当前冻结求解上下文不可用：{error}")
         return
 
     if not manual_only and live_capture_supported():
         _consume_pending_observation(rules)
-        _render_live_controls()
+        _render_live_controls(release_path_text)
         st.divider()
 
     manual_team_mode = st.radio(
@@ -464,15 +435,9 @@ def render_advisor_page(
     )
     if submitted and state is not None:
         try:
-            spinner = (
-                "载入冻结发布上下文并计算所有可执行选择…"
-                if release_context is not None
-                else "载入当前证据并计算所有可执行选择…首次打开约需数十秒。"
-            )
-            with st.spinner(spinner):
-                context = release_context or _cached_context(policy.as_of)
+            with st.spinner("使用冻结求解发布包计算所有可执行选择…"):
                 result = analyze_current_screen(
-                    context,
+                    release_context,
                     state,
                     risk_profile=risk_profile,
                     selected_team_ids=selected_team_ids,
@@ -486,16 +451,11 @@ def render_advisor_page(
     if result is None:
         st.info("完成输入后点击“计算现在应该怎么选”。")
         return
-    try:
-        context = release_context or _cached_context(policy.as_of)
-    except (OSError, ValueError) as error:
-        st.error(f"结果来源已经不可用：{error}")
-        return
     st.divider()
     st.subheader("现在的结论")
     _render_recommendation(result)
     _render_lineup_and_title(result)
-    _render_details(result, context)
+    _render_details(result, release_context)
     if manual_only:
         st.info("在游戏里完成操作后，把表单改成实际出现的新状态，再重新计算。")
     else:

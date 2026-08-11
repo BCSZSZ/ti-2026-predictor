@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 3
 event_id: international_2026
 display_name: The International 2026
 league_id: 19719
@@ -9,6 +9,7 @@ history_league_ids:
 group_lock_at: '2026-08-13T02:00:00Z'
 main_lock_at: '2026-08-20T02:00:00Z'
 roster_valid_from: '2026-07-31T00:00:00Z'
+roster_snapshot_as_of: '2026-08-10T13:44:36Z'
 # Fill only after Valve publishes the actual eight-team Main Event seeding.
 main_event_seeds: []
 teams:
@@ -50,6 +51,11 @@ teams:
       support: [{account_id: 103735745, name: Saksa}, {account_id: 93817671, name: Maladych}]
   - team_id: 10150413
     name: Iron Wing
+    registration_identity:
+      valid_from: '2026-06-01T00:00:00Z'
+      evidence_as_of: '2026-08-10T13:45:12Z'
+      source: 'Alias audit 2026-08-11 + 1win organization announcement'
+      provenance: derived
     players:
       core: [{account_id: 331855530, name: Pure}, {account_id: 86698277, name: '33'}]
       mid: [{account_id: 93618577, name: bzm}]
@@ -62,6 +68,11 @@ teams:
       support: [{account_id: 157475523, name: XinQ}, {account_id: 111114687, name: y}]
   - team_id: 5017210
     name: Team Resilience
+    registration_identity:
+      valid_from: '2026-04-08T09:08:01Z'
+      evidence_as_of: '2026-08-10T13:45:12Z'
+      source: 'Alias audit 2026-08-11 + match evidence 25cb708e91c7 + player evidence 9053a1054489'
+      provenance: derived
     players:
       core: [{account_id: 170896543, name: YSR-04E}, {account_id: 145957968, name: niu}]
       mid: [{account_id: 315272623, name: Echozz}]
@@ -70,7 +81,12 @@ teams:
     name: LGD Gaming
     players:
       core: [{account_id: 177203952, name: Yuma}, {account_id: 292921272, name: Wisper}]
-      mid: [{account_id: 1026694469, name: TaiLung}]
+      mid:
+        - account_id: 94054712
+          name: Topson
+          valid_from: '2026-08-10T06:10:26Z'
+          source: 'dota_client_build_6893:event_fantasy_roster'
+          provenance: derived
       support: [{account_id: 105045291, name: Thiolicor}, {account_id: 81306398, name: KingJungles}]
   - team_id: 2586976
     name: OG
@@ -108,3 +124,105 @@ teams:
       core: [{account_id: 321580662, name: Yatoro}, {account_id: 302214028, name: Collapse}]
       mid: [{account_id: 106305042, name: Larl}]
       support: [{account_id: 847565596, name: rue}, {account_id: 218231587, name: not_me}]
+
+roster_history:
+  - team_id: 10150538
+    account_id: 1026694469
+    name: TaiLung
+    role: mid
+    valid_from: '2026-07-31T00:00:00Z'
+    valid_to: '2026-08-10T06:10:26Z'
+    source: 'dota_client_build_6893:event_fantasy_roster'
+    provenance: derived
+
+team_identity_bridges:
+  - bridge_id: l1ga-9303383-to-huligani-10149530
+    raw_team_id: 9303383
+    canonical_team_id: 10149530
+    valid_from: '2026-03-16T08:17:12Z'
+    valid_to: '2026-08-10T13:45:12Z'
+    evidence_as_of: '2026-08-10T13:45:12Z'
+    verified_account_ids: [92487440, 123787715, 140251702, 145065875, 320017600]
+    reason: verified-registration-display-name-change
+    source: 'Alias audit 2026-08-11 + match evidence 25cb708e91c7 + player evidence 9053a1054489'
+    provenance: derived
+  - bridge_id: resilience-9316703-to-team-resilience-5017210
+    raw_team_id: 9316703
+    canonical_team_id: 5017210
+    valid_from: '2026-04-08T09:08:01Z'
+    valid_to: '2026-08-10T13:45:12Z'
+    evidence_as_of: '2026-08-10T13:45:12Z'
+    verified_account_ids: [145957968, 150961567, 170896543, 249835593, 315272623]
+    reason: verified-tournament-registration-id-change
+    source: 'Alias audit 2026-08-11 + match evidence 25cb708e91c7 + player evidence 9053a1054489'
+    provenance: derived
+  - bridge_id: parivision-9824702-to-team-vision-9572001
+    raw_team_id: 9824702
+    canonical_team_id: 9572001
+    valid_from: '2026-05-26T08:01:27Z'
+    valid_to: '2026-08-10T13:45:12Z'
+    evidence_as_of: '2026-08-10T13:45:12Z'
+    verified_account_ids: [73401082, 106573901, 164199202, 195108598, 1044002267]
+    reason: verified-registration-display-name-change
+    source: 'Valve league 73519bcb40a4 + player evidence 9053a1054489'
+    provenance: derived
+  - bridge_id: l1-team-10182299-to-huligani-10149530
+    raw_team_id: 10182299
+    canonical_team_id: 10149530
+    valid_from: '2026-07-07T12:18:00Z'
+    valid_to: '2026-08-10T13:45:12Z'
+    evidence_as_of: '2026-08-10T13:45:12Z'
+    verified_account_ids: [92487440, 111030315, 123787715, 140251702, 320017600]
+    reason: verified-registration-display-name-change
+    source: 'Alias audit 2026-08-11 + match evidence 25cb708e91c7 + player evidence 9053a1054489'
+    provenance: derived
+  - bridge_id: 1w-10182357-to-iron-wing-10150413
+    raw_team_id: 10182357
+    canonical_team_id: 10150413
+    valid_from: '2026-07-07T18:16:19Z'
+    valid_to: '2026-08-10T13:45:12Z'
+    evidence_as_of: '2026-08-10T13:45:12Z'
+    verified_account_ids: [86698277, 93618577, 136829091, 331855530, 346412363]
+    reason: verified-registration-display-name-change
+    source: 'Alias audit 2026-08-11 + match evidence 25cb708e91c7 + player evidence 9053a1054489'
+    provenance: derived
+  - bridge_id: team-resilience-10207984-to-team-resilience-5017210
+    raw_team_id: 10207984
+    canonical_team_id: 5017210
+    valid_from: '2026-07-31T09:33:01Z'
+    valid_to: '2026-08-10T13:45:12Z'
+    evidence_as_of: '2026-08-10T13:45:12Z'
+    verified_account_ids: [145957968, 150961567, 170896543, 249835593, 315272623]
+    reason: verified-tournament-registration-id-change
+    source: 'Alias audit 2026-08-11 + match evidence 25cb708e91c7 + player evidence 9053a1054489'
+    provenance: derived
+  - bridge_id: l1ga-10208009-to-huligani-10149530
+    raw_team_id: 10208009
+    canonical_team_id: 10149530
+    valid_from: '2026-07-31T12:27:48Z'
+    valid_to: '2026-08-10T13:45:12Z'
+    evidence_as_of: '2026-08-10T13:45:12Z'
+    verified_account_ids: [92487440, 123787715, 140251702, 145065875, 320017600]
+    reason: verified-registration-display-name-change
+    source: 'Alias audit 2026-08-11 + match evidence 25cb708e91c7 + player evidence 9053a1054489'
+    provenance: derived
+  - bridge_id: lgd-pinghu-10208068-to-lgd-10150538
+    raw_team_id: 10208068
+    canonical_team_id: 10150538
+    valid_from: '2026-07-31T17:31:28Z'
+    valid_to: '2026-08-10T13:45:12Z'
+    evidence_as_of: '2026-08-10T13:45:12Z'
+    verified_account_ids: [81306398, 105045291, 177203952, 292921272, 1026694469]
+    reason: verified-event-registration-display-name-change
+    source: 'Alias audit 2026-08-11 + match evidence 25cb708e91c7 + player evidence 9053a1054489'
+    provenance: derived
+  - bridge_id: xtreme-10208071-to-xtreme-8261500
+    raw_team_id: 10208071
+    canonical_team_id: 8261500
+    valid_from: '2026-07-31T17:31:28Z'
+    valid_to: '2026-08-10T13:45:12Z'
+    evidence_as_of: '2026-08-10T13:45:12Z'
+    verified_account_ids: [94296097, 101695162, 129958758, 173978074, 898754153]
+    reason: verified-tournament-registration-id-change
+    source: 'Alias audit 2026-08-11 + match evidence 25cb708e91c7 + player evidence 9053a1054489'
+    provenance: derived

@@ -11,7 +11,10 @@ from ti_predictor.fantasy.title import (
     extract_match_title_features,
     parse_title_hero_categories,
 )
-from ti_predictor.fantasy.title_reporting import _archive_hero_source
+from ti_predictor.fantasy.title_reporting import (
+    _archive_hero_source,
+    render_title_evidence_markdown,
+)
 from ti_predictor.paths import ProjectPaths
 
 
@@ -228,3 +231,23 @@ def test_build_title_analysis_ranks_prefix_and_bo3_clutch() -> None:
     fountain = next(row for row in result["suffixes"] if row["id"] == "fountain")
     assert early["rank"] is None and early["status"] == "conflicted_excluded"
     assert fountain["rank"] is None and fountain["status"] == "unavailable"
+
+    result["prefixes_by_role"]["core"] = result["prefixes_by_role"]["mid"]
+    result["prefixes_by_role"]["support"] = result["prefixes_by_role"]["mid"]
+    report = render_title_evidence_markdown(
+        {
+            "as_of": "2026-08-10T13:45:12Z",
+            "analysis": result,
+            "diagnostics": {"mean_bo3_reaches_game3": 0.2},
+            "evidence_weight_audit": {
+                "current_exact_patch_weight": {
+                    "patch_name": "7.41e",
+                    "multiplier": 1.5,
+                }
+            },
+            "hero_source": {"mapped_heroes": 2},
+            "raw_detail_audit": {"raw_match_count": 5},
+        }
+    )
+    assert "1 个“队伍×位置”池中" in report
+    assert "48 个“队伍×位置”池中" not in report

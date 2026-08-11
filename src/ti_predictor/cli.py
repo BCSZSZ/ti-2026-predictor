@@ -13,6 +13,11 @@ from ti_predictor.audit import audit_run
 from ti_predictor.backtesting import run_ti2025_backtest
 from ti_predictor.fantasy.advisor_reporting import generate_group_advisor_evidence
 from ti_predictor.fantasy.cross_audit_reporting import generate_group_cross_audit_evidence
+from ti_predictor.fantasy.current_advisor import prepare_current_advisor_context
+from ti_predictor.fantasy.manual_release import (
+    default_manual_release_path,
+    write_manual_release_bundle,
+)
 from ti_predictor.fantasy.playbook_reporting import generate_group_playbook_evidence
 from ti_predictor.fantasy.solver_reporting import generate_group_solver_evidence
 from ti_predictor.fantasy.title_reporting import generate_group_title_evidence
@@ -398,9 +403,23 @@ def forecast_group(
     as_of: Annotated[str, typer.Option("--as-of")],
     profile: Annotated[str, typer.Option("--profile")] = "all",
     samples: Annotated[int, typer.Option("--samples", min=1000)] = 20000,
+    sensitivity_samples: Annotated[
+        int | None,
+        typer.Option(
+            "--sensitivity-samples",
+            min=1000,
+            help="每个非主情景的样本数；缺省时与 --samples 相同。",
+        ),
+    ] = None,
     seed: Annotated[int, typer.Option("--seed", min=0)] = 20260813,
 ) -> None:
-    result = generate_group(as_of=parse_as_of(as_of), profile=profile, samples=samples, seed=seed)
+    result = generate_group(
+        as_of=parse_as_of(as_of),
+        profile=profile,
+        samples=samples,
+        sensitivity_samples=sensitivity_samples,
+        seed=seed,
+    )
     _echo(
         {
             "run_id": result.run.run_id,
@@ -658,6 +677,35 @@ def fantasy_group_advisor_evidence(
         }
     )
     _exit_for_status(result.run.status)
+
+
+@fantasy_app.command("manual-release")
+def fantasy_manual_release(
+    as_of: Annotated[
+        str,
+        typer.Option("--as-of", help="手动 Streamlit 发布上下文截止时间，必须带时区。"),
+    ],
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="默认写入 deploy/streamlit/frozen 下的内容寻址发布文件。"),
+    ] = None,
+) -> None:
+    cutoff = parse_as_of(as_of)
+    context = prepare_current_advisor_context(as_of=cutoff)
+    result = write_manual_release_bundle(
+        context,
+        output_path=output or default_manual_release_path(),
+    )
+    _echo(
+        {
+            "release_id": "ti2026-group-current-screen-manual-v1",
+            "as_of": context.policy.as_of,
+            "path": str(result.path),
+            "bytes": result.bytes,
+            "file_sha256": result.file_sha256,
+            "release_sha256": result.release_sha256,
+        }
+    )
 
 
 @app.command("audit")

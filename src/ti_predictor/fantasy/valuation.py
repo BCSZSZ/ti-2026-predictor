@@ -277,7 +277,10 @@ def evaluate_stat_teams(
 ) -> TeamOutcomeMatrix:
     pools = _pool_map(pool_result)
     rows: list[np.ndarray] = []
-    for team_id in scenario_set.team_ids:
+    team_ids = tuple(team_id for team_id in scenario_set.team_ids if (team_id, role) in pools)
+    if not team_ids:
+        raise ValueError(f"no Fantasy Team is available for role {role}")
+    for team_id in team_ids:
         pool = pools[(team_id, role)]
         stat_indexes = _pool_stat_indexes(pool, (stat_id,))
         rows.append(
@@ -294,7 +297,7 @@ def evaluate_stat_teams(
         item_id=stat_id,
         role=role,
         scenario_sha256=scenario_set.semantic_hash,
-        team_ids=scenario_set.team_ids,
+        team_ids=team_ids,
         outcomes=np.stack(rows),
     )
 
@@ -352,7 +355,12 @@ def evaluate_banner_teams(
     pools = _pool_map(pool_result)
     stat_ids, multipliers = _banner_score_inputs(banner, rules)
     rows: list[np.ndarray] = []
-    for team_id in scenario_set.team_ids:
+    team_ids = tuple(
+        team_id for team_id in scenario_set.team_ids if (team_id, banner.role) in pools
+    )
+    if not team_ids:
+        raise ValueError(f"no Fantasy Team is available for role {banner.role}")
+    for team_id in team_ids:
         pool = pools[(team_id, banner.role)]
         coach_values = None if coach is None else coach.values_for(team_id, banner.role)
         rows.append(
@@ -370,7 +378,7 @@ def evaluate_banner_teams(
         item_id=f"{_banner_identity(banner)}|{coach_id}",
         role=banner.role,
         scenario_sha256=scenario_set.semantic_hash,
-        team_ids=scenario_set.team_ids,
+        team_ids=team_ids,
         outcomes=np.stack(rows),
     )
 
@@ -450,8 +458,8 @@ def match_group_roles(
             raise ValueError(f"matrix labelled {matrix.role} was supplied for {role}")
         if matrix.scenario_sha256 != first.scenario_sha256:
             raise ValueError("Group role matrices must use the same common Scenario set")
-        if matrix.team_ids != first.team_ids or matrix.outcomes.shape != first.outcomes.shape:
-            raise ValueError("Group role matrices must align on Team and Scenario IDs")
+        if matrix.outcomes.shape[1] != first.outcomes.shape[1]:
+            raise ValueError("Group role matrices must align on Scenario IDs")
 
     role_means = [matrices[role].outcomes.mean(axis=1) for role in ROLE_IDS]
     maximum_mean = float(sum(values.max() for values in role_means))
@@ -472,7 +480,10 @@ def match_group_roles(
             (matrices[role].outcomes[index] for role, index in zip(ROLE_IDS, indexes, strict=True)),
             start=np.zeros(first.outcomes.shape[1], dtype=float),
         )
-        team_ids = tuple(int(first.team_ids[index]) for index in indexes)
+        team_ids = tuple(
+            int(matrices[role].team_ids[index])
+            for role, index in zip(ROLE_IDS, indexes, strict=True)
+        )
         cvar = lower_tail_cvar(outcomes, risk.cvar_alpha)
         rank_key = (-cvar, -mean, team_ids)
         if selected_key is None or rank_key < selected_key:
@@ -747,7 +758,9 @@ def cluster_bootstrap_stat_intervals(
             max_series = int(scenario_set.series_counts.max())
             used = np.arange(max_series)[None, :] < counts[:, None]
             for role in ROLE_IDS:
-                pool = pools[(team_id, role)]
+                pool = pools.get((team_id, role))
+                if pool is None:
+                    continue
                 rng = np.random.default_rng(_bootstrap_seed(seed, replicate, team_id, role))
                 resampled_clusters = rng.choice(
                     len(pool.blocks), size=len(pool.blocks), replace=True, p=pool.weights
@@ -769,9 +782,11 @@ def cluster_bootstrap_stat_intervals(
             for key in relative_samples:
                 role, _, stat_id = key
                 values = team_stat_means[role][:, stat_index[stat_id]]
-                if not np.isfinite(values).all():
-                    raise ValueError(f"non-finite team-rank bootstrap values for {role}/{stat_id}")
-                order = np.lexsort((team_ids, -values))
+                available = np.flatnonzero(np.isfinite(values))
+                if len(available) < 3:
+                    raise ValueError(f"fewer than three team-rank values for {role}/{stat_id}")
+                local_order = np.lexsort((team_ids[available], -values[available]))
+                order = available[local_order]
                 rank1_counts[key][order[0]] += 1
                 top3_counts[key][order[:3]] += 1
 

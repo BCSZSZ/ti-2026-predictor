@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 from time import perf_counter
 from typing import Any
 
 import pandas as pd
 
-from ti_predictor.backtesting import evaluate_league_holdout
+from ti_predictor.backtesting import evaluate_bo3_probability_transform, evaluate_league_holdout
 from ti_predictor.config import (
     load_rules,
+    load_swiss_format,
+    load_swiss_simulation_policy,
     load_team_strength_policy,
     load_tournament_manifest,
+    swiss_hash,
+    swiss_policy_hash,
     team_strength_policy_path,
 )
 from ti_predictor.fantasy.recommend import FantasyRecommender
@@ -33,6 +38,7 @@ from ti_predictor.fantasy.valuation import (
     cluster_bootstrap_stat_intervals,
 )
 from ti_predictor.hashing import sha256_file, sha256_json
+from ti_predictor.identity import canonicalize_match_team_ids
 from ti_predictor.models.evidence import build_evidence_set
 from ti_predictor.models.policy import EvidenceScopePolicy
 from ti_predictor.models.ratings import ModelReport, TeamStrengthModel, fit_team_strengths
@@ -42,7 +48,11 @@ from ti_predictor.runs import ArtifactWriter, make_run_id
 from ti_predictor.schemas import AuditIssue, ForecastRun, Recommendation, StrategyProfile, as_utc
 from ti_predictor.storage import read_parquet_if_exists
 from ti_predictor.tournament.bracket import BracketEngine
-from ti_predictor.tournament.group import GroupSimulator, scenario_sensitivity
+from ti_predictor.tournament.group import (
+    SwissGroupSimulator,
+    scenario_probability_tables,
+    scenario_sensitivity,
+)
 
 
 @dataclass
@@ -114,6 +124,16 @@ def _load_strength_model(paths: ProjectPaths, as_of) -> tuple[TeamStrengthModel,
                 "league_tier",
             ]
         )
+    matches, identity_audit = canonicalize_match_team_ids(
+        matches,
+        manifest.team_identity_bridges,
+        as_of=as_of,
+        registration_identities={
+            team.team_id: team.registration_identity
+            for team in manifest.teams
+            if team.registration_identity is not None
+        },
+    )
     holdout = matches.loc[
         matches.get("league_id", pd.Series(dtype=float)).eq(policy.ti2025_holdout.league_id)
     ].copy()
@@ -122,7 +142,7 @@ def _load_strength_model(paths: ProjectPaths, as_of) -> tuple[TeamStrengthModel,
         holdout["start_time"] = pd.to_datetime(holdout["start_time"], utc=True, errors="coerce")
         holdout_start = holdout["start_time"].dropna().min()
         if pd.notna(holdout_start):
-            calibration_as_of = holdout_start.to_pydatetime() - pd.Timedelta(microseconds=1)
+            calibration_as_of = holdout_start.to_pydatetime() - timedelta(microseconds=1)
     model, report = fit_team_strengths(
         matches,
         patches,
@@ -134,6 +154,7 @@ def _load_strength_model(paths: ProjectPaths, as_of) -> tuple[TeamStrengthModel,
     )
     policy_path = team_strength_policy_path(manifest, config_root=paths.config)
     report.evidence_audit["policy_sha256"] = sha256_file(policy_path)
+    report.evidence_audit["team_identity_normalization"] = identity_audit
     return model, report
 
 
@@ -210,26 +231,57 @@ def generate_group(
     as_of,
     profile: str | StrategyProfile = "all",
     samples: int = 20000,
+    sensitivity_samples: int | None = None,
     seed: int = 20260813,
     paths: ProjectPaths = PATHS,
 ) -> GenerationResult:
     cutoff = as_utc(as_of)
+    sensitivity_sample_count = samples if sensitivity_samples is None else sensitivity_samples
+    if samples < 1 or sensitivity_sample_count < 1:
+        raise ValueError("Group simulation sample counts must be positive")
     selected_profiles = _profiles(profile)
     manifest = load_tournament_manifest(paths.tournament)
     rules = load_rules(paths.rules)
+    swiss_format = load_swiss_format(as_of=cutoff, manifest=manifest, path=paths.swiss)
+    swiss_policy = load_swiss_simulation_policy(
+        as_of=cutoff,
+        manifest=manifest,
+        path=paths.swiss_policy,
+    )
     model, report = _load_strength_model(paths, cutoff)
     report.issues.extend(rule_snapshot_issues(cutoff, paths))
     holdout_details: dict[str, Any] = {}
+    bo3_details: dict[str, Any] = {
+        "selected_mode": swiss_policy.bo3_selection.fallback_mode,
+        "status": "fallback",
+    }
     try:
         matches = read_parquet_if_exists(paths.processed / "matches.parquet")
         patches = read_parquet_if_exists(paths.processed / "patches.parquet")
         policy = load_team_strength_policy(manifest, config_root=paths.config)
-        _, holdout_model_report, holdout_details, holdout_issues = evaluate_league_holdout(
+        holdout_model, holdout_model_report, holdout_details, holdout_issues = evaluate_league_holdout(
             matches,
             patches,
             policy=policy,
             league_id=policy.ti2025_holdout.league_id,
         )
+        holdout_matches = matches.loc[matches["league_id"].eq(policy.ti2025_holdout.league_id)]
+        bo3_details = evaluate_bo3_probability_transform(holdout_model, holdout_matches)
+        bo3_details["status"] = "qualified"
+        if bo3_details["evaluated_series"] < swiss_policy.bo3_selection.minimum_holdout_series:
+            report.issues.append(
+                AuditIssue(
+                    code="bo3-transform-insufficient-series",
+                    severity="blocking",
+                    message="BO3 transform holdout contains fewer complete Series than required",
+                    context={
+                        "required": swiss_policy.bo3_selection.minimum_holdout_series,
+                        "actual": bo3_details["evaluated_series"],
+                    },
+                )
+            )
+            bo3_details["selected_mode"] = swiss_policy.bo3_selection.fallback_mode
+            bo3_details["status"] = "fallback"
         holdout_blocking = [
             issue for issue in [*holdout_issues, *holdout_model_report.issues] if issue.severity == "blocking"
         ]
@@ -242,7 +294,14 @@ def generate_group(
                 message=f"TI 2025 holdout gate could not run: {error}",
             )
         )
-    simulator = GroupSimulator(model, manifest)
+    simulator = SwissGroupSimulator(
+        model,
+        manifest,
+        swiss_format=swiss_format,
+        policy=swiss_policy,
+        as_of=cutoff,
+        series_probability_mode=bo3_details["selected_mode"],
+    )
     covered_teams = [
         team.team_id for team in manifest.teams if model.matches_played.get(team.team_id, 0) >= 5
     ]
@@ -260,11 +319,20 @@ def generate_group(
                 },
             )
         )
-    scenarios = [
-        simulator.simulate(samples=samples, seed=seed + offset, scenario=scenario)
-        for offset, scenario in enumerate(("strength_seeded", "balanced_pairing", "high_variance"))
+    scenario_ids = [swiss_policy.primary_scenario] + [
+        scenario.scenario_id
+        for scenario in swiss_policy.scenarios
+        if scenario.scenario_id != swiss_policy.primary_scenario
     ]
-    primary = scenarios[1]
+    scenarios = [
+        simulator.simulate(
+            samples=samples if offset == 0 else sensitivity_sample_count,
+            seed=seed + offset * 1009,
+            scenario=scenario_id,
+        )
+        for offset, scenario_id in enumerate(scenario_ids)
+    ]
+    primary = scenarios[0]
     recommendations = [
         simulator.recommend(
             primary,
@@ -302,20 +370,126 @@ def generate_group(
                     )
                 )
             },
+            "percentages": {
+                category: round(float(primary.probabilities[team_index, category_index]) * 100.0, 2)
+                for category_index, category in enumerate(
+                    (
+                        "four_zero",
+                        "four_one",
+                        "elimination_winner",
+                        "elimination_loser",
+                        "one_four",
+                        "zero_four",
+                    )
+                )
+            },
         }
         for team_index, team_id in enumerate(primary.team_ids)
     ]
+    first_round_forecasts = []
+    for series in swiss_format.first_round:
+        unadjusted_probability = model.predict(series.team_a_id, series.team_b_id)
+        unadjusted_odds = unadjusted_probability / (1.0 - unadjusted_probability)
+        multiplier_a = simulator.roster_strength_multiplier(
+            series.team_a_id,
+            scenario=primary.scenario,
+        )
+        multiplier_b = simulator.roster_strength_multiplier(
+            series.team_b_id,
+            scenario=primary.scenario,
+        )
+        adjusted_odds = unadjusted_odds * multiplier_a / multiplier_b
+        model_probability = simulator.adjusted_game_probability(
+            series.team_a_id,
+            series.team_b_id,
+            scenario=primary.scenario,
+        )
+        scoreline_game_probability = simulator.scoreline_game_probability(
+            series.team_a_id,
+            series.team_b_id,
+            scenario=primary.scenario,
+        )
+        series_probability = simulator.series_win_probability(
+            series.team_a_id,
+            series.team_b_id,
+            scenario=primary.scenario,
+        )
+        first_round_forecasts.append(
+            {
+                "node_id": series.node_id,
+                "initial_group": series.initial_group,
+                "start_at": series.start_at.isoformat().replace("+00:00", "Z"),
+                "team_a_id": series.team_a_id,
+                "team_a": simulator.team_names[series.team_a_id],
+                "team_b_id": series.team_b_id,
+                "team_b": simulator.team_names[series.team_b_id],
+                "team_a_unadjusted_model_probability": round(unadjusted_probability, 6),
+                "team_a_unadjusted_model_probability_percent": round(
+                    unadjusted_probability * 100.0,
+                    2,
+                ),
+                "team_b_unadjusted_model_probability": round(
+                    1.0 - unadjusted_probability,
+                    6,
+                ),
+                "team_b_unadjusted_model_probability_percent": round(
+                    (1.0 - unadjusted_probability) * 100.0,
+                    2,
+                ),
+                "team_a_unadjusted_odds": round(unadjusted_odds, 6),
+                "team_b_unadjusted_odds": round(1.0 / unadjusted_odds, 6),
+                "team_a_roster_strength_multiplier": multiplier_a,
+                "team_b_roster_strength_multiplier": multiplier_b,
+                "team_a_adjusted_odds": round(adjusted_odds, 6),
+                "team_b_adjusted_odds": round(1.0 / adjusted_odds, 6),
+                "team_a_model_probability": round(model_probability, 6),
+                "team_a_model_probability_percent": round(model_probability * 100.0, 2),
+                "team_a_scoreline_proxy_game_probability": round(
+                    scoreline_game_probability,
+                    6,
+                ),
+                "team_a_scoreline_proxy_game_probability_percent": round(
+                    scoreline_game_probability * 100.0,
+                    2,
+                ),
+                "team_a_series_probability": round(series_probability, 6),
+                "team_a_series_probability_percent": round(series_probability * 100.0, 2),
+                "team_b_series_probability": round(1.0 - series_probability, 6),
+                "team_b_series_probability_percent": round(
+                    (1.0 - series_probability) * 100.0,
+                    2,
+                ),
+            }
+        )
     return _finalize(
         kind="group",
         as_of=cutoff,
         seed=seed,
         selected_profiles=selected_profiles,
-        parameters={"samples_per_scenario": samples, "primary_scenario": primary.scenario},
+        parameters={
+            "primary_samples": samples,
+            "sensitivity_samples": sensitivity_sample_count,
+            "scenario_sample_counts": {
+                scenario.scenario: len(scenario.outcomes) for scenario in scenarios
+            },
+            "primary_scenario": primary.scenario,
+            "scenarios": scenario_ids,
+            "swiss_format_sha256": swiss_hash(paths.swiss),
+            "swiss_policy_sha256": swiss_policy_hash(paths.swiss_policy),
+            "bo3_probability_mode": bo3_details["selected_mode"],
+        },
         recommendations=recommendations,
         model=model,
         report=report,
         extra={
             "probabilities": probabilities,
+            "first_round_forecasts": first_round_forecasts,
+            "swiss_simulation": primary.metadata,
+            "bo3_probability_transform": bo3_details,
+            "scenario_probabilities": scenario_probability_tables(
+                scenarios,
+                simulator.team_names,
+            ),
             "scenario_sensitivity": scenario_sensitivity(scenarios, simulator.team_names),
             "team_strength_coverage": {
                 "teams_with_at_least_five_matches": covered_teams,
@@ -520,8 +694,14 @@ def generate_group_fantasy_evidence(
         raise ValueError("team-rank bootstrap requires the complete Series bootstrap")
     manifest = load_tournament_manifest(paths.tournament)
     rules = load_rules(paths.rules)
-    scenario_policy_path = paths.config / "models" / "fantasy-group-scenarios-v1.json"
+    scenario_policy_path = paths.config / "models" / "fantasy-group-scenarios-v2.json"
     scenario_policy = load_group_scenario_policy(scenario_policy_path)
+    swiss_format = load_swiss_format(as_of=cutoff, manifest=manifest, path=paths.swiss)
+    swiss_policy = load_swiss_simulation_policy(
+        as_of=cutoff,
+        manifest=manifest,
+        path=paths.swiss_policy,
+    )
     matches_path = paths.processed / "matches.parquet"
     observations_path = paths.processed / "fantasy_performance_samples.parquet"
     patches_path = paths.processed / "patches.parquet"
@@ -534,6 +714,29 @@ def generate_group_fantasy_evidence(
 
     model, model_report = _load_strength_model(paths, cutoff)
     strength_policy = load_team_strength_policy(manifest, config_root=paths.config)
+    holdout_model, holdout_model_report, _, holdout_issues = evaluate_league_holdout(
+        matches,
+        patches,
+        policy=strength_policy,
+        league_id=strength_policy.ti2025_holdout.league_id,
+    )
+    holdout_blocking = [
+        issue for issue in [*holdout_issues, *holdout_model_report.issues] if issue.severity == "blocking"
+    ]
+    if holdout_blocking:
+        raise ValueError(
+            "P3 BO3 holdout is blocked: " + "; ".join(issue.message for issue in holdout_blocking)
+        )
+    bo3_details = evaluate_bo3_probability_transform(
+        holdout_model,
+        matches.loc[matches["league_id"].eq(strength_policy.ti2025_holdout.league_id)],
+    )
+    if bo3_details["evaluated_series"] < swiss_policy.bo3_selection.minimum_holdout_series:
+        raise ValueError(
+            "P3 BO3 transform has "
+            f"{bo3_details['evaluated_series']} complete holdout Series; "
+            f"policy requires {swiss_policy.bo3_selection.minimum_holdout_series}"
+        )
     fantasy_evidence_policy = strength_policy.model_copy(
         update={
             "policy_id": f"{strength_policy.policy_id}-fantasy-player-history",
@@ -562,6 +765,8 @@ def generate_group_fantasy_evidence(
             "rules_sha256": sha256_file(paths.rules),
             "manifest_sha256": sha256_file(paths.tournament),
             "scenario_policy_sha256": sha256_file(scenario_policy_path),
+            "swiss_format_sha256": swiss_hash(paths.swiss),
+            "swiss_policy_sha256": swiss_policy_hash(paths.swiss_policy),
             "selected_match_ids_sha256": evidence.audit["selected_match_ids_sha256"],
             "weight_policy_sha256": evidence.audit["weight_policy_sha256"],
             "target_patch_family": evidence.target_patch_family,
@@ -577,10 +782,17 @@ def generate_group_fantasy_evidence(
         as_of=cutoff,
     )
     pools_finished = perf_counter()
-    group_simulation = GroupSimulator(model, manifest).simulate(
+    group_simulation = SwissGroupSimulator(
+        model,
+        manifest,
+        swiss_format=swiss_format,
+        policy=swiss_policy,
+        as_of=cutoff,
+        series_probability_mode=bo3_details["selected_mode"],
+    ).simulate(
         samples=scenario_policy.scenario_count,
         seed=seed,
-        scenario=scenario_policy.group_outcome_model,
+        scenario=swiss_policy.primary_scenario,
     )
     scenario_set = build_common_scenario_set(
         pool_result,
@@ -683,10 +895,20 @@ def generate_group_fantasy_evidence(
     finished = perf_counter()
 
     warnings = [
-        "具体 2026 Swiss 配对执行尚无本地可哈希 Valve 原文；Group 机会数使用已冻结的容量保持近似。",
-        "Group v1 在给定 Team 结果后独立抽取三个角色的表现块，未建模跨角色历史相关性。",
+        "Group 机会数来自固定官方首轮与规则驱动 Swiss 模拟；非唯一配对和选对手仍是显式情景。",
+        "Group v2 在给定 Team 结果后独立抽取三个角色的表现块，未建模跨角色历史相关性。",
         "没有完整且情景对齐的 Coach 前缀加后缀候选；P3 生产估值明确排除 Coach。",
     ]
+    unavailable = [
+        item
+        for item in pool_result.audit["team_role_availability"]
+        if item["status"] == "unavailable"
+    ]
+    if unavailable:
+        warnings.append(
+            "缺少正式 Series 证据的 Team/role 已标为 unavailable 并从该角色候选中排除："
+            + ", ".join(f"{item['target_team_id']}/{item['role']}" for item in unavailable)
+        )
     warnings.extend(issue.message for issue in evidence.issues if issue.severity == "warning")
     model_report.issues.extend(rule_snapshot_issues(cutoff, paths))
     warnings.extend(issue.message for issue in model_report.issues if issue.severity == "warning")
@@ -714,12 +936,15 @@ def generate_group_fantasy_evidence(
         "data_snapshot_sha256": data_snapshot_sha256,
         "scenario_policy": scenario_policy.model_dump(mode="json"),
         "scenario_policy_sha256": sha256_file(scenario_policy_path),
+        "swiss_simulation": group_simulation.metadata,
+        "bo3_probability_transform": bo3_details,
         "fantasy_evidence_audit": evidence.audit,
         "series_block_audit": pool_result.audit,
         "scenario_set": {
             "scenario_count": len(scenario_set.scenario_ids),
             "team_ids": list(scenario_set.team_ids),
             "group_outcome_model": group_simulation.scenario,
+            "unavailable_team_roles": unavailable,
             "pool_set_sha256": pool_result.semantic_hash,
             "scenario_sha256": scenario_set.semantic_hash,
         },
@@ -739,6 +964,9 @@ def generate_group_fantasy_evidence(
         "scenario_policy_id": scenario_policy.policy_id,
         "scenario_policy_sha256": sha256_file(scenario_policy_path),
         "scenario_count": scenario_policy.scenario_count,
+        "swiss_format_sha256": swiss_hash(paths.swiss),
+        "swiss_policy_sha256": swiss_policy_hash(paths.swiss_policy),
+        "bo3_probability_mode": bo3_details["selected_mode"],
         "bootstrap": include_bootstrap,
         "team_strength": {
             "policy_id": model_report.policy_id,
@@ -788,7 +1016,7 @@ def generate_group_fantasy_evidence(
         data_sha256=hashes["data"],
         config_sha256=hashes["config"],
         git_commit=hashes["source"],
-        model={"name": "fantasy_group_scenarios_v1", "parameters": parameters},
+        model={"name": scenario_policy.policy_id, "parameters": parameters},
         profiles=[],
         outputs=outputs,
         warnings=sorted(set(warnings)),

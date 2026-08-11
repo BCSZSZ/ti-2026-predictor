@@ -14,7 +14,7 @@ from ti_predictor.config import (
 )
 from ti_predictor.hashing import sha256_file
 from ti_predictor.paths import PATHS, ProjectPaths
-from ti_predictor.rules import latest_rule_snapshot, validate_rules
+from ti_predictor.rules import rule_snapshot_at, validate_rules
 from ti_predictor.runs import source_version
 from ti_predictor.schemas import AuditIssue, ForecastRun, RuleSnapshot
 from ti_predictor.storage import DataStore, read_parquet_if_exists
@@ -117,16 +117,19 @@ def audit_run(run_id: str, paths: ProjectPaths = PATHS, *, write: bool = True) -
                         message="The client rule snapshot used by the run is blocked",
                     )
                 )
-        latest = latest_rule_snapshot(paths)
-        if latest is not None and latest[0].snapshot_id != run.rule_snapshot_id:
+        latest_available = rule_snapshot_at(run.as_of, paths)
+        if latest_available is not None and latest_available[0].snapshot_id != run.rule_snapshot_id:
             issues.append(
                 AuditIssue(
                     code="rule-snapshot-superseded",
                     severity="warning",
-                    message="A newer client rule snapshot exists; regenerate before final submission",
+                    message=(
+                        "A newer client rule snapshot was already available at run as_of; "
+                        "regenerate before final submission"
+                    ),
                     context={
                         "recorded_id": run.rule_snapshot_id,
-                        "latest_id": latest[0].snapshot_id,
+                        "latest_available_id": latest_available[0].snapshot_id,
                     },
                 )
             )

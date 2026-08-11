@@ -15,11 +15,14 @@ def project_paths(tmp_path: Path) -> ProjectPaths:
     (tmp_path / "config/rules").mkdir(parents=True)
     (tmp_path / "config/models").mkdir(parents=True)
     (tmp_path / "config/playbooks").mkdir(parents=True)
+    (tmp_path / "config/tournaments").mkdir(parents=True)
     shutil.copy2(source_root / "config/rules/ti2026.json", tmp_path / "config/rules/ti2026.json")
     for policy_name in (
         "team-strength-v1.json",
         "team-strength-v2.json",
+        "group-swiss-v1.json",
         "fantasy-group-scenarios-v1.json",
+        "fantasy-group-scenarios-v2.json",
         "fantasy-group-playbook-validation-v1.json",
         "fantasy-group-branch-capped-solver-v1.json",
         "fantasy-group-read-only-cross-audit-v1.json",
@@ -36,6 +39,10 @@ def project_paths(tmp_path: Path) -> ProjectPaths:
             tmp_path / "config/playbooks" / playbook_name,
         )
     shutil.copy2(source_root / "config/ti2026.yaml", tmp_path / "config/ti2026.yaml")
+    shutil.copy2(
+        source_root / "config/tournaments/ti2026-swiss-v1.json",
+        tmp_path / "config/tournaments/ti2026-swiss-v1.json",
+    )
     (tmp_path / "artifacts").mkdir()
     return ProjectPaths(root=tmp_path)
 

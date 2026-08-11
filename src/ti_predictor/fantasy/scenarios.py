@@ -43,11 +43,11 @@ class ScenarioRiskPolicy(StrictModel):
 
 
 class GroupScenarioPolicy(StrictModel):
-    schema_version: Literal[1]
+    schema_version: Literal[1, 2]
     policy_id: str = Field(min_length=1)
     period: Literal["group"]
     scenario_count: int = Field(gt=0)
-    group_outcome_model: Literal["balanced_pairing"]
+    group_outcome_model: Literal["balanced_pairing", "official_swiss"]
     group_category_series_counts: dict[str, int]
     historical_series_types: list[Literal[1, 3]]
     historical_series_formats: list[Literal["bo3", "bo2"]]
@@ -242,13 +242,15 @@ def build_series_block_pools(
     *,
     as_of,
 ) -> PoolBuildResult:
-    """Build one indivisible BO3 Series pool for each current Team and Fantasy role."""
+    """Build auditable BO3 Series pools, retaining unavailable Team/role identities."""
 
     cutoff = as_utc(as_of)
     if cutoff is None:
         raise ValueError("as_of is required")
     if manifest.roster_valid_from > cutoff:
         raise ValueError("the reviewed tournament roster is not effective at as_of")
+    if manifest.roster_snapshot_as_of is not None and manifest.roster_snapshot_as_of > cutoff:
+        raise ValueError("the reviewed roster snapshot was not available at as_of")
     required_match_columns = {"match_id", "series_id", "series_type", "start_time"}
     required_observation_columns = {"match_id", "account_id", "team_id", "start_time"}
     required_evidence_columns = {"match_id", "evidence_weight"}
@@ -424,11 +426,27 @@ def build_series_block_pools(
                     )
                 )
             blocks.sort(key=lambda block: block.series_id)
+            for name, count in rejected.items():
+                rejection_totals[name] += count
+            availability = {
+                "target_team_id": int(team.team_id),
+                "role": role,
+                "player_ids": list(player_ids),
+                "complete_series_blocks": len(blocks),
+                "effective_series_weight": float(sum(block.evidence_weight for block in blocks)),
+                "required_series_blocks": policy.minimum_series_blocks,
+                "rejected_series": rejected,
+            }
             if len(blocks) < policy.minimum_series_blocks:
-                raise ValueError(
-                    f"Team {team.team_id} {role} has {len(blocks)} complete Series blocks; "
-                    f"policy requires {policy.minimum_series_blocks}"
+                pool_audit.append(
+                    {
+                        **availability,
+                        "status": "unavailable",
+                        "reason": "insufficient_complete_series_blocks",
+                        "pool_sha256": None,
+                    }
                 )
+                continue
             pool = SeriesBlockPool(
                 target_team_id=int(team.team_id),
                 role=role,
@@ -437,22 +455,27 @@ def build_series_block_pools(
                 blocks=tuple(blocks),
             )
             pools.append(pool)
-            for name, count in rejected.items():
-                rejection_totals[name] += count
             pool_audit.append(
                 {
-                    "target_team_id": int(team.team_id),
-                    "role": role,
-                    "player_ids": list(player_ids),
-                    "complete_series_blocks": len(blocks),
-                    "effective_series_weight": float(sum(block.evidence_weight for block in blocks)),
-                    "rejected_series": rejected,
+                    **availability,
+                    "status": "available",
+                    "reason": None,
                     "pool_sha256": pool.semantic_hash,
                 }
             )
 
     pools.sort(key=lambda pool: (pool.target_team_id, ROLE_IDS.index(pool.role)))
-    pool_hash = sha256_json([pool.semantic_hash for pool in pools])
+    for role in ROLE_IDS:
+        if not any(pool.role == role for pool in pools):
+            raise ValueError(f"no Fantasy Team is available for role {role}")
+    pool_hash = sha256_json(
+        {
+            "pools": [pool.semantic_hash for pool in pools],
+            "team_role_availability": pool_audit,
+        }
+    )
+    block_counts = [int(item["complete_series_blocks"]) for item in pool_audit]
+    available_block_counts = [len(pool.blocks) for pool in pools]
     audit = {
         "policy_id": policy.policy_id,
         "as_of": cutoff.isoformat().replace("+00:00", "Z"),
@@ -468,8 +491,11 @@ def build_series_block_pools(
         "stat_provenance_coverage": coverage,
         "rejection_totals_across_team_roles": rejection_totals,
         "pool_count": len(pools),
-        "minimum_complete_series_blocks": min(len(pool.blocks) for pool in pools),
-        "maximum_complete_series_blocks": max(len(pool.blocks) for pool in pools),
+        "unavailable_team_role_count": sum(item["status"] == "unavailable" for item in pool_audit),
+        "minimum_complete_series_blocks": min(block_counts),
+        "minimum_available_series_blocks": min(available_block_counts),
+        "maximum_complete_series_blocks": max(block_counts),
+        "team_role_availability": pool_audit,
         "pools": pool_audit,
         "pool_set_sha256": pool_hash,
     }
@@ -532,9 +558,19 @@ class CommonScenarioSet:
         if not np.array_equal(scenario_ids, np.arange(len(scenario_ids), dtype=np.int64)):
             raise ValueError("common Scenario IDs must be a contiguous stable zero-based sequence")
         keys = [(item.target_team_id, item.role) for item in draws]
-        expected_keys = [(team_id, role) for team_id in self.team_ids for role in ROLE_IDS]
+        if len(keys) != len(set(keys)):
+            raise ValueError("Scenario draws contain duplicate Team/role identities")
+        declared_keys = set(keys)
+        expected_keys = [
+            (team_id, role)
+            for team_id in self.team_ids
+            for role in ROLE_IDS
+            if (team_id, role) in declared_keys
+        ]
         if keys != expected_keys:
-            raise ValueError("Scenario draws must contain every Team/role in canonical order")
+            raise ValueError("Scenario draws must follow canonical available Team/role order")
+        if any(not any(key[1] == role for key in keys) for role in ROLE_IDS):
+            raise ValueError("common Scenarios require at least one available Team for every role")
         max_series = int(series_counts.max())
         if any(item.block_indexes.shape != (len(scenario_ids), max_series) for item in draws):
             raise ValueError("Scenario block references must align with all Scenario IDs and Series slots")
@@ -600,10 +636,9 @@ def build_common_scenario_set(
     draws: list[ScenarioDraws] = []
     for team_index, team_id in enumerate(team_ids):
         for role in ROLE_IDS:
-            try:
-                pool = pool_by_key[(team_id, role)]
-            except KeyError as error:
-                raise ValueError(f"missing Series block pool for Team {team_id}, role {role}") from error
+            pool = pool_by_key.get((team_id, role))
+            if pool is None:
+                continue
             rng = np.random.default_rng(_stream_seed(seed, team_id, role, "predictive-series"))
             indexes = rng.choice(
                 len(pool.blocks),

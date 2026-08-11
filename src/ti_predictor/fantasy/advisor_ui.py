@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import streamlit as st
 
-from ti_predictor.config import load_rules, load_tournament_manifest
+from ti_predictor.config import load_rules
 from ti_predictor.fantasy.advisor import operation_label
 from ti_predictor.fantasy.current_advisor import (
     CurrentAdvisorContext,
     analyze_current_screen,
     load_current_advisor_policy,
     load_current_advisor_roll_rules,
+    load_current_advisor_team_options,
     prepare_current_advisor_context,
 )
 from ti_predictor.fantasy.live_ocr import (
@@ -21,6 +23,10 @@ from ti_predictor.fantasy.live_ocr import (
     live_capture_supported,
     load_live_ocr_profile,
     observation_widget_updates,
+)
+from ti_predictor.fantasy.manual_release import (
+    load_manual_release_context,
+    manual_release_team_options,
 )
 from ti_predictor.fantasy.roll import BannerState, EmblemState, GroupRollState, RollOffer
 from ti_predictor.paths import PATHS
@@ -65,6 +71,11 @@ def _cached_context(as_of: str) -> CurrentAdvisorContext:
     return prepare_current_advisor_context(as_of=as_of)
 
 
+@st.cache_resource(show_spinner=False)
+def _cached_manual_release_context(path: str) -> CurrentAdvisorContext:
+    return load_manual_release_context(Path(path))
+
+
 def _policy():
     return load_current_advisor_policy(
         PATHS.config / "models" / "fantasy-group-current-screen-advisor-v2.json"
@@ -88,9 +99,9 @@ def _public_operation_label(operation_id: int, rules) -> str:
     return operation_label(operation_id, rules).replace(f"#{operation_id} · ", "").replace(" / ", " · ")
 
 
-def _team_options() -> tuple[tuple[int, str], ...]:
-    manifest = load_tournament_manifest(PATHS.tournament)
-    return tuple((int(team.team_id), team.name) for team in manifest.teams)
+@st.cache_data(show_spinner=False)
+def _cached_team_options() -> dict[str, tuple[tuple[int, str], ...]]:
+    return load_current_advisor_team_options()
 
 
 def _clear_result() -> None:
@@ -182,8 +193,8 @@ def _render_live_controls() -> None:
     if observation.get("status") == "incomplete":
         missing = [_field_label(item) for item in observation.get("missing_field_ids", [])]
         st.warning(
-            "已自动填入可信字段；以下字段没有覆盖原值，也没有自动计算："
-            + "、".join(missing)
+            "已自动填入能够安全定位的字段；含未确认 Stat 的整面战旗保留原值，"
+            "且没有自动计算。未确认字段：" + "、".join(missing)
         )
     else:
         st.caption("完整观测已自动写入表单；无需再点计算按钮。")
@@ -193,12 +204,11 @@ def _render_live_controls() -> None:
 def _input_form(
     rules,
     *,
+    team_options: dict[str, tuple[tuple[int, str], ...]],
     manual_team_mode: bool,
     auto_calculate: bool = False,
 ) -> tuple[GroupRollState | None, Any, str, bool]:
     stat_labels = _stat_labels()
-    team_options = _team_options()
-    team_names = dict(team_options)
     positive_ids = tuple(item.operation_id for item in rules.offered_operations)
     with st.form("current_advisor_form"):
         st.subheader("1. 录入当前三面战旗")
@@ -275,13 +285,14 @@ def _input_form(
             team_columns = st.columns(3)
             selected = []
             for role, column in zip(rules.group_roles, team_columns, strict=True):
+                role_team_names = dict(team_options[role])
                 with column:
                     selected.append(
                         st.selectbox(
                             _ROLE_LABELS[role],
-                            tuple(team_names),
+                            tuple(role_team_names),
                             key=f"current_advisor_team_{role}",
-                            format_func=lambda item, names=team_names: names[item],
+                            format_func=lambda item, names=role_team_names: names[item],
                         )
                     )
             selected_team_ids = tuple(selected)
@@ -410,19 +421,36 @@ def _render_details(result: dict[str, Any], context: CurrentAdvisorContext) -> N
         st.caption(f"数据截止：{result['as_of']} · 分析指纹：{result['analysis_sha256'][:12]}")
 
 
-def render_advisor_page() -> None:
-    st.title("Group Roll 实时顾问")
-    st.write("本机可自动读取完整 Roll 页面，也可以继续手填；页面只推荐这一步怎么做。")
-    st.caption("本地只读辅助：不控制 Dota、不猜下一轮选项。仅支持 Group 三格战旗。")
+def render_advisor_page(
+    *,
+    manual_only: bool = False,
+    release_bundle_path: Path | None = None,
+) -> None:
+    release_context: CurrentAdvisorContext | None = None
+    if manual_only:
+        st.title("Group Roll 手动求解器")
+        st.write("手动录入当前九格、三个选项和剩余 Roll；页面只推荐这一步怎么做。")
+        st.caption("公开只读版：不截图、不运行 OCR、不控制 Dota、不猜下一轮选项。仅支持 Group。")
+    else:
+        st.title("Group Roll 实时顾问")
+        st.write("本机可自动读取完整 Roll 页面，也可以继续手填；页面只推荐这一步怎么做。")
+        st.caption("本地只读辅助：不控制 Dota、不猜下一轮选项。仅支持 Group 三格战旗。")
 
     try:
-        rules = _cached_roll_rules()
-        policy = _policy()
+        if release_bundle_path is None:
+            rules = _cached_roll_rules()
+            policy = _policy()
+            team_options = _cached_team_options()
+        else:
+            release_context = _cached_manual_release_context(str(release_bundle_path.resolve()))
+            rules = release_context.roll_rules
+            policy = release_context.policy
+            team_options = manual_release_team_options(release_context)
     except (OSError, ValueError) as error:
-        st.error(f"当前客户端规则不可用：{error}")
+        st.error(f"当前冻结求解上下文不可用：{error}")
         return
 
-    if live_capture_supported():
+    if not manual_only and live_capture_supported():
         _consume_pending_observation(rules)
         _render_live_controls()
         st.divider()
@@ -438,13 +466,19 @@ def render_advisor_page() -> None:
     auto_calculate = bool(st.session_state.pop("current_advisor_autocalculate", False))
     state, selected_team_ids, risk_profile, submitted = _input_form(
         rules,
+        team_options=team_options,
         manual_team_mode=manual_team_mode,
         auto_calculate=auto_calculate,
     )
     if submitted and state is not None:
         try:
-            with st.spinner("载入当前证据并计算所有可执行选择…首次打开约需十几秒。"):
-                context = _cached_context(policy.as_of)
+            spinner = (
+                "载入冻结发布上下文并计算所有可执行选择…"
+                if release_context is not None
+                else "载入当前证据并计算所有可执行选择…首次打开约需数十秒。"
+            )
+            with st.spinner(spinner):
+                context = release_context or _cached_context(policy.as_of)
                 result = analyze_current_screen(
                     context,
                     state,
@@ -461,7 +495,7 @@ def render_advisor_page() -> None:
         st.info("完成输入后点击“计算现在应该怎么选”。")
         return
     try:
-        context = _cached_context(policy.as_of)
+        context = release_context or _cached_context(policy.as_of)
     except (OSError, ValueError) as error:
         st.error(f"结果来源已经不可用：{error}")
         return
@@ -470,7 +504,10 @@ def render_advisor_page() -> None:
     _render_recommendation(result)
     _render_lineup_and_title(result)
     _render_details(result, context)
-    st.info(
-        "在游戏里完成操作后，再点击一次“识别下一次稳定的 Dota 画面”并切回游戏；"
-        "也可以手动修改实际发生变化的字段后重新计算。"
-    )
+    if manual_only:
+        st.info("在游戏里完成操作后，把表单改成实际出现的新状态，再重新计算。")
+    else:
+        st.info(
+            "在游戏里完成操作后，再点击一次“识别下一次稳定的 Dota 画面”并切回游戏；"
+            "也可以手动修改实际发生变化的字段后重新计算。"
+        )

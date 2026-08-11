@@ -1,11 +1,55 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
+import pytest
+
 from ti_predictor.fantasy.current_advisor import (
+    CurrentAdvisorError,
     _preferred_action,
+    _resolve_current_advisor_rule_snapshot,
     classify_recommendation,
     load_current_advisor_policy,
+    load_current_advisor_team_options,
     rank_title_for_lineup,
 )
+from ti_predictor.hashing import sha256_file, sha256_json
+
+
+def _write_rule_snapshot(
+    root: Path,
+    *,
+    snapshot_id: str,
+    as_of: str,
+    created_at: str,
+    steam_build: str,
+    semantic_sha256: str,
+) -> Path:
+    path = root / "data" / "raw" / "rules" / snapshot_id / "rule_snapshot.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        json.dumps(
+            {
+                "snapshot_id": snapshot_id,
+                "event_id": "international_2026",
+                "as_of": as_of,
+                "created_at": created_at,
+                "source": "dota_client",
+                "steam_build": steam_build,
+                "source_files": [],
+                "canonical_rules_sha256": "c" * 64,
+                "snapshot_sha256": semantic_sha256,
+                "status": "warning",
+                "issues": [],
+                "observed": {"fantasy_roll": {}},
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return path
 
 
 def test_v2_policy_freezes_current_screen_boundaries(project_paths) -> None:
@@ -19,6 +63,102 @@ def test_v2_policy_freezes_current_screen_boundaries(project_paths) -> None:
     assert policy.boundaries.future_offer_generation is False
     assert policy.boundaries.dota_client_control is False
     assert policy.boundaries.main_execution == "fail_closed"
+
+
+def test_current_advisor_accepts_a_newer_metadata_only_rule_snapshot(project_paths) -> None:
+    frozen_path = _write_rule_snapshot(
+        project_paths.root,
+        snapshot_id="20260810T134439Z-aaaaaaaaaaaa",
+        as_of="2026-08-10T13:44:36Z",
+        created_at="2026-08-10T13:44:39Z",
+        steam_build="6893:10895878",
+        semantic_sha256="a" * 64,
+    )
+    _write_rule_snapshot(
+        project_paths.root,
+        snapshot_id="20260811T025356Z-aaaaaaaaaaaa",
+        as_of="2026-08-11T02:53:54Z",
+        created_at="2026-08-11T02:53:56Z",
+        steam_build="6894:10897748",
+        semantic_sha256="a" * 64,
+    )
+    policy = load_current_advisor_policy(
+        project_paths.config / "models" / "fantasy-group-current-screen-advisor-v2.json"
+    )
+    policy = policy.model_copy(
+        update={"source": policy.source.model_copy(update={"rule_snapshot_sha256": sha256_file(frozen_path)})}
+    )
+
+    snapshot, snapshot_path = _resolve_current_advisor_rule_snapshot(policy, paths=project_paths)
+
+    assert snapshot.snapshot_id == "20260810T134439Z-aaaaaaaaaaaa"
+    assert snapshot_path == frozen_path
+
+
+def test_current_advisor_rejects_a_newer_semantically_changed_rule_snapshot(project_paths) -> None:
+    frozen_path = _write_rule_snapshot(
+        project_paths.root,
+        snapshot_id="20260810T134439Z-aaaaaaaaaaaa",
+        as_of="2026-08-10T13:44:36Z",
+        created_at="2026-08-10T13:44:39Z",
+        steam_build="6893:10895878",
+        semantic_sha256="a" * 64,
+    )
+    _write_rule_snapshot(
+        project_paths.root,
+        snapshot_id="20260811T025356Z-bbbbbbbbbbbb",
+        as_of="2026-08-11T02:53:54Z",
+        created_at="2026-08-11T02:53:56Z",
+        steam_build="6894:10897748",
+        semantic_sha256="b" * 64,
+    )
+    policy = load_current_advisor_policy(
+        project_paths.config / "models" / "fantasy-group-current-screen-advisor-v2.json"
+    )
+    policy = policy.model_copy(
+        update={"source": policy.source.model_copy(update={"rule_snapshot_sha256": sha256_file(frozen_path)})}
+    )
+
+    with pytest.raises(CurrentAdvisorError, match="semantics drifted"):
+        _resolve_current_advisor_rule_snapshot(policy, paths=project_paths)
+
+
+def test_current_advisor_team_options_exclude_only_unavailable_role(project_paths) -> None:
+    policy = load_current_advisor_policy(
+        project_paths.config / "models" / "fantasy-group-current-screen-advisor-v2.json"
+    )
+    artifact = project_paths.artifacts / "fantasy-test"
+    artifact.mkdir(parents=True)
+    payload = {
+        "artifact_type": "group_fantasy_stat_evidence",
+        "scenario_set": {
+            "unavailable_team_roles": [
+                {"target_team_id": 10150538, "role": "mid"},
+            ]
+        },
+    }
+    payload["evidence_package_sha256"] = sha256_json(payload)
+    (artifact / "group-fantasy-evidence.json").write_text(
+        json.dumps(payload),
+        encoding="utf-8",
+    )
+    source = policy.model_copy(
+        update={
+            "source": policy.source.model_copy(
+                update={"p3_evidence_sha256": payload["evidence_package_sha256"]}
+            )
+        }
+    )
+    (project_paths.config / "models" / "fantasy-group-current-screen-advisor-v2.json").write_text(
+        source.model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+
+    options = load_current_advisor_team_options(paths=project_paths)
+
+    assert 10150538 not in dict(options["mid"])
+    assert 10150538 in dict(options["core"])
+    assert 10150538 in dict(options["support"])
 
 
 def test_title_ranking_uses_selected_role_pools_and_excludes_unverified_suffixes() -> None:

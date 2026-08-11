@@ -13,7 +13,7 @@ from ti_predictor.config import (
     load_tournament_manifest,
     team_strength_policy_path,
 )
-from ti_predictor.hashing import sha256_file
+from ti_predictor.hashing import sha256_file, sha256_json
 from ti_predictor.models.evidence import normalize_patch_family
 from ti_predictor.models.policy import TeamStrengthPolicy
 from ti_predictor.models.ratings import (
@@ -28,6 +28,7 @@ from ti_predictor.rules import rule_snapshot_issues
 from ti_predictor.runs import ArtifactWriter, make_run_id
 from ti_predictor.schemas import AuditIssue, ForecastRun, as_utc
 from ti_predictor.storage import read_parquet_if_exists
+from ti_predictor.tournament.swiss import bo3_probability
 
 
 @dataclass
@@ -35,6 +36,89 @@ class BacktestResult:
     run: ForecastRun
     run_path: Path
     report: dict[str, Any]
+
+
+def evaluate_bo3_probability_transform(
+    model: TeamStrengthModel,
+    matches: pd.DataFrame,
+) -> dict[str, Any]:
+    required = {
+        "match_id",
+        "series_id",
+        "series_type",
+        "start_time",
+        "radiant_team_id",
+        "dire_team_id",
+        "radiant_win",
+    }
+    missing = required - set(matches)
+    if missing:
+        raise ValueError(f"BO3 evaluation data is missing columns: {sorted(missing)}")
+    frame = matches.copy()
+    frame["start_time"] = pd.to_datetime(frame["start_time"], utc=True, errors="coerce")
+    frame = frame.loc[
+        frame["series_type"].eq(1)
+        & frame["series_id"].notna()
+        & frame["start_time"].notna()
+        & frame["radiant_team_id"].notna()
+        & frame["dire_team_id"].notna()
+        & frame["radiant_win"].notna()
+    ].sort_values(["series_id", "start_time", "match_id"], kind="stable")
+    outcomes: list[float] = []
+    direct_probabilities: list[float] = []
+    independent_probabilities: list[float] = []
+    series_ids: list[int] = []
+    for series_id, games in frame.groupby("series_id", sort=True):
+        if len(games) not in (2, 3):
+            continue
+        team_ids = sorted(
+            {
+                int(value)
+                for column in ("radiant_team_id", "dire_team_id")
+                for value in games[column]
+            }
+        )
+        if len(team_ids) != 2:
+            continue
+        team_a, team_b = team_ids
+        wins = {team_a: 0, team_b: 0}
+        valid_pair = True
+        for row in games.itertuples(index=False):
+            pair = {int(row.radiant_team_id), int(row.dire_team_id)}
+            if pair != {team_a, team_b}:
+                valid_pair = False
+                break
+            winner = int(row.radiant_team_id if bool(row.radiant_win) else row.dire_team_id)
+            wins[winner] += 1
+        if not valid_pair or max(wins.values()) != 2:
+            continue
+        direct = float(model.predict(team_a, team_b))
+        outcomes.append(float(wins[team_a] == 2))
+        direct_probabilities.append(direct)
+        independent_probabilities.append(bo3_probability(direct))
+        series_ids.append(int(series_id))
+    if not series_ids:
+        raise ValueError("BO3 evaluation contains no complete Series")
+    actual = np.asarray(outcomes, dtype=float)
+    direct = np.asarray(direct_probabilities, dtype=float)
+    independent = np.asarray(independent_probabilities, dtype=float)
+    metrics = {
+        "fifty_percent": probability_metrics(actual, np.full(len(actual), 0.5)),
+        "direct_series": probability_metrics(actual, direct),
+        "independent_games": probability_metrics(actual, independent),
+    }
+    independent_wins = (
+        metrics["independent_games"]["log_loss"] < metrics["direct_series"]["log_loss"]
+        and metrics["independent_games"]["brier"] < metrics["direct_series"]["brier"]
+    )
+    return {
+        "policy_id": "bo3-transform-holdout-v1",
+        "selection_rule": "independent_games_only_if_lower_log_loss_and_brier",
+        "selected_mode": "independent_games" if independent_wins else "direct_series",
+        "evaluated_series": len(series_ids),
+        "series_ids_sha256": sha256_json(series_ids),
+        "metrics": metrics,
+    }
 
 
 def _holdout_predictions(

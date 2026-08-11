@@ -108,3 +108,60 @@ class TeamStrengthPolicy(_PolicyModel):
         ):
             raise ValueError("target-connected policies must declare TI 2025 target_team_ids")
         return self
+
+
+class SwissScenarioPolicy(_PolicyModel):
+    scenario_id: str = Field(min_length=1)
+    roster_strength_multiplier: float = Field(gt=0.0, le=2.0)
+    elimination_choice_strategy: Literal["model_optimal", "adversarial", "seeded_random"]
+
+
+class SwissRosterShockPolicy(_PolicyModel):
+    target_team_id: int = Field(gt=0)
+    effective_from: AwareDatetime
+    transform: Literal["positive_strength_odds"]
+    provenance: Literal["derived"]
+    source: str = Field(min_length=1)
+
+
+class SwissBo3SelectionPolicy(_PolicyModel):
+    minimum_holdout_series: int = Field(gt=0)
+    selection_rule: Literal["independent_games_only_if_lower_log_loss_and_brier"]
+    fallback_mode: Literal["direct_series"]
+
+
+class SwissDurationProxyPolicy(_PolicyModel):
+    distribution: Literal["clipped_normal"]
+    mean_seconds: float = Field(gt=0.0)
+    standard_deviation_seconds: float = Field(gt=0.0)
+    minimum_seconds: int = Field(gt=0)
+    maximum_seconds: int = Field(gt=0)
+
+    @model_validator(mode="after")
+    def bounds_are_ordered(self) -> SwissDurationProxyPolicy:
+        if self.maximum_seconds <= self.minimum_seconds:
+            raise ValueError("duration proxy maximum must exceed minimum")
+        return self
+
+
+class SwissSimulationPolicy(_PolicyModel):
+    schema_version: Literal[1]
+    policy_id: str = Field(min_length=1)
+    as_of: AwareDatetime
+    primary_scenario: str = Field(min_length=1)
+    pairing_tie_break: Literal["seeded_random"]
+    bo3_selection: SwissBo3SelectionPolicy
+    roster_shock: SwissRosterShockPolicy
+    duration_proxy: SwissDurationProxyPolicy
+    scenarios: tuple[SwissScenarioPolicy, ...]
+
+    @model_validator(mode="after")
+    def validate_scenarios(self) -> SwissSimulationPolicy:
+        scenario_ids = [scenario.scenario_id for scenario in self.scenarios]
+        if len(scenario_ids) != len(set(scenario_ids)):
+            raise ValueError("Swiss scenario IDs must be unique")
+        if self.primary_scenario not in scenario_ids:
+            raise ValueError("primary Swiss scenario is not declared")
+        if not any(scenario.roster_strength_multiplier == 1.0 for scenario in self.scenarios):
+            raise ValueError("Swiss scenarios require an unadjusted baseline")
+        return self

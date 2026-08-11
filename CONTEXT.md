@@ -675,9 +675,25 @@ _Avoid_: Emblem, team coach
 
 ## Identity and rules
 
-**Team identity / 战队身份**:
-A stable Valve/OpenDota team ID, distinct from its display name.
-_Avoid_: Team name
+**Raw team registration ID / 原始战队注册 ID**:
+A Valve/OpenDota team ID observed in one source record. It is preserved as evidence but may change
+when the same active Team uses another tournament registration or display-compliant identity.
+_Avoid_: Canonical Team identity, Team name
+
+**Canonical Team identity / 规范战队身份**:
+The stable Team lineage used by Forecasts across a verified registration-ID or display-name change,
+bounded by an effective interval and identity evidence; a roster transfer never inherits it.
+_Avoid_: Raw team registration ID, Team name, roster-lineage winnings
+
+**Team display alias / 战队展示别名**:
+A source-visible or event-compliant name for one Canonical Team identity. It is display-only and
+must never be used as a join key; a same-ID alias needs no identity bridge.
+_Avoid_: Canonical Team identity, Raw team registration ID
+
+**Registration identity window / 注册身份窗口**:
+The evidence-bounded interval in which a current tournament Team ID belongs to its Canonical Team
+identity. Records outside the window retain their raw ID but are excluded from that identity.
+_Avoid_: Roster interval, Team identity bridge
 
 **Roster interval / 阵容区间**:
 The half-open time interval `[valid_from, valid_to)` during which a player belongs to a team.

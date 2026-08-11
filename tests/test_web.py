@@ -61,8 +61,16 @@ def test_streamlit_group_advisor_manual_lineup_uses_three_team_dropdowns() -> No
     mode.set_value(True).run(timeout=20)
 
     assert not app.exception
-    labels = {select.label for select in app.selectbox}
+    role_selects = {
+        select.label: select
+        for select in app.selectbox
+        if select.label in {"核心位", "中单", "辅助位"}
+    }
+    labels = set(role_selects)
     assert {"核心位", "中单", "辅助位"} <= labels
+    assert "LGD Gaming" in role_selects["核心位"].options
+    assert "LGD Gaming" not in role_selects["中单"].options
+    assert "LGD Gaming" in role_selects["辅助位"].options
     assert not app.error
 
 
@@ -72,7 +80,8 @@ def test_streamlit_group_advisor_default_input_calculates_recommendation_and_tit
     app.sidebar.radio[0].set_value("Group Roll 实时顾问").run(timeout=20)
 
     calculate = next(button for button in app.button if button.label == "计算现在应该怎么选")
-    calculate.click().run(timeout=40)
+    # The first click covers the declared 45 s fail-closed context target plus the 10 s analysis target.
+    calculate.click().run(timeout=60)
 
     assert not app.exception
     assert any(subheader.value == "现在的结论" for subheader in app.subheader)

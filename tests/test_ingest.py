@@ -499,7 +499,7 @@ def test_sync_builds_complete_year_catalog_with_patch_and_league_tier(project_pa
             return [], fetched
 
     result = sync_opendota(
-        as_of=datetime(2026, 8, 1, tzinfo=UTC),
+        as_of=datetime(2026, 8, 10, 13, 45, 12, tzinfo=UTC),
         league_ids=[19719],
         pro_year=2026,
         include_details=False,
@@ -611,7 +611,7 @@ def test_fantasy_history_uses_player_ids_and_professional_catalog(project_paths)
             return detail, fetched
 
     result = sync_fantasy_player_history(
-        as_of=datetime(2026, 8, 1, 1, tzinfo=UTC),
+        as_of=datetime(2026, 8, 10, 13, 45, 12, tzinfo=UTC),
         year=2026,
         client=FakeClient(),
         paths=project_paths,

@@ -705,15 +705,23 @@ def _is_target_screen(
     return len(roles) == 3 and (anchor_hit or stat_count >= 6), roles
 
 
-def _nearest_role(
-    token: OCRToken,
+def _nearest_role_at_x(
+    x: float,
     roles: dict[str, tuple[OCRToken, float]],
     maximum_distance: float,
 ) -> str | None:
     if not roles:
         return None
-    role, item = min(roles.items(), key=lambda pair: abs(pair[1][0].center_x - token.center_x))
-    return role if abs(item[0].center_x - token.center_x) <= maximum_distance else None
+    role, item = min(roles.items(), key=lambda pair: abs(pair[1][0].center_x - x))
+    return role if abs(item[0].center_x - x) <= maximum_distance else None
+
+
+def _nearest_role(
+    token: OCRToken,
+    roles: dict[str, tuple[OCRToken, float]],
+    maximum_distance: float,
+) -> str | None:
+    return _nearest_role_at_x(token.center_x, roles, maximum_distance)
 
 
 def _row_boundaries(stat_tokens: list[tuple[OCRToken, str, float]]) -> list[tuple[float, float]]:
@@ -760,12 +768,18 @@ def _combined_token(tokens: list[OCRToken]) -> OCRToken:
     )
 
 
-def _operation_candidates(tokens: tuple[OCRToken, ...], *, region_top: float) -> list[OCRToken]:
-    bottom = [token for token in tokens if token.center_y >= region_top]
+def _operation_candidates(
+    tokens: tuple[OCRToken, ...],
+    *,
+    region_top: float,
+    excluded_labels: tuple[str, ...] = (),
+) -> list[OCRToken]:
+    bottom = _multiline_token_candidates(tuple(token for token in tokens if token.center_y >= region_top))
     relevant = [
         token
         for token in bottom
-        if any(
+        if max((_similarity(token.text, label) for label in excluded_labels), default=0.0) < 0.75
+        and any(
             keyword in _normalize(token.text)
             for keyword in (
                 "reroll",
@@ -813,6 +827,7 @@ def _parse_offers(
     candidates = _operation_candidates(
         tokens,
         region_top=float(profile.recognition["operation_region_top"]),
+        excluded_labels=profile.target_anchors,
     )
     choices: list[tuple[float, OCRToken, int]] = []
     for token in candidates:
@@ -943,7 +958,10 @@ def parse_roll_screen_tokens(
         role_stats = [
             item
             for item in stat_matches
-            if _nearest_role(item[0], roles, maximum_distance) == role
+            # A trailing percentage can be joined to the Stat label and push
+            # the combined box center into the next banner. The label's left
+            # edge remains inside its owning banner in the current client.
+            if _nearest_role_at_x(item[0].box[0], roles, maximum_distance) == role
         ]
         role_stats = _deduplicate_vertical_matches(role_stats)[:3]
         while len(role_stats) < 3:
@@ -1485,7 +1503,19 @@ class LiveRollMonitor:
 def observation_widget_updates(observation: dict[str, Any], rules: RollRuleSet) -> dict[str, Any]:
     updates: dict[str, Any] = {}
     positive_operations = {item.operation_id for item in rules.offered_operations}
-    for reading in observation.get("fields", []):
+    fields = observation.get("fields", [])
+    unsafe_banner_roles = {
+        match.group(1)
+        for reading in fields
+        if reading.get("status") != "confirmed"
+        and (
+            match := re.fullmatch(
+                r"banner\.(core|mid|support)\.\d\.stat",
+                str(reading.get("field_id", "")),
+            )
+        )
+    }
+    for reading in fields:
         if reading.get("status") != "confirmed":
             continue
         field_id = str(reading.get("field_id", ""))
@@ -1493,6 +1523,8 @@ def observation_widget_updates(observation: dict[str, Any], rules: RollRuleSet) 
         banner_match = re.fullmatch(r"banner\.(core|mid|support)\.(\d)\.(stat|quality|trait)", field_id)
         if banner_match:
             role, index_text, attribute = banner_match.groups()
+            if role in unsafe_banner_roles:
+                continue
             index = int(index_text)
             if index >= 3:
                 continue

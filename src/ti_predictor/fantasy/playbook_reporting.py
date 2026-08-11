@@ -37,7 +37,7 @@ from ti_predictor.hashing import sha256_file, sha256_json
 from ti_predictor.models.evidence import build_evidence_set
 from ti_predictor.models.policy import EvidenceScopePolicy
 from ti_predictor.paths import PATHS, ProjectPaths
-from ti_predictor.rules import latest_rule_snapshot, rule_snapshot_issues
+from ti_predictor.rules import rule_snapshot_at, rule_snapshot_issues
 from ti_predictor.runs import ArtifactWriter, make_run_id
 from ti_predictor.schemas import ForecastRun, as_utc
 from ti_predictor.storage import read_parquet_if_exists
@@ -190,7 +190,7 @@ def generate_group_playbook_evidence(
     )
     priorities = build_stat_priorities(stat_forecasts, bootstrap)
 
-    snapshot_result = latest_rule_snapshot(paths)
+    snapshot_result = rule_snapshot_at(cutoff, paths)
     if snapshot_result is None:
         raise ValueError("P4 requires the frozen Dota client Rule snapshot")
     snapshot, snapshot_path = snapshot_result

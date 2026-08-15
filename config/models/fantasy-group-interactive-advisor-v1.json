@@ -67,7 +67,7 @@
     "dota_client_control": false,
     "automatic_filling": false,
     "unconfirmed_ocr_action": false,
-    "main_execution": "fail_closed"
+    "period_stack": "group"
   },
   "performance_targets_seconds": {
     "context_load": 30.0,
@@ -82,7 +82,7 @@
     "refresh_observed_offer",
     "observed_state_replanning",
     "deterministic_saved_session_replay",
-    "unsupported_main_fails_closed",
+    "group_period_stack_isolated",
     "streamlit_page_has_no_runtime_exception"
   ]
 }

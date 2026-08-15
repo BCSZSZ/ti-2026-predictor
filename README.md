@@ -13,21 +13,22 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 
 ### 1. 公开 Streamlit：仅手动输入
 
-公开版入口是 [`streamlit_app.py`](streamlit_app.py)。玩家手动录入当前九格、同屏三个 Roll 选项和
-剩余次数；页面返回唯一的一步建议、队伍组合与 Title 排名。它明确不包含：
+公开版入口是 [`streamlit_app.py`](streamlit_app.py)。玩家在 Main/小组赛 Tab 手动录入当前
+15/9 格、同屏三个 Roll 选项和剩余次数；页面返回当前动作建议、队伍组合与 Title 排名。它明确
+不包含：
 
 - 截图或画面识别；
 - Dota/Steam 控制和自动填写；
-- 原始数据同步、规则抓取或下一轮选项猜测；
+- 原始数据同步、规则抓取或完整未来路线搜索（可选 G-Lite 仅做冻结的受限下一轮抽样）；
 - 本机 `data/raw`、`data/processed` 或 `artifacts` 目录依赖。
 
 云端使用 [`deploy/runtime/current.json`](deploy/runtime/current.json) 指向的内容寻址
 **冻结求解发布包**，数据截止为 `2026-08-10T13:45:12Z`。发布包只含求解所需的紧凑派生证据，
-不含也不会下载约 188 GB 的原始数据。本地预览：
+不含也不会下载约 188 GB 的原始数据。本地手动预览：
 
 ```powershell
 uv sync --locked
-uv run streamlit run streamlit_app.py
+uv run ti web --manual
 ```
 
 Streamlit Community Cloud 选择本仓库、Python 3.12，并把 Main file path 设为
@@ -45,7 +46,7 @@ git clone https://github.com/BCSZSZ/ti-2026-predictor.git
 Set-Location ti-2026-predictor
 uv python install 3.12
 uv sync --locked --extra ocr
-uv run ti app local-ocr
+uv run ti web
 ```
 
 打开终端显示的 `http://127.0.0.1:8501`。这个用户入口与公开手动版读取同一个冻结求解发布包，
@@ -194,16 +195,26 @@ Fantasy 模型的历史输入。三张定位卡片、徽标、教练及重选策
 v2 没有新跑 full-session P5 solver。历史 v1 P5 仍是
 `failed-escalation-review-required`，只作为失败的诊断证据保留，不会自动启用更复杂的 full
 planner。v1 手册、P5/P6 产物和默认 CLI 路径继续作为不可变兼容证据保留。
-本地页面现提供 `Group Roll 实时顾问`：默认保留原有下拉菜单手填，也可在 Windows 本机执行
-一次性读屏。点击后，程序会核对 `dota2.exe` 并等待它所在显示器出现稳定的完整页面；Chrome
-可以放在另一块屏幕，也可以与 Dota 同屏并用 Alt+Tab 切换。完整识别
-九格、当前三个共享选项和剩余 Roll 后，
-会自动填入本页并重新计算。页面给出唯一的一步建议、风险说明、当前三个位置的队伍组合及
-自动 Title 排名。它直接使用
-2026-08-10 的当前 P3/Title/Swiss 冻结证据，不依赖旧 P4/P5/P6 手册门禁；不会生成下一轮选项，
-也不会向 Dota 发送鼠标、键盘或内存操作。每次识别完成后会自动停止；玩家在游戏内操作后，
+本地页面直接运行 `uv run ti web` 即可模拟 Fantasy；启动时会自动验证并选择 Group 与 Main 的
+当前发布指针，不需要玩家运行 `main-solver-release`。页面提供 `Fantasy Roll 实时顾问`，画面上用
+两个 Tab 切换 `Main（当前 · 五格）` 与
+`小组赛（历史 · 三格）`。两边分别使用状态、OCR、求解和发布栈，不共享阶段业务逻辑。默认
+Main 可手填三面共 15 枚 Emblem，也可在 Windows 本机执行一次性读屏；Group 历史 Tab 保留
+原有九格手填和读屏。点击后，程序会核对 `dota2.exe` 并等待它所在显示器出现稳定的完整页面；
+Chrome 可以放在另一块屏幕，也可以与 Dota 同屏并用 Alt+Tab 切换。完整识别当前阶段的全部
+15/9 格、三个共享选项和剩余 Roll 后，
+会自动填入本页并重新计算。Main 默认使用 `G`（只看当前一步），也允许玩家主动切换到
+`G-Lite`：后者只在前两项足够接近时，用固定 4 个样本做一次有限二步比较，每局最多触发
+4 次。`G-Lite` 仅有 100 个合成开发状态的正向点估计，尚未完成独立 confirmation，因此不替代
+默认 `G`。页面给出当前动作建议、风险说明、当前三个位置的队伍组合及自动 Title 排名。它直接使用
+2026-08-10 的当前 P3/Title/Swiss 冻结证据，不依赖旧 P4/P5/P6 手册门禁；只有用户选择
+`G-Lite` 且触发近似平手条件时才生成受限的下一轮样本。程序不会向 Dota 发送鼠标、键盘或
+内存操作。每次识别完成后会自动停止；玩家在游戏内操作后，
 需要再次点击识别按钮读取实际新画面。
-两个玩家入口都直接加载仓库内的冻结求解发布包，不再执行约 40 秒的真实数据冷启动；一步计算
+两个玩家入口都直接加载仓库内按阶段冻结的求解发布包，不再执行约 40 秒的真实数据冷启动。
+Main 实际八队形成前，五槽识别、手填和计算均可用：候选列表保留当前 16 队，每个预测情景
+只让 8 队进入 Main，未晋级情景计 0，并明确显示 provisional 与预测种子 proxy。Group 结束后
+先更新比赛与 Fantasy 原始数据，再按正式种子把候选列表缩为实际 8 队并发布 ready 包。一步计算
 仍约 0.6 秒，缓存重算约 0.05 秒。旧 P7 v1 会话与证据命令作为历史兼容证据保留，不再是
 玩家页面运行路径。实装范围和验收标准见
 [v2 实装计划](docs/plans/current-screen-roll-advisor-v2.md)，完成结果见
@@ -215,10 +226,11 @@ planner。v1 手册、P5/P6 产物和默认 CLI 路径继续作为不可变兼�
 
 ```powershell
 uv sync --locked --extra ocr
-uv run ti app local-ocr
+uv run ti web
 ```
 
-打开 `Group Roll 实时顾问`，点击“识别下一次稳定的 Dota 画面”，再切回完整 Roll 页面。
+打开 `Fantasy Roll 实时顾问`，先选择 Main 或小组赛 Tab，再点击该阶段的单次识别按钮并切回
+完整 Roll 页面。
 完整且可信的屏幕观测会自动写入本页并计算；缺失、冲突或低置信度字段只会填入已确认部分，
 不会触发计算。识别到一个目标页面后会自动停止，也可在等待时手动取消。程序按 `dota2.exe`
 的 Windows 显示器句柄选择画面，不要求浏览器与游戏分处两屏；单屏可以点击后用 Alt+Tab 切回

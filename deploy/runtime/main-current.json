@@ -1,0 +1,17 @@
+{
+  "as_of": "2026-08-13T13:23:17Z",
+  "bytes": 312903,
+  "candidate_team_count": 16,
+  "eligibility_mode": "projected",
+  "entrant_team_count": 8,
+  "file": "releases/main-roll-20260813T132317Z-e014657f6791.json.zst",
+  "file_sha256": "d1d445773566d844edcd16589b0005aae2fa1703436867020c936112088af399",
+  "lock_at": "2026-08-20T02:00:00Z",
+  "period": "main",
+  "reason": "Main 五槽计算已启用；当前 16 队通过预测晋级情景参与，正式名单形成后缩减为实际八队。",
+  "release_id": "ti2026-main-current-screen-solver-v2",
+  "release_schema_version": 3,
+  "release_sha256": "e014657f67915f9393f94ae9bd54a52ea801ea3d931f7b6126f4d9ffbec7be07",
+  "schema_version": 2,
+  "status": "provisional"
+}

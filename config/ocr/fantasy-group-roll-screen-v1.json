@@ -1,6 +1,8 @@
 {
   "profile_id": "fantasy-group-roll-screen-v1",
   "period": "group",
+  "slot_count": 3,
+  "max_rolls": 40,
   "language_priority": ["en", "zh-Hans"],
   "source": {
     "client_build": "6891:10893022",

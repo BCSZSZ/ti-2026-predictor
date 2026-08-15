@@ -182,6 +182,7 @@ def _period_outcomes_for_pool(
     stat_indexes: tuple[int, ...],
     score_multipliers: tuple[float, ...],
     coach_values: np.ndarray | None,
+    empty_series_value: float | None = None,
 ) -> np.ndarray:
     draw_record = scenario_set.draw_record_for(pool.target_team_id, pool.role)
     if draw_record.pool_sha256 != pool.semantic_hash:
@@ -199,7 +200,8 @@ def _period_outcomes_for_pool(
             ],
             dtype=float,
         )
-        sampled = np.full(draws.shape, -np.inf, dtype=float)
+        initial = -np.inf if empty_series_value is None else float(empty_series_value)
+        sampled = np.full(draws.shape, initial, dtype=float)
         used = draws >= 0
         sampled[used] = block_values[draws[used]]
         return sampled.max(axis=1)
@@ -210,9 +212,10 @@ def _period_outcomes_for_pool(
             f"Coach Scenario for Team {pool.target_team_id}, role {pool.role} has "
             f"shape {coach_values.shape}, expected {expected_shape}"
         )
-    outcomes = np.full(len(draws), -np.inf, dtype=float)
+    initial = -np.inf if empty_series_value is None else float(empty_series_value)
+    outcomes = np.full(len(draws), initial, dtype=float)
     for scenario_index in range(len(draws)):
-        best = -np.inf
+        best = initial
         for series_slot, block_index in enumerate(draws[scenario_index]):
             if block_index < 0:
                 continue
@@ -312,12 +315,16 @@ def _banner_identity(banner: BannerState) -> str:
 def _banner_score_inputs(
     banner: BannerState,
     rules: dict[str, Any],
+    *,
+    slot_count: int = 3,
+    period_label: str = "Group",
 ) -> tuple[tuple[str, ...], tuple[float, ...]]:
     if banner.role not in ROLE_IDS:
         raise ValueError(f"unknown Fantasy role: {banner.role}")
-    colors = tuple(rules["fantasy"]["role_banners"][banner.role][:3])
-    if len(banner.emblems) != 3:
-        raise ValueError("P3 Group valuation requires exactly three Emblems")
+    colors = tuple(rules["fantasy"]["role_banners"][banner.role][:slot_count])
+    if len(banner.emblems) != slot_count:
+        number = {3: "three", 5: "five"}.get(slot_count, str(slot_count))
+        raise ValueError(f"{period_label} valuation requires exactly {number} Emblems")
     legal_traits = {str(item["id"]) for item in rules["fantasy"]["traits"]}
     emblems: list[Emblem] = []
     for state, expected_color in zip(banner.emblems, colors, strict=True):
@@ -349,11 +356,19 @@ def evaluate_banner_teams(
     rules: dict[str, Any],
     *,
     coach: ValidatedCoachScenario | None = None,
+    slot_count: int = 3,
+    period_label: str = "Group",
+    empty_series_value: float | None = None,
 ) -> TeamOutcomeMatrix:
     if coach is not None and coach.scenario_sha256 != scenario_set.semantic_hash:
         raise ValueError("validated Coach candidate is not aligned to the common Scenario set")
     pools = _pool_map(pool_result)
-    stat_ids, multipliers = _banner_score_inputs(banner, rules)
+    stat_ids, multipliers = _banner_score_inputs(
+        banner,
+        rules,
+        slot_count=slot_count,
+        period_label=period_label,
+    )
     rows: list[np.ndarray] = []
     team_ids = tuple(team_id for team_id in scenario_set.team_ids if (team_id, banner.role) in pools)
     if not team_ids:
@@ -368,6 +383,7 @@ def evaluate_banner_teams(
                 stat_indexes=_pool_stat_indexes(pool, stat_ids),
                 score_multipliers=multipliers,
                 coach_values=coach_values,
+                empty_series_value=empty_series_value,
             )
         )
     coach_id = "coach-unavailable-excluded" if coach is None else coach.semantic_hash
@@ -508,7 +524,7 @@ class TerminalValueCache:
     """In-memory arithmetic cache; it contains no Roll or playbook policy."""
 
     def __init__(self) -> None:
-        self._banner: dict[tuple[str, str, str, str, str], TeamOutcomeMatrix] = {}
+        self._banner: dict[tuple[str, str, str, str, str, int, float | None], TeamOutcomeMatrix] = {}
         self._matched_banner: dict[tuple[str, str], MatchedOutcome] = {}
         self._matched_group: dict[tuple[tuple[str, ...], str], MatchedOutcome] = {}
 
@@ -520,6 +536,9 @@ class TerminalValueCache:
         rules: dict[str, Any],
         *,
         coach: ValidatedCoachScenario | None = None,
+        slot_count: int = 3,
+        period_label: str = "Group",
+        empty_series_value: float | None = None,
     ) -> TeamOutcomeMatrix:
         coach_hash = "coach-unavailable-excluded" if coach is None else coach.semantic_hash
         rules_hash = sha256_json(
@@ -536,6 +555,8 @@ class TerminalValueCache:
             rules_hash,
             _banner_identity(banner),
             coach_hash,
+            slot_count,
+            empty_series_value,
         )
         if key not in self._banner:
             self._banner[key] = evaluate_banner_teams(
@@ -544,6 +565,9 @@ class TerminalValueCache:
                 banner,
                 rules,
                 coach=coach,
+                slot_count=slot_count,
+                period_label=period_label,
+                empty_series_value=empty_series_value,
             )
         return self._banner[key]
 

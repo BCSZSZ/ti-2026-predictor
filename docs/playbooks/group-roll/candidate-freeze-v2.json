@@ -53,7 +53,7 @@
   },
   "tracked_files": [
     {
-      "path": "config/rules/ti2026.json",
+      "path": "docs/playbooks/group-roll/frozen/ti2026-rules-group-v2.json",
       "sha256": "5c0236554e225eea8a494fb705fe08ec0dd3c9b67320602c4220ff7d356fd09d"
     },
     {

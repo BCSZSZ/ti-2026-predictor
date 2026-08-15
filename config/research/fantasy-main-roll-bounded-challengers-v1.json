@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "experiment_id": "ti2026-main-roll-bounded-challengers-v1",
+  "period": "main",
+  "as_of": "2026-08-13T13:23:17Z",
+  "research_only": true,
+  "web_integration": false,
+  "runtime_pointer_writes": false,
+  "dota_client_control": false,
+  "interpretation": "synthetic-legal-coverage-not-player-population-expectation",
+  "base_research_manifest": {
+    "relative_path": "config/research/fantasy-main-roll-simulator-v1.json",
+    "file_sha256": "8edc1fff1451a4439a77d2c9a4ddc29efb2943366f7a894f0869023fa2ab3006",
+    "semantic_sha256": "b7ae27c63109d5ea9e56c2fc33fca5247db0817c4f02d1516a2c6075f81adcec"
+  },
+  "prior_coverage_manifest": {
+    "relative_path": "config/research/fantasy-main-starting-state-coverage-v1.json",
+    "file_sha256": "dc54ffc2aeb1e05565a4ff4a32b1d40e5fe037d0bb6948dfa1340cb555b7d206",
+    "semantic_sha256": "8a6fc98a830826b50675ab4804d69c8c37368cb0f5dad7aa1a3da9a96d9470cb"
+  },
+  "prior_coverage_exclusion": "hypothesis-generating-only-not-reused-for-development-or-confirmation",
+  "generator": {
+    "generator_id": "main-uniform-legal-start-v1",
+    "master_seed": 2026081503,
+    "distribution_kind": "non-probability-weighted-uniform-legal-coverage",
+    "key_derivation": "sha256-counter-rejection-v1",
+    "remaining_rolls": 30,
+    "stat_sampling": "uniform-over-client-legal-stats-per-slot-color",
+    "quality_sampling": "uniform-over-client-legal-tiers",
+    "trait_sampling": "uniform-over-client-legal-traits",
+    "offer_sampling": "ordered-uniform-without-replacement-over-positive-weight-operations"
+  },
+  "splits": {
+    "development": {"start": 0, "count": 100},
+    "confirmation": {"start": 100, "count": 900},
+    "development_use": "candidate-screen-and-parameter-freeze-only"
+  },
+  "primary_probability_model": "client-weight-primary-v1",
+  "paired_roll_tape": "same-within-state-and-model-across-baseline-and-challengers",
+  "sensitivity_panel": {
+    "selection": "lowest-sha256-rank-before-outcomes",
+    "selection_salt": "ti2026-main-bounded-challenger-sensitivity-v1",
+    "confirmation_state_count": 100,
+    "probability_model_ids": [
+      "client-weight-primary-v1",
+      "flattened-weights-v1",
+      "sharpened-weights-v1",
+      "repeat-suppressed-v1",
+      "correlated-multi-target-v1"
+    ]
+  },
+  "strategies": {
+    "baseline": {
+      "policy_id": "main-greedy-immediate-v1",
+      "mean_retention_epsilon": 0.0,
+      "cvar_alpha": 0.1,
+      "improvement_tolerance": 1e-09
+    },
+    "safe_band": {
+      "policy_id": "main-greedy-safe-band-v1",
+      "mean_band_fraction": 0.0005,
+      "cvar_alpha": 0.1,
+      "improvement_tolerance": 1e-09
+    },
+    "local_tie": {
+      "policy_id": "main-greedy-local-configuration-tiebreak-v1",
+      "mean_band_fraction": 0.0005,
+      "cvar_retention_fraction": 0.001,
+      "cvar_alpha": 0.1,
+      "improvement_tolerance": 1e-09
+    },
+    "selective_two_step": {
+      "policy_id": "main-greedy-selective-two-step-v1",
+      "ambiguity_fraction": 0.0005,
+      "minimum_override_fraction": 0.0001,
+      "sample_count": 4,
+      "candidate_limit": 2,
+      "max_triggers_per_episode": 4,
+      "decision_seed": 2026081504,
+      "cvar_alpha": 0.1
+    }
+  },
+  "runtime_gate": {
+    "reference_worker_count": 8,
+    "ideal_confirmation_seconds_per_candidate": 3600,
+    "maximum_confirmation_seconds_per_candidate": 7200,
+    "projection_method": "development-active-seconds-linear-scale",
+    "advancement_limit": 2,
+    "minimum_development_mean_difference": 0.0,
+    "cvar_noninferiority_fraction": 0.01,
+    "conditional_runtime_minimum_relative_gain": 0.005,
+    "ranking": "mean-then-cvar-then-frozen-complexity"
+  },
+  "confirmation_gate": {
+    "confidence_level": 0.95,
+    "minimum_relative_mean_gain": 0.005,
+    "cvar_noninferiority_fraction": 0.01,
+    "stratum_noninferiority_fraction": 0.01,
+    "minimum_stratum_count": 60,
+    "require_primary_mean_ci_above_zero": true,
+    "require_nonnegative_mean_all_probability_models": true,
+    "require_every_eligible_stratum_noninferior": true,
+    "require_every_roster_fold_noninferior": true,
+    "automatic_web_promotion": false
+  },
+  "coverage_dimensions": [
+    "average-quality-band",
+    "direct-quality-increment-offer",
+    "conditional-trait-ready-banner-band",
+    "initial-terminal-value-rank-quartile"
+  ]
+}

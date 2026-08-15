@@ -235,7 +235,7 @@ st.sidebar.title("TI 2026")
 st.sidebar.caption(f"{manifest.display_name} · 仅监听 localhost")
 page = st.sidebar.radio(
     "页面",
-    ("数据与规则状态", "预测", "Fantasy", "Group Roll 实时顾问", "审计"),
+    ("数据与规则状态", "预测", "Fantasy", "Fantasy Roll 实时顾问", "审计"),
 )
 if page == "数据与规则状态":
     data_page()
@@ -243,7 +243,7 @@ elif page == "预测":
     recommendation_page("prediction")
 elif page == "Fantasy":
     recommendation_page("fantasy")
-elif page == "Group Roll 实时顾问":
+elif page == "Fantasy Roll 实时顾问":
     render_advisor_page(release_bundle_path=default_solver_release_path())
 else:
     audit_page()

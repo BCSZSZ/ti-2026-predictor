@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "catalog_id": "ti2026-main-advice-strategies-v1",
+  "period": "main",
+  "default_strategy_id": "main-greedy-immediate-v1",
+  "default_risk_profile": "mean-first",
+  "primary_transition_model": "client-weight-primary-v1",
+  "promotion_decision": "user-selected-dual-strategy-2026-08-15",
+  "automatic_web_promotion": false,
+  "strategies": {
+    "greedy": {
+      "strategy_id": "main-greedy-immediate-v1",
+      "label": "G（默认 · 眼前最优）",
+      "description": "选择当前一步期望终局价值最高的动作，不估计未知的下一轮选项。",
+      "improvement_tolerance": 1e-09,
+      "evaluated_mean_retention_epsilon": 0.0
+    },
+    "g_lite": {
+      "strategy_id": "main-greedy-selective-two-step-v1",
+      "label": "G-Lite（可选 · 有限二步）",
+      "description": "通常保持 G；仅在前两项一步价值足够接近时，用固定小样本比较下一步。",
+      "ambiguity_fraction": 0.0005,
+      "minimum_override_fraction": 0.0001,
+      "sample_count": 4,
+      "candidate_limit": 2,
+      "max_triggers_per_episode": 4,
+      "decision_seed": 2026081504,
+      "cvar_alpha": 0.1,
+      "research_evidence": {
+        "bounded_manifest_sha256": "958212a4c4e6f9aaaaa3ff4edb6b6a5e646af8dbf7e2ceb56546b0067f6d8430",
+        "development_report_sha256": "3d057837eb95865fc47aabd6899d91688442140faceb2548848c9b423666410a",
+        "development_screen_sha256": "7a42e033b859d65f50e8bcf048ef547b0a6f1975db7244b2bd79364d0191532a",
+        "development_state_count": 100,
+        "relative_mean_gain": 0.0021524562070743838,
+        "evidence_status": "development-positive-user-opt-in-not-confirmed"
+      }
+    }
+  }
+}

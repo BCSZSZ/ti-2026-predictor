@@ -11,13 +11,29 @@ import typer
 from ti_predictor import __version__
 from ti_predictor.audit import audit_run
 from ti_predictor.backtesting import run_ti2025_backtest
+from ti_predictor.config import load_rules, load_tournament_manifest
 from ti_predictor.fantasy.advisor_reporting import generate_group_advisor_evidence
 from ti_predictor.fantasy.cross_audit_reporting import generate_group_cross_audit_evidence
 from ti_predictor.fantasy.current_advisor import prepare_current_advisor_context
+from ti_predictor.fantasy.main_evidence import (
+    build_main_evidence_snapshot,
+    validate_actual_main_evidence_refresh,
+)
+from ti_predictor.fantasy.main_scenarios import (
+    build_main_scenario_set_from_model,
+    build_projected_main_scenario_set_from_group,
+)
+from ti_predictor.fantasy.main_solver_release import (
+    MAIN_SOLVER_RELEASE_ID,
+    load_main_solver_policy,
+    load_main_solver_release_context,
+    main_solver_readiness,
+    write_main_solver_release_bundle,
+)
 from ti_predictor.fantasy.playbook_reporting import generate_group_playbook_evidence
 from ti_predictor.fantasy.solver_release import (
     SOLVER_RELEASE_ID,
-    default_solver_release_path,
+    load_solver_release_context,
     write_solver_release_bundle,
 )
 from ti_predictor.fantasy.solver_reporting import generate_group_solver_evidence
@@ -27,7 +43,9 @@ from ti_predictor.forecasting import (
     generate_fantasy,
     generate_group,
     generate_group_fantasy_evidence,
+    load_strength_model_as_of,
 )
+from ti_predictor.hashing import sha256_json
 from ti_predictor.ingest.opendota import (
     DEFAULT_OPENDOTA_RUN_REQUEST_LIMIT,
     OpenDotaSafetyStop,
@@ -718,6 +736,134 @@ def fantasy_solver_release(
     _write_current_solver_release(as_of=as_of, output=output)
 
 
+@fantasy_app.command("main-solver-release")
+def fantasy_main_solver_release(
+    as_of: Annotated[
+        str,
+        typer.Option("--as-of", help="Main 模型与数据的显式 UTC 截止时间，必须带时区。"),
+    ],
+    mode: Annotated[
+        Literal["auto", "projected", "actual"],
+        typer.Option(
+            "--mode",
+            help="auto 在无正式种子时发布 16 队预测模式，有正式八队后发布实际模式。",
+        ),
+    ] = "auto",
+) -> None:
+    """Build a usable projected Main runtime now, then replace it with actual eight Teams."""
+
+    cutoff = parse_as_of(as_of)
+    manifest = load_tournament_manifest(PATHS.tournament)
+    if cutoff > manifest.main_lock_at:
+        raise typer.BadParameter("Main 发布截止时间不得晚于游戏内 Main roster lock")
+    policy = load_main_solver_policy()
+    group_context = load_solver_release_context()
+    selected_mode = (
+        ("actual" if len(manifest.main_event_seeds) == 8 else "projected") if mode == "auto" else mode
+    )
+    release_pool = group_context.pool_result
+    evidence_warnings: tuple[str, ...] = ()
+    eligibility_evidence: dict[str, object]
+    if selected_mode == "projected":
+        model, report = load_strength_model_as_of(as_of=cutoff)
+        blocking = [issue.message for issue in report.issues if issue.severity == "blocking"]
+        if blocking:
+            raise typer.BadParameter("Main Team-strength model is blocked: " + "; ".join(blocking))
+        data_snapshot_sha256 = sha256_json(
+            {
+                "period": "main",
+                "eligibility_mode": "projected",
+                "as_of": cutoff.isoformat().replace("+00:00", "Z"),
+                "group_pool_set_sha256": group_context.pool_result.semantic_hash,
+                "group_scenario_sha256": group_context.scenarios.semantic_hash,
+                "group_scenario_as_of": group_context.scenarios.as_of,
+                "model_sha256": sha256_json(model.as_dict()),
+                "policy_sha256": sha256_json(policy.model_dump(mode="json")),
+            }
+        )
+        scenarios = build_projected_main_scenario_set_from_group(
+            release_pool,
+            group_scenarios=group_context.scenarios,
+            model=model,
+            scenario_count=policy.scenario_count,
+            policy_id=policy.policy_id,
+            data_snapshot_sha256=data_snapshot_sha256,
+            as_of=cutoff,
+            seed=policy.seed,
+        )
+        evidence_warnings = tuple(
+            sorted(issue.message for issue in report.issues if issue.severity == "warning")
+        )
+        eligibility_evidence = {
+            "source_group_scenario_sha256": group_context.scenarios.semantic_hash,
+            "source_group_as_of": group_context.scenarios.as_of,
+        }
+    else:
+        if len(manifest.main_event_seeds) != policy.entrant_team_count:
+            raise typer.BadParameter(
+                "actual 模式要求 config/ti2026.yaml 提供按正式种子排序的 8 个 main_event_seeds"
+            )
+        if sha256_json(load_rules(PATHS.rules)) != sha256_json(group_context.canonical_rules):
+            raise typer.BadParameter("Main 当前规则与已发布的共享客户端规则不一致")
+        evidence = build_main_evidence_snapshot(as_of=cutoff)
+        try:
+            validate_actual_main_evidence_refresh(
+                evidence,
+                entrant_team_ids=tuple(manifest.main_event_seeds),
+                newer_than=group_context.policy.as_of,
+            )
+        except ValueError as error:
+            raise typer.BadParameter(str(error)) from error
+        release_pool = evidence.pool_result
+        if release_pool.semantic_hash == group_context.pool_result.semantic_hash:
+            raise typer.BadParameter(
+                "实际八队发布前必须先同步赛后比赛并重跑 Fantasy replay；当前 Main 样本池仍与 Group 冻结包相同"
+            )
+        scenarios = build_main_scenario_set_from_model(
+            release_pool,
+            team_ids=tuple(manifest.main_event_seeds),
+            model=evidence.model,
+            scenario_count=policy.scenario_count,
+            policy_id=policy.policy_id,
+            data_snapshot_sha256=evidence.data_snapshot_sha256,
+            as_of=cutoff,
+            seed=policy.seed,
+        )
+        evidence_warnings = evidence.warnings
+        eligibility_evidence = {
+            "current_event_fantasy_game_count": evidence.current_event_fantasy_game_count,
+            "current_event_fantasy_team_ids": list(evidence.current_event_fantasy_team_ids),
+            "latest_current_event_fantasy_start_at": (evidence.latest_current_event_fantasy_start_at),
+            "refreshed_after_group_as_of": group_context.policy.as_of,
+        }
+    result = write_main_solver_release_bundle(
+        group_context,
+        scenarios,
+        lock_at=manifest.main_lock_at.isoformat().replace("+00:00", "Z"),
+        pool_result=release_pool,
+        additional_warnings=evidence_warnings,
+        eligibility_evidence=eligibility_evidence,
+    )
+    _echo(
+        {
+            "release_id": MAIN_SOLVER_RELEASE_ID,
+            "period": "main",
+            "status": "provisional" if scenarios.eligibility_mode == "projected" else "ready",
+            "eligibility_mode": scenarios.eligibility_mode,
+            "as_of": scenarios.as_of,
+            "team_ids": list(scenarios.team_ids),
+            "scenario_count": len(scenarios.scenario_ids),
+            "data_snapshot_sha256": scenarios.data_snapshot_sha256,
+            "model_sha256": scenarios.model_sha256,
+            "path": str(result.path),
+            "pointer_path": str(result.pointer_path),
+            "bytes": result.bytes,
+            "file_sha256": result.file_sha256,
+            "release_sha256": result.release_sha256,
+        }
+    )
+
+
 @fantasy_app.command("manual-release", hidden=True)
 def fantasy_manual_release_compatibility(
     as_of: Annotated[str, typer.Option("--as-of")],
@@ -740,8 +886,32 @@ def ocr_inspect(image: Annotated[Path, typer.Argument(exists=True, dir_okay=Fals
     _echo(inspect_screenshot(image))
 
 
+def _current_player_runtime_summary() -> dict[str, object]:
+    """Validate and describe the pointer-selected releases used by the player service."""
+
+    group_context = load_solver_release_context()
+    main_context = load_main_solver_release_context(group_context)
+    readiness = main_solver_readiness()
+    return {
+        "group_as_of": group_context.policy.as_of,
+        "main_as_of": main_context.as_of,
+        "main_status": readiness.status,
+        "main_mode": readiness.eligibility_mode,
+        "main_candidate_team_count": readiness.candidate_team_count,
+        "main_entrant_team_count": readiness.entrant_team_count,
+    }
+
+
 def _run_streamlit(entrypoint: Path, *, port: int) -> None:
-    default_solver_release_path()
+    summary = _current_player_runtime_summary()
+    _echo(
+        {
+            "status": "starting",
+            "url": f"http://127.0.0.1:{port}",
+            "runtime_selection": "current-pointer",
+            **summary,
+        }
+    )
     command = [
         sys.executable,
         "-m",
@@ -754,6 +924,28 @@ def _run_streamlit(entrypoint: Path, *, port: int) -> None:
         "--browser.gatherUsageStats=false",
     ]
     raise typer.Exit(code=subprocess.run(command, check=False).returncode)
+
+
+def _player_entrypoint(*, manual: bool) -> Path:
+    if manual or sys.platform != "win32":
+        return PATHS.root / "streamlit_app.py"
+    return PATHS.root / "local_ocr_app.py"
+
+
+@app.command("web")
+def player_web(
+    port: Annotated[int, typer.Option("--port", min=1024, max=65535)] = 8501,
+    manual: Annotated[
+        bool,
+        typer.Option(
+            "--manual",
+            help="只启用手动录入；Windows 默认同时启用本地只读 OCR。",
+        ),
+    ] = False,
+) -> None:
+    """启动 Fantasy 玩家服务并自动加载当前可用的 Group/Main 发布包。"""
+
+    _run_streamlit(_player_entrypoint(manual=manual), port=port)
 
 
 @consumer_app.command("local-ocr")

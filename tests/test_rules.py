@@ -55,7 +55,7 @@ def test_golden_rules_have_expected_shapes(project_paths) -> None:
     assert rules["fantasy"]["period_rewards"]["between_anchor_mapping"] == ("unknown_do_not_interpolate")
     assert [period["banner_slots"] for period in rules["fantasy"]["periods"]] == [3, 5]
     roll = rules["fantasy"]["roll"]
-    assert roll["supported_periods"] == ["group"]
+    assert roll["supported_periods"] == ["group", "main"]
     assert roll["offer"] == {
         "count": 3,
         "unique": True,
@@ -167,7 +167,7 @@ def test_client_snapshot_records_sources_and_conflict(tmp_path: Path, project_pa
             \"fantasy\" {{
               \"scoring\" {{ {scoring_text} }}
               \"period_definitions\" {{
-                \"0\" {{ \"start\" \"1786543200\" \"LEAGUE_REGION_UNSET\" \"19719\" }}
+                \"0\" {{ \"start\" \"1786586400\" \"LEAGUE_REGION_UNSET\" \"19719\" }}
                 \"1\" {{ \"start\" \"1787191200\" \"LEAGUE_REGION_UNSET\" \"19719\" }}
               }}
             }}

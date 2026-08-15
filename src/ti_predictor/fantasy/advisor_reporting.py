@@ -110,7 +110,7 @@ def generate_group_advisor_evidence(
     )
     solver_finished = perf_counter()
 
-    progress("P7 confirming refresh, deterministic replay, and Main fail-closed")
+    progress("P7 confirming refresh, deterministic replay, and Group/Main isolation")
     completed = after_apply.refresh_observed(
         context.solver_context.coverage_cases[2].state.offer,
         rules,
@@ -139,11 +139,11 @@ def generate_group_advisor_evidence(
         period="main",
         slot_count=5,
     )
-    main_fail_closed = False
+    group_period_stack_isolated = False
     try:
         AdvisorSession.create(context.baseline, main_state, rules)
     except RollStateError:
-        main_fail_closed = True
+        group_period_stack_isolated = True
     finished = perf_counter()
 
     functional_gate = {
@@ -154,7 +154,7 @@ def generate_group_advisor_evidence(
         "observed_state_replanning": observed_replanning_pass,
         "deterministic_saved_session_replay": replay_pass,
         "locked_baseline_unchanged": baseline_pass,
-        "unsupported_main_fails_closed": main_fail_closed,
+        "group_period_stack_isolated": group_period_stack_isolated,
         "streamlit_page_has_no_runtime_exception": "verified_by_AppTest_and_browser_outside_artifact",
     }
     boolean_gate_pass = all(value is True for value in functional_gate.values() if isinstance(value, bool))

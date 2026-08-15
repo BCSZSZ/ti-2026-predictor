@@ -1,0 +1,17 @@
+{
+  "schema_version": 2,
+  "policy_id": "fantasy-main-current-screen-advisor-v1",
+  "period": "main",
+  "entrant_team_count": 8,
+  "projected_candidate_team_count": 16,
+  "actual_candidate_team_count": 8,
+  "scenario_count": 256,
+  "seed": 20260820,
+  "bracket_scenario_sampling": "model_weighted_with_replacement",
+  "projected_advancement_source": "frozen_group_scenarios",
+  "projected_seeding": "group_category_then_strength_proxy",
+  "fantasy_series_sampling": "historical_pool_weighted_with_replacement",
+  "slot_count": 5,
+  "max_rolls": 30,
+  "future_offer_generation": false
+}

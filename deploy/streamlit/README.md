@@ -1,7 +1,9 @@
 # Streamlit 手动版发布说明
 
-本目录只说明公开的 Group Roll 手动求解器部署。OCR、屏幕捕获、Dota 进程检查和本地数据同步均
-不在这条部署路径中；手动版和本地 OCR 版的求解事实来源统一放在 `deploy/runtime/`。
+本目录只说明公开的 Fantasy Roll 手动求解器部署。公开版可在 `Main（当前 · 五格）` 与
+`小组赛（历史 · 三格）` 之间切换，并在 Main 使用默认 G 或用户主动选择的 G-Lite。OCR、屏幕
+捕获、Dota 进程检查和本地数据同步均不在这条云端路径中；手动版和本地 OCR 版的求解事实来源
+统一放在 `deploy/runtime/`。
 
 ## Community Cloud 参数
 
@@ -25,14 +27,19 @@ Streamlit 当前会优先识别仓库根目录的 `uv.lock` 并使用 uv 安装�
 公开入口只读取：
 
 - `../runtime/current.json`；
+- `../runtime/main-current.json`；
 - `../runtime/releases/` 中由该清单指向的 `.json.zst` 与 `.sha256`；
 - 仓库中的版本化 `src/` 与 `config/`。
 
-当前文件身份以 `../runtime/current.json` 为准。发布包包含：
+当前 Group/Main 文件身份分别以两个 current 指针为准。Group 发布包包含：
 
 - 响应情景 256 个；
 - 可用队伍×位置池 47 个（核心 16、中单 15、辅助 16）；
 - 客户端 Roll 规则片段、Series 数值块、Title 边际证据和完整来源哈希。
+
+Main 发布包包含 16 个当前候选 Team、每情景 8 个 Main entrant、五槽/30 Roll 规则、独立 Main
+Scenario，以及冻结的 G/G-Lite 策略目录。云端只允许手动录入 15 格、三个当前选项和剩余 Roll；
+G-Lite 仅按发布包内的固定 seed 与主出率模型做受限下一轮抽样。
 
 它不提供原始 API 响应、处理后数据集、运行产物、截图、OCR 模型或写入接口。加载时会依次验证
 当前指针、文件清单、发布内容、源码树、配置、P3、Title、规则快照、Pool 和 Scenario 身份；任一
@@ -45,7 +52,8 @@ Streamlit 当前会优先识别仓库根目录的 `uv.lock` 并使用 uv 安装�
 ```powershell
 uv sync --locked --extra dev
 uv run ti fantasy solver-release --as-of 2026-08-10T13:45:12Z
-uv run pytest tests/test_solver_release.py
+uv run ti fantasy main-solver-release --mode projected --as-of 2026-08-13T13:23:17Z
+uv run pytest tests/test_solver_release.py tests/test_fantasy_main_solver_release.py tests/test_web.py
 ```
 
 生成命令必须接收显式 UTC `as_of`，不会从系统当前时间猜测数据截止。若 `src/` 或 `config/` 在
@@ -61,8 +69,9 @@ uv run streamlit run streamlit_app.py
 
 验收要点：
 
-1. 页面标题为 `Group Roll 手动求解器`；
+1. 页面标题为 `Fantasy Roll 手动求解器`；
 2. 页面没有识别、上传截图或实时监视按钮；
-3. 三个角色合计显示九格，另有三个同屏 Roll 选项和剩余次数；
-4. 默认表单可以计算出一步建议、队伍组合与 Title；
-5. 任何快照或源码哈希错误都会显示阻断信息，而不是退回未经验证的默认值。
+3. Main Tab 显示 15 格与 30 次 Roll，小组赛 Tab 显示九格与 40 次 Roll；
+4. Main 策略选择只包含默认 G 和可选 G-Lite，两者都能从手填状态得到建议；
+5. 本地 `local_ocr_app.py` 额外显示 Main/Group 单次识别按钮，但使用相同求解包；
+6. 任何快照或源码哈希错误都会显示阻断信息，而不是退回未经验证的默认值。

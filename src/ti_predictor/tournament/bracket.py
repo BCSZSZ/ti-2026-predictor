@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from itertools import product
 
@@ -47,19 +47,24 @@ class BracketEngine:
             raise ValueError("Main Event bracket requires eight unique seeded teams")
         self.model = model
 
-    def resolve(self, bits: Iterable[int]) -> BracketPath:
-        choices = tuple(int(value) for value in bits)
-        if len(choices) != 14 or any(value not in (0, 1) for value in choices):
-            raise ValueError("a bracket grid is exactly fourteen binary choices")
+    def _resolve_with(
+        self,
+        choose: Callable[[int, int, float], int],
+    ) -> BracketPath:
+        choices: list[int] = []
         participants: list[tuple[int, int]] = []
         winners: list[int] = []
         losers: list[int] = []
         probability = 1.0
 
-        def play(left: int, right: int, choice: int) -> tuple[int, int]:
+        def play(left: int, right: int) -> tuple[int, int]:
             nonlocal probability
             participants.append((left, right))
             p_left = self.model.predict(left, right)
+            choice = int(choose(left, right, p_left))
+            if choice not in (0, 1):
+                raise ValueError("a bracket choice must be zero or one")
+            choices.append(choice)
             if choice == 0:
                 probability *= p_left
                 winner, loser = left, right
@@ -71,27 +76,39 @@ class BracketEngine:
             return winner, loser
 
         # Upper R1 uses seeds 1v8, 4v5, 2v7, 3v6.
-        w0, l0 = play(self.team_ids[0], self.team_ids[7], choices[0])
-        w1, l1 = play(self.team_ids[3], self.team_ids[4], choices[1])
-        w2, l2 = play(self.team_ids[1], self.team_ids[6], choices[2])
-        w3, l3 = play(self.team_ids[2], self.team_ids[5], choices[3])
-        w4, _ = play(l0, l1, choices[4])
-        w5, _ = play(l2, l3, choices[5])
-        w6, l6 = play(w0, w1, choices[6])
-        w7, l7 = play(w2, w3, choices[7])
-        w8, _ = play(w4, l6, choices[8])
-        w9, _ = play(w5, l7, choices[9])
-        w10, _ = play(w8, w9, choices[10])
-        w11, l11 = play(w6, w7, choices[11])
-        w12, _ = play(w10, l11, choices[12])
-        play(w11, w12, choices[13])
+        w0, l0 = play(self.team_ids[0], self.team_ids[7])
+        w1, l1 = play(self.team_ids[3], self.team_ids[4])
+        w2, l2 = play(self.team_ids[1], self.team_ids[6])
+        w3, l3 = play(self.team_ids[2], self.team_ids[5])
+        w4, _ = play(l0, l1)
+        w5, _ = play(l2, l3)
+        w6, l6 = play(w0, w1)
+        w7, l7 = play(w2, w3)
+        w8, _ = play(w4, l6)
+        w9, _ = play(w5, l7)
+        w10, _ = play(w8, w9)
+        w11, l11 = play(w6, w7)
+        w12, _ = play(w10, l11)
+        play(w11, w12)
         return BracketPath(
-            bits=choices,
+            bits=tuple(choices),
             participants=tuple(participants),
             winners=tuple(winners),
             losers=tuple(losers),
             probability=probability,
         )
+
+    def resolve(self, bits: Iterable[int]) -> BracketPath:
+        choices = tuple(int(value) for value in bits)
+        if len(choices) != 14 or any(value not in (0, 1) for value in choices):
+            raise ValueError("a bracket grid is exactly fourteen binary choices")
+        iterator = iter(choices)
+        return self._resolve_with(lambda _left, _right, _probability: next(iterator))
+
+    def sample(self, rng: np.random.Generator) -> BracketPath:
+        """Draw one coherent bracket path from the model's conditional probabilities."""
+
+        return self._resolve_with(lambda _left, _right, probability: int(rng.random() >= probability))
 
     def enumerate(self) -> list[BracketPath]:
         paths = [self.resolve(bits) for bits in product((0, 1), repeat=14)]

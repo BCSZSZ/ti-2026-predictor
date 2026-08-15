@@ -18,8 +18,8 @@ from ti_predictor.fantasy.main_roll_research_simulator import state_from_payload
 from ti_predictor.fantasy.main_roll_research_terminal import VectorizedMainResearchTerminal
 from ti_predictor.fantasy.main_solver_release import load_main_solver_release_context
 from ti_predictor.fantasy.solver_release import load_solver_release_context
-from ti_predictor.forecasting import load_strength_model_as_of
 from ti_predictor.hashing import sha256_json
+from ti_predictor.models.ratings import TeamStrengthModel
 
 
 def _frozen_inputs():
@@ -27,8 +27,10 @@ def _frozen_inputs():
     manifest = load_main_roll_research_manifest(root / "config/research/fantasy-main-roll-simulator-v1.json")
     group = load_solver_release_context()
     main = load_main_solver_release_context(group)
-    model, _ = load_strength_model_as_of(as_of=manifest.as_of)
-    assert sha256_json(model.as_dict()) == manifest.source.team_strength_model_sha256
+    assert main.terminal.scenario_set.model_sha256 == manifest.source.team_strength_model_sha256
+    model = TeamStrengthModel(
+        {team_id: 1500.0 + index * 15.0 for index, team_id in enumerate(main.terminal.scenario_set.team_ids)}
+    )
     return root, manifest, group, main, model
 
 

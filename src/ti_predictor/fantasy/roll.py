@@ -1,7 +1,8 @@
-"""Pure, immutable transition model for TI 2026 Group Fantasy rolls.
+"""Shared immutable Emblem primitives and the TI 2026 Group Roll stack.
 
 Client-visible operation definitions are supplied by a rule snapshot.  The pure support route
-does not assign probabilities; model-conditional sampling is kept in separate functions.
+does not assign probabilities; model-conditional sampling is kept in separate functions. Main
+owns its state and transition entry points in :mod:`ti_predictor.fantasy.main_roll`.
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ import random
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from functools import cached_property
-from itertools import product
+from itertools import combinations, product
 from types import MappingProxyType
 from typing import Any
 
@@ -56,7 +57,7 @@ class RollRuleError(ValueError):
 
 
 class RollStateError(ValueError):
-    """A Roll state violates the frozen Group contract."""
+    """A Roll state violates its frozen Period contract."""
 
 
 class RollActionError(ValueError):
@@ -87,9 +88,9 @@ class RollOffer:
         values = tuple(self.operation_ids)
         object.__setattr__(self, "operation_ids", values)
         if len(values) != 3:
-            raise RollStateError("a Group Roll offer must contain exactly three operations")
+            raise RollStateError("a Roll offer must contain exactly three operations")
         if len(set(values)) != len(values):
-            raise RollStateError("a Group Roll offer must contain three unique operations")
+            raise RollStateError("a Roll offer must contain three unique operations")
         if any(not isinstance(value, int) or isinstance(value, bool) for value in values):
             raise RollStateError("Roll operation IDs must be integers")
 
@@ -141,6 +142,7 @@ class RollRuleSet:
     model_powers: tuple[tuple[str, float], ...]
     offer_size: int
     group_rolls: int
+    main_rolls: int
 
     @cached_property
     def _stat_index(self) -> Mapping[str, tuple[str, ...]]:
@@ -205,6 +207,12 @@ class RollRuleSet:
     def group_roles(self) -> tuple[str, ...]:
         return tuple(role for role, _ in self.banner_colors)
 
+    @property
+    def roles(self) -> tuple[str, ...]:
+        """Canonical role order shared by the two independently validated Period stacks."""
+
+        return self.group_roles
+
 
 @dataclass(frozen=True)
 class MutationOutcome:
@@ -250,12 +258,15 @@ def _targets_are_unambiguous(mutation: str, targets: tuple[str, ...]) -> bool:
     return len(target_set) == 2 and color_count == 1 and selector_count == 1
 
 
-def build_group_roll_rules(canonical_rules: Mapping[str, Any], client_roll: Mapping[str, Any]) -> RollRuleSet:
-    """Build a fail-closed immutable rule set from canonical policy and a client snapshot."""
+def _build_roll_rules(canonical_rules: Mapping[str, Any], client_roll: Mapping[str, Any]) -> RollRuleSet:
+    """Parse period-independent client evidence for the two isolated Roll stacks."""
 
     fantasy = _as_mapping(canonical_rules.get("fantasy"), "fantasy rules")
     roll = _as_mapping(fantasy.get("roll"), "fantasy.roll")
-    _require(roll.get("supported_periods") == [GROUP_PERIOD], "only Group Roll execution is supported")
+    _require(
+        roll.get("supported_periods") == ["group", "main"],
+        "Group and Main Roll execution must both be declared",
+    )
     offer = _as_mapping(roll.get("offer"), "fantasy.roll.offer")
     _require(
         offer
@@ -266,7 +277,7 @@ def build_group_roll_rules(canonical_rules: Mapping[str, Any], client_roll: Mapp
             "apply_replaces_all": True,
             "refresh_replaces_all": True,
         },
-        "canonical Group offer contract is not supported",
+        "canonical Roll offer contract is not supported",
     )
     _require(roll.get("token_cost") == {"apply": 1, "refresh": 1}, "Roll token costs must both be one")
     _require(
@@ -280,7 +291,7 @@ def build_group_roll_rules(canonical_rules: Mapping[str, Any], client_roll: Mapp
             "multi_target_draws": "independent",
             "one_color_target": "all_matching_slots_in_support",
             "increase_one_quality": "each_slot_increment_clamped",
-            "increase_two_decrease_one": "each_decreased_slot_other_two_increment_clamped",
+            "increase_two_decrease_one": "uniform_distinct_two_increased_one_decreased_clamped",
             "quality_bounds": [1, 5],
             "unweighted_model_choices": "uniform",
         },
@@ -289,7 +300,7 @@ def build_group_roll_rules(canonical_rules: Mapping[str, Any], client_roll: Mapp
     _require(client_roll.get("offer_size") == 3, "client Roll offer size must be three")
 
     canonical_stats = _as_mapping(fantasy.get("stats"), "fantasy.stats")
-    stats_by_color: list[tuple[str, tuple[str, ...]]] = []
+    canonical_stats_by_color: dict[str, tuple[str, ...]] = {}
     for color in ("red", "blue", "green"):
         values = tuple(
             stat_id
@@ -297,10 +308,10 @@ def build_group_roll_rules(canonical_rules: Mapping[str, Any], client_roll: Mapp
             if _as_mapping(definition, f"stat {stat_id}").get("color") == color
         )
         _require(bool(values), f"canonical rules expose no {color} Stats")
-        stats_by_color.append((color, values))
+        canonical_stats_by_color[color] = values
     _require(
-        all(len(values) == 6 for _, values in stats_by_color)
-        and len({stat for _, values in stats_by_color for stat in values}) == 18,
+        all(len(values) == 6 for values in canonical_stats_by_color.values())
+        and len({stat for values in canonical_stats_by_color.values() for stat in values}) == 18,
         "canonical rules must expose six unique Stats per color",
     )
     observed_gems = {
@@ -308,15 +319,27 @@ def build_group_roll_rules(canonical_rules: Mapping[str, Any], client_roll: Mapp
         for item in _as_sequence(client_roll.get("gems"), "client gems")
         if isinstance(item, Mapping)
     }
-    expected_gems = {
-        color: (client_type, stats)
-        for (color, stats), client_type in zip(
-            stats_by_color,
+    expected_gem_types = {
+        color: client_type
+        for color, client_type in zip(
+            ("red", "blue", "green"),
             ("FANTASY_GEM_TYPE_RUBY", "FANTASY_GEM_TYPE_SAPPHIRE", "FANTASY_GEM_TYPE_EMERALD"),
             strict=True,
         )
     }
-    _require(observed_gems == expected_gems, "client Gem Stats differ from canonical rules")
+    _require(
+        set(observed_gems) == set(expected_gem_types)
+        and all(
+            observed_gems[color][0] == expected_gem_types[color]
+            and set(observed_gems[color][1]) == set(canonical_stats_by_color[color])
+            and len(observed_gems[color][1]) == 6
+            for color in expected_gem_types
+        ),
+        "client Gem Stats differ from canonical rules",
+    )
+    # The client contract is the authoritative order for deterministic draws;
+    # canonical JSON object key sorting must not silently reorder these choices.
+    stats_by_color = tuple((color, observed_gems[color][1]) for color in ("red", "blue", "green"))
 
     canonical_traits = _as_sequence(fantasy.get("traits"), "fantasy.traits")
     traits = tuple(str(_as_mapping(item, "trait").get("id")) for item in canonical_traits)
@@ -373,8 +396,8 @@ def build_group_roll_rules(canonical_rules: Mapping[str, Any], client_roll: Mapp
     }
     _require(observed_banners == expected_banners, "client Banner slots differ from canonical rules")
     _require(
-        all(len(colors) >= GROUP_SLOT_COUNT for _, colors in banner_colors),
-        "every role needs at least three Group slots",
+        all(len(colors) >= 5 for _, colors in banner_colors),
+        "every role needs all five declared Banner slots",
     )
 
     raw_operations = _as_sequence(client_roll.get("operations"), "client operations")
@@ -456,9 +479,11 @@ def build_group_roll_rules(canonical_rules: Mapping[str, Any], client_roll: Mapp
     }
     group_rolls = int(_as_mapping(periods.get(GROUP_PERIOD), "Group period").get("new_rolls", -1))
     _require(group_rolls == 40, "Group period must grant 40 Rolls")
+    main_rolls = int(_as_mapping(periods.get("main"), "Main period").get("new_rolls", -1))
+    _require(main_rolls == 30, "Main period must grant 30 Rolls")
 
     return RollRuleSet(
-        stats_by_color=tuple(stats_by_color),
+        stats_by_color=stats_by_color,
         traits=traits,
         quality_weights=quality_weights,
         banner_colors=banner_colors,
@@ -466,16 +491,30 @@ def build_group_roll_rules(canonical_rules: Mapping[str, Any], client_roll: Mapp
         model_powers=model_powers,
         offer_size=3,
         group_rolls=group_rolls,
+        main_rolls=main_rolls,
     )
 
 
-def validate_banner(banner: BannerState, rules: RollRuleSet) -> None:
+def build_group_roll_rules(canonical_rules: Mapping[str, Any], client_roll: Mapping[str, Any]) -> RollRuleSet:
+    """Build the shared evidence contract consumed by the isolated Group stack."""
+
+    return _build_roll_rules(canonical_rules, client_roll)
+
+
+def validate_banner(
+    banner: BannerState,
+    rules: RollRuleSet,
+    *,
+    slot_count: int = GROUP_SLOT_COUNT,
+    period_label: str = "Group",
+) -> None:
     try:
-        expected_colors = rules.colors_for(banner.role)[:GROUP_SLOT_COUNT]
+        expected_colors = rules.colors_for(banner.role)[:slot_count]
     except RollRuleError as error:
         raise RollStateError(str(error)) from error
-    if len(banner.emblems) != GROUP_SLOT_COUNT:
-        raise RollStateError("a Group War Banner must contain exactly three Emblems")
+    if len(banner.emblems) != slot_count:
+        number = {3: "three", 5: "five"}.get(slot_count, str(slot_count))
+        raise RollStateError(f"a {period_label} War Banner must contain exactly {number} Emblems")
     legal_qualities = {tier for tier, _ in rules.quality_weights}
     for index, (emblem, expected_color) in enumerate(zip(banner.emblems, expected_colors, strict=True)):
         try:
@@ -504,7 +543,7 @@ def validate_offer(offer: RollOffer, rules: RollRuleSet) -> None:
 
 def validate_group_state(state: GroupRollState, rules: RollRuleSet) -> None:
     if state.period != GROUP_PERIOD:
-        raise RollStateError("P2 executes Group only; Main is reserved but unsupported")
+        raise RollStateError("Group state requires period=group; route Main through MainRollState")
     if state.slot_count != GROUP_SLOT_COUNT:
         raise RollStateError("Group execution requires exactly three active slots")
     if not isinstance(state.remaining_rolls, int) or isinstance(state.remaining_rolls, bool):
@@ -553,8 +592,14 @@ def _operation_target_options(
     raise RollRuleError(f"unsupported target selector: {selector}")
 
 
-def operation_applies(banner: BannerState, operation: RollOperation, rules: RollRuleSet) -> bool:
-    validate_banner(banner, rules)
+def operation_applies(
+    banner: BannerState,
+    operation: RollOperation,
+    rules: RollRuleSet,
+    *,
+    slot_count: int = GROUP_SLOT_COUNT,
+) -> bool:
+    validate_banner(banner, rules, slot_count=slot_count)
     if operation.roll_weight <= 0:
         return False
     return bool(_operation_target_options(banner, operation, rules))
@@ -572,12 +617,45 @@ def _replace_attributes(
     return BannerState(role=banner.role, emblems=tuple(emblems))
 
 
+def _increase_two_decrease_targets(slot_count: int) -> tuple[tuple[int, tuple[int, int]], ...]:
+    if slot_count < 3:
+        raise RollRuleError("increase-two-decrease-one requires at least three Emblems")
+    return tuple(
+        (decreased, increased)
+        for decreased in range(slot_count)
+        for increased in combinations(
+            (index for index in range(slot_count) if index != decreased),
+            2,
+        )
+    )
+
+
+def _increase_two_decrease_qualities(
+    banner: BannerState,
+    decreased: int,
+    increased: tuple[int, int],
+) -> tuple[int, ...]:
+    increased_set = set(increased)
+    return tuple(
+        max(1, emblem.quality_tier - 1)
+        if index == decreased
+        else min(5, emblem.quality_tier + 1)
+        if index in increased_set
+        else emblem.quality_tier
+        for index, emblem in enumerate(banner.emblems)
+    )
+
+
 def enumerate_mutation_outcomes(
-    banner: BannerState, operation_id: int, rules: RollRuleSet
+    banner: BannerState,
+    operation_id: int,
+    rules: RollRuleSet,
+    *,
+    slot_count: int = GROUP_SLOT_COUNT,
 ) -> tuple[BannerState, ...]:
     """Return exact legal support without assigning any outcome probability."""
 
-    validate_banner(banner, rules)
+    validate_banner(banner, rules, slot_count=slot_count)
     operation = rules.operation(operation_id)
     target_options = _operation_target_options(banner, operation, rules)
     if not target_options:
@@ -588,11 +666,8 @@ def enumerate_mutation_outcomes(
             quality = min(5, banner.emblems[index].quality_tier + 1)
             outcomes[_replace_attributes(banner, (index,), "quality_tier", (quality,))] = None
     elif operation.mutation == INCREASE_TWO_DECREASE_ONE:
-        for decreased in range(len(banner.emblems)):
-            qualities = tuple(
-                max(1, emblem.quality_tier - 1) if index == decreased else min(5, emblem.quality_tier + 1)
-                for index, emblem in enumerate(banner.emblems)
-            )
+        for decreased, increased in _increase_two_decrease_targets(len(banner.emblems)):
+            qualities = _increase_two_decrease_qualities(banner, decreased, increased)
             outcomes[_replace_attributes(banner, tuple(range(len(qualities))), "quality_tier", qualities)] = (
                 None
             )
@@ -632,10 +707,12 @@ def mutation_distribution(
     operation_id: int,
     rules: RollRuleSet,
     model_id: str,
+    *,
+    slot_count: int = GROUP_SLOT_COUNT,
 ) -> tuple[MutationOutcome, ...]:
     """Assign probabilities only under one explicitly named transition model."""
 
-    validate_banner(banner, rules)
+    validate_banner(banner, rules, slot_count=slot_count)
     power = rules.model_power(model_id)
     operation = rules.operation(operation_id)
     target_options = _operation_target_options(banner, operation, rules)
@@ -652,12 +729,10 @@ def mutation_distribution(
             quality = min(5, banner.emblems[index].quality_tier + 1)
             add(_replace_attributes(banner, (index,), "quality_tier", (quality,)), probability)
     elif operation.mutation == INCREASE_TWO_DECREASE_ONE:
-        probability = 1.0 / len(banner.emblems)
-        for decreased in range(len(banner.emblems)):
-            qualities = tuple(
-                max(1, emblem.quality_tier - 1) if index == decreased else min(5, emblem.quality_tier + 1)
-                for index, emblem in enumerate(banner.emblems)
-            )
+        targets = _increase_two_decrease_targets(len(banner.emblems))
+        probability = 1.0 / len(targets)
+        for decreased, increased in targets:
+            qualities = _increase_two_decrease_qualities(banner, decreased, increased)
             add(
                 _replace_attributes(banner, tuple(range(len(qualities))), "quality_tier", qualities),
                 probability,
@@ -729,8 +804,10 @@ def sample_mutation(
     rules: RollRuleSet,
     model_id: str,
     rng: random.Random,
+    *,
+    slot_count: int = GROUP_SLOT_COUNT,
 ) -> BannerState:
-    validate_banner(banner, rules)
+    validate_banner(banner, rules, slot_count=slot_count)
     power = rules.model_power(model_id)
     operation = rules.operation(operation_id)
     target_options = _operation_target_options(banner, operation, rules)
@@ -750,10 +827,18 @@ def sample_mutation(
             (1.0,) * len(banner.emblems),
             rng,
         )
-        qualities = tuple(
-            max(1, emblem.quality_tier - 1) if index == decreased else min(5, emblem.quality_tier + 1)
-            for index, emblem in enumerate(banner.emblems)
+        available_pairs = tuple(
+            combinations(
+                (index for index in range(len(banner.emblems)) if index != decreased),
+                2,
+            )
         )
+        increased = (
+            available_pairs[0]
+            if len(available_pairs) == 1
+            else _weighted_pick(available_pairs, (1.0,) * len(available_pairs), rng)
+        )
+        qualities = _increase_two_decrease_qualities(banner, decreased, increased)
         return _replace_attributes(
             banner,
             tuple(range(len(qualities))),

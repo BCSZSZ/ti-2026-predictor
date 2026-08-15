@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "event": {
+    "event_id": "international_2026",
+    "league_id": 19719,
+    "rules_version": "client-visible-2026-08-02+owner-policy-v3",
+    "group_lock_at": "2026-08-13T02:00:00Z",
+    "main_lock_at": "2026-08-20T02:00:00Z",
+    "nominal_total_points": 48000,
+    "final_leaderboard_rewards": {
+      "determination_date": "2026-08-27",
+      "determination_timezone": null,
+      "tier_application": "highest_qualified_row_total",
+      "tier_application_policy": "owner_confirmed_fixed_rewards",
+      "tiers": [
+        {"id": "top_100", "qualification": {"type": "absolute_rank", "maximum": 100}, "dota_plus_months": 12, "terrain_tokens": 1, "aegis_discount_percent": 100, "tyrian_regalias": 5},
+        {"id": "top_1500", "qualification": {"type": "absolute_rank", "maximum": 1500}, "dota_plus_months": 6, "terrain_tokens": 1, "aegis_discount_percent": 100, "tyrian_regalias": 2},
+        {"id": "percentile_95", "qualification": {"type": "percentile", "minimum": 95}, "dota_plus_months": 2, "terrain_tokens": 1, "aegis_discount_percent": 50, "tyrian_regalias": 1},
+        {"id": "percentile_90", "qualification": {"type": "percentile", "minimum": 90}, "dota_plus_months": 1, "terrain_tokens": 1, "aegis_discount_percent": 0, "tyrian_regalias": 0},
+        {"id": "percentile_85", "qualification": {"type": "percentile", "minimum": 85}, "dota_plus_months": 1, "terrain_tokens": 0, "aegis_discount_percent": 0, "tyrian_regalias": 0}
+      ],
+      "dota_plus_shards": {"points_step": 1000, "shards_per_step": 300}
+    }
+  },
+  "prediction": {
+    "group": {
+      "points_table_semantics": "total_event_points_by_correct_prediction_count",
+      "slots": [
+        {"id": "four_zero", "label": "4-0", "count": 1},
+        {"id": "four_one", "label": "4-1", "count": 2},
+        {"id": "elimination_winner", "label": "淘汰轮胜者", "count": 5},
+        {"id": "elimination_loser", "label": "淘汰轮败者", "count": 5},
+        {"id": "one_four", "label": "1-4", "count": 2},
+        {"id": "zero_four", "label": "0-4", "count": 1}
+      ],
+      "cumulative_points": [0, 30, 60, 120, 360, 720, 1200, 1800, 2520, 3360, 4320, 5400, 6600, 7920, 9360, 10920, 12000]
+    },
+    "main": {
+      "points_table_semantics": "total_event_points_by_correct_prediction_count",
+      "nodes": 14,
+      "cumulative_points": [0, 120, 360, 720, 1200, 1800, 2520, 3360, 4320, 5400, 6600, 7920, 9360, 10920, 12000]
+    }
+  },
+  "fantasy": {
+    "rule_policy_version": "2026-08-06-group-roll-v4",
+    "score_unit": "client_fantasy_points",
+    "periods": [
+      {"id": "group", "index": 0, "banner_slots": 3, "new_rolls": 40, "carried_slots": []},
+      {"id": "main", "index": 1, "banner_slots": 5, "new_rolls": 30, "carried_slots": [1, 2, 3]}
+    ],
+    "role_banners": {
+      "core": ["red", "green", "red", "green", "red"],
+      "mid": ["red", "blue", "green", "red", "green"],
+      "support": ["blue", "green", "blue", "green", "blue"]
+    },
+    "role_scoring": {
+      "core": {"selection": "team_duo", "aggregate_players": "mean"},
+      "mid": {"selection": "team_mid", "aggregate_players": "identity"},
+      "support": {"selection": "team_duo", "aggregate_players": "mean"},
+      "series": "sum_top_two_games",
+      "period": "maximum_series"
+    },
+    "bonus_stacking": {
+      "emblem_quality_and_trait_effects": "additive_percent_of_base_stat_score",
+      "multiple_adjacent_trait_effects": "additive_percent_of_base_stat_score",
+      "coach_prefix_and_suffix": "multiplicative",
+      "coach_application": "multiply_final_game_score",
+      "emblem_evidence": "strong_inference_from_client_localization_and_total_stat_value",
+      "coach_policy": "owner_defined_until_client_formula_verified"
+    },
+    "roll": {
+      "policy_version": "group-roll-transition-v1",
+      "supported_periods": ["group"],
+      "offer": {
+        "count": 3,
+        "unique": true,
+        "shared_across_banners": true,
+        "apply_replaces_all": true,
+        "refresh_replaces_all": true
+      },
+      "token_cost": {"apply": 1, "refresh": 1},
+      "application_scope": "selected_banner_only",
+      "client_contract": {
+        "positive_operation_ids": [9, 10, 11, 12, 13, 14, 15, 16, 17, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33],
+        "zero_weight_template_ids": [1, 2, 3, 4, 5, 6, 7, 8],
+        "positive_weight_sum": 168
+      },
+      "outcome_assumptions": {
+        "reroll_may_repeat_current": true,
+        "multi_target_draws": "independent",
+        "one_color_target": "all_matching_slots_in_support",
+        "increase_one_quality": "each_slot_increment_clamped",
+        "increase_two_decrease_one": "each_decreased_slot_other_two_increment_clamped",
+        "quality_bounds": [1, 5],
+        "unweighted_model_choices": "uniform"
+      },
+      "transition_models": [
+        {"id": "client-weight-primary-v1", "exposed_weight_power": 1.0},
+        {"id": "flattened-weights-v1", "exposed_weight_power": 0.5},
+        {"id": "sharpened-weights-v1", "exposed_weight_power": 2.0}
+      ]
+    },
+    "stats": {
+      "kills": {"label": "击杀", "color": "red", "mode": "linear", "factor": 107.0, "source": "kills", "provenance": "exact"},
+      "deaths": {"label": "死亡", "color": "red", "mode": "inverse", "base": 1950.0, "factor": 195.0, "floor": 0.0, "source": "deaths", "provenance": "exact"},
+      "creep_score": {"label": "正补与反补", "color": "red", "mode": "linear", "factor": 3.0, "source": "last_hits+denies", "provenance": "derived"},
+      "gpm": {"label": "GPM", "color": "red", "mode": "linear", "factor": 2.0, "source": "gold_per_min", "provenance": "exact"},
+      "madstone_collected": {"label": "魔石拾取", "color": "red", "mode": "linear", "factor": 13.0, "source": "replay.CDOTA_DataTeam.m_iNeutralTokensFound", "provenance": "exact"},
+      "tower_kills": {"label": "防御塔最后一击", "color": "red", "mode": "linear", "factor": 352.0, "source": "towers_killed", "provenance": "exact"},
+      "wards_placed": {"label": "假眼放置", "color": "blue", "mode": "linear", "factor": 117.0, "source": "obs_placed", "provenance": "exact"},
+      "camps_stacked": {"label": "堆叠野怪营地", "color": "blue", "mode": "linear", "factor": 234.0, "source": "camps_stacked", "provenance": "exact"},
+      "runes_grabbed": {"label": "神符拾取", "color": "blue", "mode": "linear", "factor": 141.0, "source": "rune_pickups", "provenance": "exact"},
+      "smokes_used": {"label": "诡计之雾使用", "color": "blue", "mode": "linear", "factor": 293.0, "source": "replay.CDOTA_DataTeam.m_iSmokesUsed", "provenance": "exact"},
+      "watchers_taken": {"label": "瞭望台占领", "color": "blue", "mode": "linear", "factor": 147.0, "source": "replay.CDOTA_DataTeam.m_iWatchersTaken", "provenance": "exact"},
+      "lotuses_gained": {"label": "莲花拾取", "color": "blue", "mode": "linear", "factor": 176.0, "source": "replay.CDOTA_DataTeam.m_iLotusesTaken", "provenance": "exact"},
+      "roshan_kills": {"label": "Roshan 击杀", "color": "green", "mode": "linear", "factor": 1172.0, "source": "roshans_killed", "provenance": "exact"},
+      "teamfight_participation": {"label": "团战参与", "color": "green", "mode": "linear", "factor": 2124.0, "cap": 2124.0, "source": "(kills+assists)/team_total_kills", "provenance": "derived", "zero_team_kills": "unavailable", "policy": "owner_defined_until_client_formula_verified"},
+      "first_blood": {"label": "第一滴血", "color": "green", "mode": "linear", "factor": 1934.0, "source": "firstblood_claimed", "provenance": "exact"},
+      "stuns": {"label": "眩晕秒数", "color": "green", "mode": "linear", "factor": 10.0, "source": "stuns", "provenance": "exact"},
+      "tormentor_kills": {"label": "魔方击杀", "color": "green", "mode": "linear", "factor": 879.0, "source": "replay.CDOTA_DataTeam.m_iTormentorKills", "provenance": "exact"},
+      "courier_kills": {"label": "信使击杀", "color": "green", "mode": "linear", "factor": 703.0, "source": "courier_kills", "provenance": "exact"}
+    },
+    "qualities": [
+      {"tier": 1, "bonus_percent": 10, "roll_weight": 10},
+      {"tier": 2, "bonus_percent": 30, "roll_weight": 20},
+      {"tier": 3, "bonus_percent": 60, "roll_weight": 10},
+      {"tier": 4, "bonus_percent": 100, "roll_weight": 5},
+      {"tier": 5, "bonus_percent": 150, "roll_weight": 2}
+    ],
+    "traits": [
+      {"id": "fractal", "shape_id": 1, "client_behavior": "k_eFantasyShapeBehavior_UniqueQualities", "condition": "all_qualities_distinct", "self_bonus_percent": 60, "adjacent_bonus_percent": 0},
+      {"id": "benevolent", "shape_id": 2, "client_behavior": "k_eFantasyShapeBehavior_AdjBonus", "condition": "always", "self_bonus_percent": 0, "adjacent_bonus_percent": 20},
+      {"id": "vampiric", "shape_id": 3, "client_behavior": "k_eFantasyShapeBehavior_StealBonus", "condition": "always", "self_bonus_percent": 50, "adjacent_bonus_percent": -10},
+      {"id": "unique", "shape_id": 4, "client_behavior": "k_eFantasyShapeBehavior_OnlyOne", "condition": "only_unique_trait", "self_bonus_percent": 30, "adjacent_bonus_percent": 0},
+      {"id": "friendly", "shape_id": 5, "client_behavior": "k_eFantasyShapeBehavior_NeedMultiples", "condition": "at_least_three_friendly", "self_bonus_percent": 50, "adjacent_bonus_percent": 0}
+    ],
+    "coach": {
+      "selection": {
+        "prefix_count": 1,
+        "suffix_count": 1,
+        "scope": "all_fantasy_players",
+        "bonus_target": "final_game_score",
+        "change_cost_roll_tokens": 0
+      },
+      "prefixes": [
+        {"id": "crimson", "name": "Crimson", "label": "红色英雄", "bonus_percent": 6, "condition": "hero_red", "verified": true},
+        {"id": "cerulean", "name": "Cerulean", "label": "蓝色英雄", "bonus_percent": 11, "condition": "hero_blue", "verified": true},
+        {"id": "emerald", "name": "Emerald", "label": "绿色英雄", "bonus_percent": 6, "condition": "hero_green", "verified": true},
+        {"id": "royal", "name": "Royal", "label": "紫色英雄", "bonus_percent": 10, "condition": "hero_purple", "verified": true},
+        {"id": "golden", "name": "Golden", "label": "黄色或棕色英雄", "bonus_percent": 8, "condition": "hero_yellow_or_brown", "verified": true},
+        {"id": "elemental", "name": "Elemental", "label": "水生、火焰或冰霜英雄", "bonus_percent": 8, "condition": "hero_aquatic_fiery_or_icy", "verified": true},
+        {"id": "otherworldly", "name": "Otherworldly", "label": "亡灵、恶魔或精魂英雄", "bonus_percent": 7, "condition": "hero_undead_demon_or_spirit", "verified": true},
+        {"id": "heroic", "name": "Heroic", "label": "披风或面具英雄", "bonus_percent": 9, "condition": "hero_caped_or_masked", "verified": true}
+      ],
+      "suffixes": [
+        {"id": "tormented", "name": "the Tormented", "label": "任意选手死于魔方", "bonus_percent": 23, "condition": "any_player_dies_to_tormentor", "verified": true},
+        {"id": "early_first_blood", "name": "the Flayed Twins Acolyte", "label": "任意选手在开场号角前取得一血", "bonus_percent": 9, "condition": "first_blood_before_starting_horn", "verified": true, "policy": "client_visible_rule"},
+        {"id": "late_first_blood", "name": "the Patient", "label": "第一滴血在 10 分钟后才发生", "bonus_percent": 23, "condition": "first_blood_after_10_minutes", "verified": true, "policy": "client_visible_rule"},
+        {"id": "loser", "name": "the Underdog", "label": "该选手在本局落败", "bonus_percent": 6, "condition": "player_team_loses_game", "verified": true},
+        {"id": "quick", "name": "the Decisive", "label": "比赛少于 25 分钟", "bonus_percent": 24, "condition": "duration_under_25_minutes", "verified": true},
+        {"id": "clutch", "name": "the Clutch", "label": "参加系列赛最后可能进行的一局", "bonus_percent": 16, "condition": "last_possible_game_of_series", "verified": true},
+        {"id": "lucky", "name": "the Lucky", "label": "比赛时间末位数字为 8", "bonus_percent": 21, "condition": "displayed_match_time_ends_in_8", "verified": true},
+        {"id": "fountain", "name": "the Cruel", "label": "任意选手在自己的泉水内被击杀", "bonus_percent": 13, "condition": "any_player_killed_in_own_fountain", "verified": true}
+      ]
+    },
+    "period_rewards": {
+      "population": "all_rosters_submitted_for_period",
+      "anchors": [
+        {"percentile": 10, "points": 200},
+        {"percentile": 20, "points": 400},
+        {"percentile": 40, "points": 1700},
+        {"percentile": 60, "points": 3300},
+        {"percentile": 80, "points": 5800},
+        {"percentile": 90, "points": 8400},
+        {"percentile": 95, "points": 10000},
+        {"percentile": 99, "points": 11400},
+        {"percentile": 100, "points": 12000}
+      ],
+      "between_anchor_mapping": "unknown_do_not_interpolate",
+      "below_10th_mapping": "unknown"
+    },
+    "period_point_cap": 12000
+  },
+  "conflicts": [
+    {
+      "id": "early_first_blood_condition",
+      "severity": "blocking_for_feature",
+      "internal": "before starting horn OR before 1 minute",
+      "localized": "before starting horn",
+      "policy": "use_client_visible_rule; keep this title unavailable for publishable optimization until GC behavior is observed"
+    },
+    {
+      "id": "late_first_blood_threshold",
+      "severity": "blocking_for_feature",
+      "internal": "first_blood_after_6_minutes",
+      "localized": "after 10 minutes",
+      "policy": "use_client_visible_10_minutes; keep this title unavailable for publishable optimization until GC behavior is observed"
+    },
+    {
+      "id": "fantasy_percentile_tables",
+      "severity": "warning",
+      "internal": "legacy 25/50/75/... action thresholds",
+      "localized": "10/20/40/60/80/90/95/99/100",
+      "policy": "optimize_raw_fantasy_points"
+    }
+  ]
+}

@@ -5,7 +5,10 @@ same immutable Frozen Solver Release. Maintainer builds may use the governed raw
 evidence, but consumer runtimes may only validate and read the tracked release; a missing or invalid
 release fails closed instead of downloading data or rebuilding locally. This avoids two drifting
 solvers and keeps the 188 GB evidence archive outside Git while preserving identical advice for an
-identical confirmed screen state.
+identical confirmed screen state. The single player command automatically selects the reviewed
+Group and Main current pointers at service startup; players never invoke the maintainer release
+commands, and “current” means the latest approved local release rather than an implicit live-network
+refresh.
 
 ## Considered Options
 

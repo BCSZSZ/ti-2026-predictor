@@ -152,7 +152,7 @@
     "historical_raw_responses_rewritten": false
   },
   "tracked_files": [
-    {"path": "config/rules/ti2026.json", "sha256": "5c0236554e225eea8a494fb705fe08ec0dd3c9b67320602c4220ff7d356fd09d"},
+    {"path": "docs/playbooks/group-roll/frozen/ti2026-rules-group-v2.json", "sha256": "5c0236554e225eea8a494fb705fe08ec0dd3c9b67320602c4220ff7d356fd09d"},
     {"path": "config/models/fantasy-group-scenarios-v1.json", "sha256": "e28876f6573afcdd261c044c215ece5fbbf6bc9ff0cf02324defcf445b961065"},
     {"path": "config/models/fantasy-group-playbook-validation-v2.json", "sha256": "7868c841454e2762a1fa7ddc203cf70e8924a2eb4c46f4aad4631098af8020f2"},
     {"path": "config/models/fantasy-group-branch-capped-solver-audit-v2.json", "sha256": "dd917516a9aecf84d932ef531f60a4563783cc4a914549bf78eacc8be8bc16ef"},
@@ -162,7 +162,7 @@
     {"path": "docs/playbooks/group-roll/playbook-rate-agnostic-v2.md", "sha256": "a87164635e3e69c2d76fdb4e69bca19552788d368639afd95b43739c0b62464d"},
     {"path": "docs/playbooks/group-roll/playbook-primary-model-v2.md", "sha256": "e16188d28dfde5cbcf47b2ad2ed1239f5c437e88b8c641b8a3ebc4760e8d42a9"},
     {"path": "docs/playbooks/group-roll/stat-quality-trait-evidence-v2.md", "sha256": "e4bec28eac3de8a41321c3edc09f1f9af7204b4879a80d28f8ec025b922cf19c"},
-    {"path": "docs/playbooks/group-roll/candidate-freeze-v2.json", "sha256": "4c0fe811dad195a43ba45c3d7e525ea8c055f90f19b3a2e023a9d67890404430"},
+    {"path": "docs/playbooks/group-roll/candidate-freeze-v2.json", "sha256": "e69dfaa22c5e067a157aed4d8db30a19cf6b0987b544d2a434c5780aaac3bb8f"},
     {"path": "docs/reports/group-roll-playbook-v2-p2-independent-freeze-2026-08-07.md", "sha256": "120d29507e9631376adb6f6492c4f0ce39247650e5fd52b0565a79f1815e40fa"},
     {"path": "docs/reports/group-roll-playbook-v2-p3-standalone-validation-2026-08-07.md", "sha256": "db6dbe782b25280463700ba32c935bf2a901556c59ff8f707479adf322cf71ab"},
     {"path": "docs/reports/group-roll-playbook-v2-p4-read-only-cross-audit-2026-08-07.md", "sha256": "d9b4701f71a8c5b8db4aa9f159cb59f6ac6146a8554a6e91da19e169f50b03cc"},

@@ -1,4 +1,4 @@
-"""Local-only Dota window observation and structured Group Roll OCR."""
+"""Local-only Dota window observation with isolated Group and Main OCR profiles."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Any, Literal, Protocol
 
+from ti_predictor.fantasy.main_roll import MainRollState, validate_main_state
 from ti_predictor.fantasy.roll import (
     BannerState,
     EmblemState,
@@ -84,7 +85,7 @@ class RollScreenObservation:
     profile_id: str
     fields: tuple[RollFieldReading, ...] = ()
     warnings: tuple[str, ...] = ()
-    state: GroupRollState | None = None
+    state: GroupRollState | MainRollState | None = None
 
     @property
     def missing_field_ids(self) -> tuple[str, ...]:
@@ -110,6 +111,8 @@ class RollScreenObservation:
                 ],
                 "offer": list(self.state.offer.operation_ids),
                 "remaining_rolls": self.state.remaining_rolls,
+                "period": self.state.period,
+                "slot_count": self.state.slot_count,
             }
         payload = {
             "status": self.status,
@@ -148,6 +151,9 @@ class CapturedFrame:
 @dataclass(frozen=True)
 class LiveOCRProfile:
     profile_id: str
+    period: Literal["group", "main"]
+    slot_count: int
+    max_rolls: int
     language_priority: tuple[str, ...]
     source: dict[str, str]
     capture: dict[str, Any]
@@ -164,8 +170,25 @@ def load_live_ocr_profile(
     path: Path = PATHS.config / "ocr" / "fantasy-group-roll-screen-v1.json",
 ) -> LiveOCRProfile:
     raw = json.loads(path.read_text(encoding="utf-8"))
+    inherited = raw.pop("extends", None)
+    if inherited is not None:
+        base_path = path.parent / str(inherited)
+        base = json.loads(base_path.read_text(encoding="utf-8"))
+        base.update(raw)
+        raw = base
+    period = str(raw["period"])
+    if period not in {"group", "main"}:
+        raise ValueError(f"unknown Fantasy OCR period: {period}")
+    slot_count = int(raw["slot_count"])
+    max_rolls = int(raw["max_rolls"])
+    expected = {"group": (3, 40), "main": (5, 30)}[period]
+    if (slot_count, max_rolls) != expected:
+        raise ValueError(f"{period} OCR profile has an invalid slot or Roll contract")
     return LiveOCRProfile(
         profile_id=str(raw["profile_id"]),
+        period=period,  # type: ignore[arg-type]
+        slot_count=slot_count,
+        max_rolls=max_rolls,
         language_priority=tuple(str(value) for value in raw["language_priority"]),
         source={str(key): str(value) for key, value in raw["source"].items()},
         capture=dict(raw["capture"]),
@@ -883,7 +906,7 @@ def _parse_remaining(tokens: tuple[OCRToken, ...], profile: LiveOCRProfile) -> R
             match = pattern.search(unicodedata.normalize("NFKC", token.text))
             if match:
                 value = int(match.group(1))
-                if 0 <= value <= 40 and (best is None or token.confidence > best[0]):
+                if 0 <= value <= profile.max_rolls and (best is None or token.confidence > best[0]):
                     best = (token.confidence, token, value)
     if best is None:
         return _reading("remaining_rolls", None, None, 0.0, threshold)
@@ -917,7 +940,7 @@ def parse_roll_screen_tokens(
             image_sha256=image_sha256,
             viewport=viewport,
             profile_id=profile.profile_id,
-            warnings=("当前不是完整的 Group Roll 页面；没有更新顾问表单。",),
+            warnings=(f"当前不是完整的 {profile.period.title()} Roll 页面；没有更新顾问表单。",),
         )
 
     threshold = float(profile.recognition["field_confidence"])
@@ -932,24 +955,43 @@ def parse_roll_screen_tokens(
     readings: list[RollFieldReading] = []
     role_stat_values: dict[str, list[str | None]] = {}
 
-    for role in rules.group_roles:
-        role_stats = [
-            item
-            for item in stat_matches
-            # A trailing percentage can be joined to the Stat label and push
-            # the combined box center into the next banner. The label's left
-            # edge remains inside its owning banner in the current client.
-            if _nearest_role_at_x(item[0].box[0], roles, maximum_distance) == role
-        ]
-        role_stats = _deduplicate_vertical_matches(role_stats)[:3]
-        while len(role_stats) < 3:
+    matched_by_role = {
+        role: _deduplicate_vertical_matches(
+            [
+                item
+                for item in stat_matches
+                if _nearest_role_at_x(item[0].box[0], roles, maximum_distance) == role
+            ]
+        )
+        for role in rules.roles
+    }
+    if any(len(matches) > profile.slot_count for matches in matched_by_role.values()):
+        return RollScreenObservation(
+            status="incomplete",
+            captured_at=captured_at,
+            image_sha256=image_sha256,
+            viewport=viewport,
+            profile_id=profile.profile_id,
+            warnings=(
+                f"画面槽位数超过 {profile.period.title()} 的 {profile.slot_count} 槽契约；"
+                "拒绝截断并请切换正确的阶段 Tab。",
+            ),
+        )
+
+    for role in rules.roles:
+        role_stats = [item for item in matched_by_role[role]]
+        role_stats = role_stats[: profile.slot_count]
+        while len(role_stats) < profile.slot_count:
             role_stats.append((None, None, 0.0))  # type: ignore[arg-type]
         valid_stats = [item for item in role_stats if item[0] is not None]
         bounds = _row_boundaries(valid_stats)
-        if len(bounds) != 3:
-            bounds = [(0.0, 1 / 3), (1 / 3, 2 / 3), (2 / 3, 1.0)]
+        if len(bounds) != profile.slot_count:
+            bounds = [
+                (index / profile.slot_count, (index + 1) / profile.slot_count)
+                for index in range(profile.slot_count)
+            ]
         role_stat_values[role] = []
-        colors = rules.colors_for(role)[:3]
+        colors = rules.colors_for(role)[: profile.slot_count]
         for index, (stat_item, (low, high), color) in enumerate(zip(role_stats, bounds, colors, strict=True)):
             stat_token, stat_id, stat_similarity = stat_item
             stat_reading = _reading(
@@ -1036,7 +1078,7 @@ def parse_roll_screen_tokens(
     readings.extend(_parse_offers(tokens, profile))
     readings.append(_parse_remaining(tokens, profile))
     confirmed = all(reading.status == "confirmed" for reading in readings)
-    state = _state_from_readings(readings, rules) if confirmed else None
+    state = _state_from_readings(readings, rules, profile) if confirmed else None
     return RollScreenObservation(
         status="confirmed" if state is not None else "incomplete",
         captured_at=captured_at,
@@ -1051,13 +1093,17 @@ def parse_roll_screen_tokens(
     )
 
 
-def _state_from_readings(readings: list[RollFieldReading], rules: RollRuleSet) -> GroupRollState | None:
+def _state_from_readings(
+    readings: list[RollFieldReading],
+    rules: RollRuleSet,
+    profile: LiveOCRProfile,
+) -> GroupRollState | MainRollState | None:
     values = {reading.field_id: reading.value for reading in readings}
     try:
         banners = []
-        for role in rules.group_roles:
+        for role in rules.roles:
             emblems = []
-            for index in range(3):
+            for index in range(profile.slot_count):
                 emblems.append(
                     EmblemState(
                         stat_id=str(values[f"banner.{role}.{index}.stat"]),
@@ -1066,12 +1112,18 @@ def _state_from_readings(readings: list[RollFieldReading], rules: RollRuleSet) -
                     )
                 )
             banners.append(BannerState(role=role, emblems=tuple(emblems)))
-        state = GroupRollState(
-            banners=tuple(banners),
-            offer=RollOffer(tuple(int(values[f"offer.{index}"]) for index in range(3))),
-            remaining_rolls=int(values["remaining_rolls"]),
-        )
-        validate_group_state(state, rules)
+        state: GroupRollState | MainRollState
+        common = {
+            "banners": tuple(banners),
+            "offer": RollOffer(tuple(int(values[f"offer.{index}"]) for index in range(3))),
+            "remaining_rolls": int(values["remaining_rolls"]),
+        }
+        if profile.period == "group":
+            state = GroupRollState(**common)
+            validate_group_state(state, rules)
+        else:
+            state = MainRollState(**common)
+            validate_main_state(state, rules)
         return state
     except (KeyError, TypeError, ValueError):
         return None
@@ -1280,7 +1332,7 @@ class LiveRollMonitor:
             self._snapshot = MonitorSnapshot(
                 True,
                 "capturing",
-                "一次识别已就绪；请切回 Dota 并停在完整的 Group Roll 页面。",
+                f"一次识别已就绪；请切回 Dota 并停在完整的 {self.profile.period.title()} Roll 页面。",
                 generation,
             )
             self._condition.notify_all()
@@ -1386,7 +1438,10 @@ class LiveRollMonitor:
                     if observation.status != "not_target":
                         self._persist_latest(frame, observation)
                     messages = {
-                        "not_target": "已经看到 Dota，但还不是完整的 Group Roll 页面；继续等待。",
+                        "not_target": (
+                            f"已经看到 Dota，但还不是完整的 {self.profile.period.title()} Roll 页面；"
+                            "继续等待。"
+                        ),
                         "incomplete": "识别到 Roll 页面，但仍有字段需要人工确认。",
                         "confirmed": "完整画面已确认，准备自动录入并重新计算。",
                         "error": "识别器返回错误状态。",
@@ -1452,8 +1507,18 @@ class LiveRollMonitor:
             self._close_capturer()
 
 
-def observation_widget_updates(observation: dict[str, Any], rules: RollRuleSet) -> dict[str, Any]:
+def observation_widget_updates(
+    observation: dict[str, Any],
+    rules: RollRuleSet,
+    *,
+    period: Literal["group", "main"] = "group",
+    key_prefix: str = "current_advisor",
+) -> dict[str, Any]:
     updates: dict[str, Any] = {}
+    state_payload = observation.get("state")
+    if isinstance(state_payload, dict) and state_payload.get("period", period) != period:
+        return updates
+    slot_count, max_rolls = {"group": (3, 40), "main": (5, 30)}[period]
     positive_operations = {item.operation_id for item in rules.offered_operations}
     fields = observation.get("fields", [])
     unsafe_banner_roles = {
@@ -1478,7 +1543,7 @@ def observation_widget_updates(observation: dict[str, Any], rules: RollRuleSet) 
             if role in unsafe_banner_roles:
                 continue
             index = int(index_text)
-            if index >= 3:
+            if index >= slot_count:
                 continue
             if attribute == "stat" and value not in rules.stats_for(rules.colors_for(role)[index]):
                 continue
@@ -1486,11 +1551,11 @@ def observation_widget_updates(observation: dict[str, Any], rules: RollRuleSet) 
                 continue
             if attribute == "trait" and value not in rules.traits:
                 continue
-            updates[f"current_advisor_{role}_{index}_{attribute}"] = value
+            updates[f"{key_prefix}_{role}_{index}_{attribute}"] = value
             continue
         offer_match = re.fullmatch(r"offer\.(\d)", field_id)
         if offer_match and int(offer_match.group(1)) < 3 and value in positive_operations:
-            updates[f"current_advisor_offer_{offer_match.group(1)}"] = value
-        elif field_id == "remaining_rolls" and isinstance(value, int) and 0 <= value <= 40:
-            updates["current_advisor_remaining"] = value
+            updates[f"{key_prefix}_offer_{offer_match.group(1)}"] = value
+        elif field_id == "remaining_rolls" and isinstance(value, int) and 0 <= value <= max_rolls:
+            updates[f"{key_prefix}_remaining"] = value
     return updates

@@ -28,6 +28,8 @@ def project_paths(tmp_path: Path) -> ProjectPaths:
         "fantasy-group-read-only-cross-audit-v1.json",
         "fantasy-group-interactive-advisor-v1.json",
         "fantasy-group-current-screen-advisor-v2.json",
+        "fantasy-main-advice-strategies-v1.json",
+        "fantasy-main-current-screen-advisor-v1.json",
     ):
         shutil.copy2(
             source_root / "config/models" / policy_name,

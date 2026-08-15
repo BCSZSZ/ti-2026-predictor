@@ -142,8 +142,8 @@ def validate_rules(rules: dict[str, Any]) -> list[AuditIssue]:
         block("fantasy-roll-token-cost", "Fantasy apply and refresh must each consume one token")
     if roll.get("application_scope") != "selected_banner_only":
         block("fantasy-roll-application-scope", "a Roll option must affect only the selected Banner")
-    if roll.get("supported_periods") != ["group"]:
-        block("fantasy-roll-period", "P2 must support Group execution only")
+    if roll.get("supported_periods") != ["group", "main"]:
+        block("fantasy-roll-period", "Fantasy Roll must expose separate Group and Main execution")
     contract = roll.get("client_contract", {})
     positive_ids = contract.get("positive_operation_ids", [])
     zero_ids = contract.get("zero_weight_template_ids", [])
@@ -170,7 +170,7 @@ def validate_rules(rules: dict[str, Any]) -> list[AuditIssue]:
         "multi_target_draws": "independent",
         "one_color_target": "all_matching_slots_in_support",
         "increase_one_quality": "each_slot_increment_clamped",
-        "increase_two_decrease_one": "each_decreased_slot_other_two_increment_clamped",
+        "increase_two_decrease_one": "uniform_distinct_two_increased_one_decreased_clamped",
         "quality_bounds": [1, 5],
         "unweighted_model_choices": "uniform",
     }
@@ -623,7 +623,7 @@ def compare_observed(observed: dict[str, Any], rules: dict[str, Any]) -> list[Au
         "main_cumulative_points": EXPECTED_MAIN_POINTS[1:],
         "qualities": [10, 30, 60, 100, 150],
         "quality_roll_weights": [10, 20, 10, 5, 2],
-        "fantasy_period_starts": [1786543200, 1787191200],
+        "fantasy_period_starts": [1786586400, 1787191200],
         "fantasy_allowed_leagues": [19719, 19719],
     }
     for key, expected in checks.items():

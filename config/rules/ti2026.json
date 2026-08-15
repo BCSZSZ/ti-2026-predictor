@@ -42,7 +42,7 @@
     }
   },
   "fantasy": {
-    "rule_policy_version": "2026-08-06-group-roll-v4",
+    "rule_policy_version": "2026-08-13-dual-period-roll-v1",
     "score_unit": "client_fantasy_points",
     "periods": [
       {"id": "group", "index": 0, "banner_slots": 3, "new_rolls": 40, "carried_slots": []},
@@ -69,8 +69,8 @@
       "coach_policy": "owner_defined_until_client_formula_verified"
     },
     "roll": {
-      "policy_version": "group-roll-transition-v1",
-      "supported_periods": ["group"],
+      "policy_version": "dual-period-roll-transition-v1",
+      "supported_periods": ["group", "main"],
       "offer": {
         "count": 3,
         "unique": true,
@@ -90,7 +90,7 @@
         "multi_target_draws": "independent",
         "one_color_target": "all_matching_slots_in_support",
         "increase_one_quality": "each_slot_increment_clamped",
-        "increase_two_decrease_one": "each_decreased_slot_other_two_increment_clamped",
+        "increase_two_decrease_one": "uniform_distinct_two_increased_one_decreased_clamped",
         "quality_bounds": [1, 5],
         "unweighted_model_choices": "uniform"
       },

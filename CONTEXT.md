@@ -147,6 +147,42 @@ Team and Fantasy role. Candidate Banners reuse its stable scenario ID so paired 
 no avoidable resampling noise.
 _Avoid_: Independent candidate simulation, Roll transition outcome, observed match
 
+**Main Fantasy scenario / Main Fantasy 情景**:
+One coherent Main bracket path and aligned set of sampled full-Series performance blocks for every
+Main candidate Team and Fantasy role. Before the actual roster is known, one scenario selects eight
+entrants from all sixteen candidates; after it is known, all eight candidates are entrants. It is a
+separate settlement model from a Common Fantasy scenario.
+_Avoid_: Group outcome, independent bracket nodes, observed match
+
+**Main candidate Team / Main 候选队**:
+A stable Team identity currently offered by the client for Main Fantasy selection. There are sixteen
+before the actual advancing roster is locked and eight after it is imported. Candidate status does
+not assert that the Team advances in every model Scenario.
+_Avoid_: Confirmed entrant, Group category, displayed Team name as identity
+
+**Projected Main eligibility / Main 预测参赛模式**:
+The usable pre-roster Main calculation mode. It exposes all sixteen current candidate Teams while
+each model Scenario admits exactly eight according to the frozen Group advancement distribution;
+a selected Team scores zero in Scenarios where it does not advance. Projected seeding is an explicit
+proxy and the output is not an official advancing list.
+_Avoid_: Pending solver, actual eight, Group Fantasy scoring
+
+**Projected-derived Main roster / Main 预测派生八队名单**:
+One eight-Team roster drawn from the frozen Projected Main eligibility distribution, retaining its
+original Scenario weight and proxy seed order. It is a Forecast scenario, never an actual roster.
+_Avoid_: Actual eight, official advancing list, uniformly weighted unique roster
+
+**Roster-conditional Team matching / 名单条件队伍匹配**:
+The future free Team choice made only among one Projected-derived Main roster, using an independent
+conditional Main outcome distribution rather than its already-realized outcome.
+_Avoid_: Fixed-across-rosters Team matching, per-realization hindsight selection, actual Team matching
+
+**Actual Main eligibility / Main 实际参赛模式**:
+The post-Group calculation mode built only after completed-match and Fantasy raw evidence has been
+refreshed and the eight stable Team IDs have been imported in official Main seed order. Its candidate
+list is reduced to those eight Teams.
+_Avoid_: Projected advancement, stale Group evidence, official result guarantee
+
 **Series resampling block / Series 重采样块**:
 All played Games from one eligible Series for the required current-role player or player pair,
 retained as one indivisible historical unit with stable IDs and one governed sampling weight.
@@ -207,19 +243,39 @@ _Avoid_: Arbitrary tie-break, unlimited simulation, failed Forecast run
 **Group roll policy / 小组赛重随策略**:
 A state-dependent rule for choosing how to spend the 40 Group Roll tokens from the current three
 War Banners, shared Roll options and remaining tokens, including when to refresh all three options.
-Main is a future extension, not its objective.
+It is a separate decision product from the Main roll policy.
 _Avoid_: Fixed click script, Main roll policy, team-first commitment
 
+**Main roll policy / 主赛事重随策略**:
+A state-dependent rule for choosing how to spend the 30 Main Roll tokens from the current three
+five-slot War Banners, shared Roll options and remaining tokens, including when to refresh them.
+_Avoid_: Group roll policy, fixed click script, team-first commitment
+
+**Immediate Greedy Main policy / Main 即时贪心策略（G）**:
+A Main roll policy that chooses the greatest expected terminal value after one currently available
+Roll decision and assigns no value to unknown future Roll options.
+_Avoid_: G-Lite, full-horizon optimum, guaranteed best policy
+
+**Selective two-step Main policy / Main 选择性二步策略（G-Lite）**:
+A user-selected Main roll policy that retains G except for declared near-ties, where it spends a
+bounded calculation budget on one additional sampled decision before choosing.
+_Avoid_: G2-Lite, Glite, full-horizon search, proven improvement over G
+
 **Observed starting state / 已观测初始状态**:
-The complete Group War Banners and shared Roll options visible before the first Roll decision. It is
-a fixed condition for policy value, not future Roll randomness requiring an initial-rate model.
+The complete War Banners and shared Roll options visible for one Period before its first Roll
+decision. It is a fixed condition for policy value, not future Roll randomness requiring a prior.
 _Avoid_: Random starting-state prior, Locked Roll baseline, future Roll outcome
 
+**Synthetic starting-state case / 合成初始状态样例**:
+A deterministically generated client-legal starting state used for coverage research; it was not
+observed on a player screen and carries no claim about population frequency.
+_Avoid_: Observed starting state, simulated player, real initial distribution
+
 **Starting-state coverage suite / 初始状态覆盖集**:
-A non-probability-weighted set of legal Observed starting states spanning declared Stat and
-Quality-and-Trait conditions. Every stratum is validated conditionally rather than averaged into a
-claimed population Expected Group score.
-_Avoid_: Initial-state probability model, uniform state distribution, live starting state
+A non-probability-weighted set of legal Observed starting states, Synthetic starting-state cases,
+or one explicitly identified kind of both, spanning declared conditions. Its conditional results or
+design-weighted average must not be presented as a population Expected Period score.
+_Avoid_: Initial-state population model, representative player sample, live starting state
 
 **Starting Stat readiness / 起始统计项成熟度**:
 The best-team-matched expected value of a War Banner's current Stats relative to its Fantasy role's
@@ -234,10 +290,10 @@ and high rank thirds are non-probabilistic coverage labels.
 _Avoid_: Trait configuration value, configuration target, initial-state probability
 
 **Starting-state coverage stratum / 初始状态覆盖格**:
-One of the nine per-role crossings of low, middle or high Starting Stat readiness with low, middle
-or high Starting configuration readiness. Complete Group starts balance those role-level cells
-without expanding their full Cartesian product or assigning population weights.
-_Avoid_: Nine-cubed start enumeration, tactical grade, probability bucket
+A preregistered subset of a Starting-state coverage suite defined by starting Stat, configuration,
+offer or value-readiness conditions. Group playbooks use the nine low/middle/high Stat-by-configuration
+cells; other Period studies must name their strata explicitly and assign no population weights.
+_Avoid_: Post-hoc subgroup, tactical grade, probability bucket
 
 **Rollout-improved policy / 滚动改进策略**:
 A model-conditional Group roll policy that compares current Roll decisions by simulating the full
@@ -447,8 +503,8 @@ after acting in Dota, the player supplies the newly observed complete screen and
 _Avoid_: Next-offer generation, full-horizon Roll plan, automatic client state
 
 **Roll screen observation / 重随屏幕观测**:
-A time-stamped, image-identified reading of the complete Group Roll screen with separate confidence
-for every required field. Any missing, conflicting or low-confidence field keeps it unconfirmed.
+A time-stamped, image-identified reading of one Period's complete Roll screen with separate
+confidence for every required field. Any missing, conflicting or low-confidence field keeps it unconfirmed.
 _Avoid_: Confirmed Roll state, client memory state, arbitrary screenshot text
 
 **Advisor autofill / 顾问自动录入**:
@@ -462,9 +518,16 @@ Roll advice at one fixed `as_of` without the underlying raw or processed evidenc
 consumers share the same release.
 _Avoid_: Manual-only data, Data snapshot, raw evidence archive
 
+**Current Solver Release / 当前求解发布包**:
+The integrity-checked Frozen Solver Release selected by the reviewed runtime pointer for one Period.
+It is the newest approved local input, not whichever file has the latest timestamp and not a live
+network rebuild.
+_Avoid_: Live data sync, newest file by mtime, maintainer build command
+
 **Consumer runtime / 用户运行时**:
-A player-facing manual or local-OCR interface that turns a confirmed Group Roll state into advice
-from one Frozen Solver Release. It neither rebuilds nor downloads model evidence.
+A player-facing manual or local-OCR interface that turns a confirmed Period-matched Roll state into
+advice from that Period's Current Solver Release, selected automatically when the service runs. It
+neither rebuilds nor downloads model evidence, and players do not run release commands.
 _Avoid_: Maintainer build pipeline, data sync, separate OCR solver
 
 **Policy route separation / 策略路线分离**:

@@ -111,7 +111,7 @@ class CurrentAdvisorBoundaryPolicy(_StrictModel):
     dota_client_control: Literal[False]
     automatic_filling: Literal[False]
     future_offer_generation: Literal[False]
-    main_execution: Literal["fail_closed"]
+    period_stack: Literal["group"]
 
 
 class CurrentAdvisorPerformancePolicy(_StrictModel):
@@ -197,8 +197,16 @@ def _resolve_current_advisor_rule_snapshot(
     latest_snapshot, _ = latest_result
     if latest_snapshot.status == "blocked":
         raise CurrentAdvisorError("the latest local client Rule snapshot is blocked")
-    if latest_snapshot.snapshot_sha256 != frozen_snapshot.snapshot_sha256:
-        raise CurrentAdvisorError("local client Rule semantics drifted from the v2 freeze")
+    frozen_roll = frozen_snapshot.observed.get("fantasy_roll")
+    latest_roll = latest_snapshot.observed.get("fantasy_roll")
+    if isinstance(frozen_roll, dict) and frozen_roll and isinstance(latest_roll, dict) and latest_roll:
+        semantics_match = sha256_json(frozen_roll) == sha256_json(latest_roll)
+    else:
+        # Synthetic and legacy snapshots without a normalized Roll contract retain
+        # the stricter whole-snapshot comparison.
+        semantics_match = latest_snapshot.snapshot_sha256 == frozen_snapshot.snapshot_sha256
+    if not semantics_match:
+        raise CurrentAdvisorError("local client Group Roll semantics drifted from the v2 freeze")
     return frozen_snapshot, frozen_path
 
 
@@ -701,8 +709,6 @@ def analyze_current_screen(
     """Recommend exactly one action from the complete currently observed screen."""
 
     validate_group_state(state, context.roll_rules)
-    if state.period != "group":
-        raise CurrentAdvisorError("Main five-slot execution is not implemented")
     try:
         epsilon = context.policy.analysis.risk_profiles[risk_profile]
     except KeyError as error:

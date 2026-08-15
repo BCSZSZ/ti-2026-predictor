@@ -209,9 +209,50 @@ with a newly captured OpenDota response.
 
 ## Main Event
 
-After Valve publishes the bracket, place the eight team IDs in seeding order under
-`main_event_seeds` in `config/ti2026.yaml`, or pass them once with `--teams`.
-Without real seeds, bracket output is deliberately `blocked`.
+玩家现在模拟 Fantasy 只运行服务：
+
+```powershell
+uv run ti web
+```
+
+服务启动时自动验证 `current.json` 与 `main-current.json` 并加载其指向的当前发布包；存在正式
+`actual` 包时使用八队模式，否则直接使用可计算的 16 队 `projected` 模式。玩家不运行下面的
+发布命令，也不需要填写 `as_of`。`--manual` 可关闭 Windows 本地 OCR，只保留手动录入。
+
+Main 页面提供两个正式入口策略：默认 `G` 只比较当前可见动作的一步期望价值；用户可切换到
+`G-Lite`，后者仅在前两项差距不超过当前价值的 0.05% 时，对两项各抽 4 个固定下一轮样本，
+覆盖 G 至少还需 0.01% 的二步优势，每局最多触发 4 次。重复计算同一画面不重复占用预算；新局
+须点击“重置本局预算”。`G-Lite` 仍标记为开发状态正向、未独立确认，失败的 0.10%/5 配置不在
+Web 策略目录中。
+
+以下是维护者更新后台证据与当前指针的流程，不是玩家启动步骤。
+
+Main Fantasy 与 Group Fantasy 是两个发布栈，但 Main 的可计算性不依赖实际八队已经形成。
+正式名单形成前，用当前 16 队和 Group 联合晋级情景发布可计算的 `projected` 五槽包：
+
+```powershell
+uv run ti fantasy main-solver-release --mode projected --as-of 2026-08-13T13:23:17Z
+uv run pytest tests/test_fantasy_main_solver_release.py tests/test_fantasy_main_current_advisor.py tests/test_web.py
+```
+
+该模式保留 16 个客户端候选 Team，但每个 Main Scenario 只让 Group 情景中的 8 支晋级队进入
+双败 bracket；选中的 Team 未在某情景晋级时，该情景的 Main 分数为 0。预测种子顺序是显式
+proxy，页面会显示 provisional 警告，但计算按钮保持可用。
+
+Group 与淘汰轮结束、实际八队和种子形成后，必须先更新比赛与 Fantasy 原始证据，再缩减候选集：
+
+```powershell
+uv run --env-file .env ti data sync --as-of 2026-08-16T23:59:59Z --year 2026 --request-limit 500
+uv run ti data replay-fantasy --as-of 2026-08-16T23:59:59Z --year 2026 --workers 4
+# 将 8 个稳定 Team ID 按正式 Main 种子顺序写入 config/ti2026.yaml 的 main_event_seeds
+uv run ti fantasy main-solver-release --mode actual --as-of 2026-08-16T23:59:59Z
+```
+
+`actual` 模式会从刷新后的 processed snapshot 重建并内嵌 Main Fantasy Series pools；它要求存在
+晚于 Group 冻结点的本届赛事 Fantasy Game，并要求八支实际参赛队都已有本届赛事 Fantasy 行。
+如果池仍与 Group 冻结包相同、名单不是 8 队、截止时间晚于 `main_lock_at` 或模型/证据被阻断，
+发布命令会失败。默认 `--mode auto` 在没有 8 个种子时选择 `projected`，有 8 个种子时选择
+`actual`。
 
 ## Exit meanings
 

@@ -158,6 +158,19 @@ def _load_strength_model(paths: ProjectPaths, as_of) -> tuple[TeamStrengthModel,
     return model, report
 
 
+def load_strength_model_as_of(
+    *,
+    as_of,
+    paths: ProjectPaths = PATHS,
+) -> tuple[TeamStrengthModel, ModelReport]:
+    """Load the governed Team-strength model using no information after ``as_of``."""
+
+    cutoff = as_utc(as_of)
+    if cutoff is None:
+        raise ValueError("as_of is required")
+    return _load_strength_model(paths, cutoff)
+
+
 def _status(recommendations: list[Recommendation], model_report: ModelReport) -> str:
     if any(item.status == "blocked" for item in recommendations) or any(
         issue.severity == "blocking" for issue in model_report.issues

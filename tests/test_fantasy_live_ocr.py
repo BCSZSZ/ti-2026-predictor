@@ -4,7 +4,9 @@ import threading
 import time
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
+from pathlib import Path
 
+from ti_predictor.config import load_rules
 from ti_predictor.fantasy.live_ocr import (
     CapturedFrame,
     LiveRollMonitor,
@@ -18,12 +20,31 @@ from ti_predictor.fantasy.live_ocr import (
     observation_widget_updates,
     parse_roll_screen_tokens,
 )
+from ti_predictor.fantasy.main_roll import MainRollState, build_main_roll_rules
+from ti_predictor.fantasy.roll import build_group_roll_rules
 from ti_predictor.fantasy.solver_release import load_solver_release_context
+from ti_predictor.rules import _inspect_fantasy_crafting
 
 
 @lru_cache(maxsize=1)
 def _release_roll_rules():
     return load_solver_release_context().roll_rules
+
+
+@lru_cache(maxsize=1)
+def _fixture_client_roll() -> dict:
+    fixture = Path(__file__).parent / "fixtures/fantasy_roll_rules_2026.vdata"
+    return _inspect_fantasy_crafting(fixture.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
+def _main_roll_rules():
+    return build_main_roll_rules(load_rules(), _fixture_client_roll())
+
+
+@lru_cache(maxsize=1)
+def _group_roll_rules():
+    return build_group_roll_rules(load_rules(), _fixture_client_roll())
 
 
 class FakeImage:
@@ -171,6 +192,40 @@ def _current_client_layout_tokens() -> tuple[OCRToken, ...]:
     return tuple(tokens)
 
 
+def _complete_main_tokens() -> tuple[OCRToken, ...]:
+    tokens: list[OCRToken] = []
+    roles = {
+        "core": (0.2, ("Kills", "Stuns", "GPM", "Roshan Kills", "Tower Kills")),
+        "mid": (
+            0.5,
+            ("Deaths", "Camps Stacked", "First Blood", "Creep Score", "Tormentor Kills"),
+        ),
+        "support": (
+            0.8,
+            ("Watchers Taken", "Tormentor Kills", "Smokes Used", "Courier Kills", "Lotuses Gained"),
+        ),
+    }
+    role_labels = {"core": "Core", "mid": "Mid", "support": "Support"}
+    qualities = ("Tier I", "Tier II", "Tier III", "Tier IV", "Tier V")
+    traits = ("Fractal", "Benevolent", "Vampiric", "Unique", "Friendly")
+    for role, (x, stats) in roles.items():
+        tokens.append(_token(role_labels[role], 0.99, x, 0.06))
+        for index, (stat, quality, trait) in enumerate(zip(stats, qualities, traits, strict=True)):
+            y = 0.15 + index * 0.105
+            tokens.append(_token(stat, 0.99, x, y, width=0.13))
+            tokens.append(_token(quality, 0.99, x - 0.035, y + 0.032))
+            tokens.append(_token(trait, 0.99, x + 0.035, y + 0.062))
+    tokens.extend(
+        (
+            _token("Reroll Stat for Blue Emblems", 0.99, 0.34, 0.77, width=0.22),
+            _token("Reroll Quality for Blue Emblems", 0.99, 0.50, 0.77, width=0.24),
+            _token("Reroll Stat for One random Green Emblem", 0.99, 0.66, 0.77, width=0.28),
+            _token("Roll Tokens: 30", 0.99, 0.50, 0.90, width=0.13),
+        )
+    )
+    return tuple(tokens)
+
+
 def _parse(tokens: tuple[OCRToken, ...], *, captured_at: datetime | None = None):
     return parse_roll_screen_tokens(
         tokens,
@@ -180,6 +235,47 @@ def _parse(tokens: tuple[OCRToken, ...], *, captured_at: datetime | None = None)
         profile=load_live_ocr_profile(),
         rules=_release_roll_rules(),
     )
+
+
+def _parse_main(tokens: tuple[OCRToken, ...]):
+    return parse_roll_screen_tokens(
+        tokens,
+        captured_at=datetime(2026, 8, 13, 13, 0, tzinfo=UTC),
+        image_sha256="b" * 64,
+        viewport=(2560, 1440),
+        profile=load_live_ocr_profile(
+            Path(__file__).resolve().parents[1] / "config/ocr/fantasy-main-roll-screen-v1.json"
+        ),
+        rules=_main_roll_rules(),
+    )
+
+
+def test_complete_main_tokens_build_exactly_fifteen_emblems_and_49_fields() -> None:
+    observation = _parse_main(_complete_main_tokens())
+
+    assert observation.status == "confirmed"
+    assert observation.missing_field_ids == ()
+    assert len(observation.fields) == 49
+    assert isinstance(observation.state, MainRollState)
+    assert [len(banner.emblems) for banner in observation.state.banners] == [5, 5, 5]
+    assert observation.state.offer.operation_ids == (14, 12, 31)
+    assert observation.state.remaining_rolls == 30
+    assert observation.to_payload()["state"]["period"] == "main"
+
+
+def test_group_profile_rejects_a_five_slot_main_screen_instead_of_truncating_it() -> None:
+    observation = parse_roll_screen_tokens(
+        _complete_main_tokens(),
+        captured_at=datetime(2026, 8, 13, 13, 0, tzinfo=UTC),
+        image_sha256="c" * 64,
+        viewport=(2560, 1440),
+        profile=load_live_ocr_profile(),
+        rules=_group_roll_rules(),
+    )
+
+    assert observation.status == "incomplete"
+    assert observation.state is None
+    assert any("拒绝截断" in warning for warning in observation.warnings)
 
 
 def test_stable_frame_gate_accepts_only_stable_meaningful_changes() -> None:

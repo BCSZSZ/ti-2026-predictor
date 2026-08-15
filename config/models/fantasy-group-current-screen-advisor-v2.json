@@ -40,7 +40,7 @@
     "dota_client_control": false,
     "automatic_filling": false,
     "future_offer_generation": false,
-    "main_execution": "fail_closed"
+    "period_stack": "group"
   },
   "performance_targets_seconds": {
     "context_load": 45.0,

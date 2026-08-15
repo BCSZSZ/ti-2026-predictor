@@ -88,7 +88,7 @@ def test_advisor_policy_freezes_local_manual_first_boundaries(project_paths) -> 
     assert policy.optional_solver.enabled_on_explicit_user_action_only is True
     assert policy.optional_solver.display_effectiveness_status == "failed-escalation-review-required"
     assert policy.boundaries.listen_address == "127.0.0.1"
-    assert policy.boundaries.main_execution == "fail_closed"
+    assert policy.boundaries.period_stack == "group"
     assert policy.session.in_session_rate_learning is False
 
 

@@ -62,7 +62,7 @@ def test_v2_policy_freezes_current_screen_boundaries(project_paths) -> None:
     assert policy.responsive_scenarios.count == 256
     assert policy.boundaries.future_offer_generation is False
     assert policy.boundaries.dota_client_control is False
-    assert policy.boundaries.main_execution == "fail_closed"
+    assert policy.boundaries.period_stack == "group"
 
 
 def test_current_advisor_accepts_a_newer_metadata_only_rule_snapshot(project_paths) -> None:

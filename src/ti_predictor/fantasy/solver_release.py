@@ -17,10 +17,11 @@ from typing import Any
 import numpy as np
 import zstandard as zstd
 
-from ti_predictor.config import load_rules, load_tournament_manifest
+from ti_predictor.config import load_rules
 from ti_predictor.fantasy.current_advisor import (
     CurrentAdvisorContext,
     CurrentAdvisorError,
+    CurrentAdvisorPolicy,
     _resolve_current_advisor_rule_snapshot,
     load_current_advisor_policy,
 )
@@ -38,9 +39,11 @@ from ti_predictor.hashing import canonical_json, sha256_bytes, sha256_file, sha2
 from ti_predictor.paths import PATHS, ProjectPaths
 from ti_predictor.runs import source_tree_hash
 
-SOLVER_RELEASE_SCHEMA_VERSION = 2
+SOLVER_RELEASE_SCHEMA_VERSION = 3
 SOLVER_RELEASE_POINTER_SCHEMA_VERSION = 1
-SOLVER_RELEASE_ID = "ti2026-group-current-screen-solver-v2"
+SOLVER_RELEASE_ID = "ti2026-group-current-screen-solver-v3"
+_LEGACY_SOLVER_RELEASE_SCHEMA_VERSION = 2
+_LEGACY_SOLVER_RELEASE_ID = "ti2026-group-current-screen-solver-v2"
 _MAX_DECOMPRESSED_BYTES = 64 * 1024 * 1024
 
 
@@ -81,9 +84,11 @@ def _solver_release_pointer(paths: ProjectPaths = PATHS) -> dict[str, Any]:
         raise CurrentAdvisorError("冻结求解发布清单字段发生漂移")
     if payload.get("schema_version") != SOLVER_RELEASE_POINTER_SCHEMA_VERSION:
         raise CurrentAdvisorError("不支持的冻结求解发布清单版本")
-    if payload.get("release_schema_version") != SOLVER_RELEASE_SCHEMA_VERSION:
-        raise CurrentAdvisorError("冻结求解发布清单与求解包版本不一致")
-    if payload.get("release_id") != SOLVER_RELEASE_ID:
+    release_identity = (payload.get("release_schema_version"), payload.get("release_id"))
+    if release_identity not in {
+        (SOLVER_RELEASE_SCHEMA_VERSION, SOLVER_RELEASE_ID),
+        (_LEGACY_SOLVER_RELEASE_SCHEMA_VERSION, _LEGACY_SOLVER_RELEASE_ID),
+    }:
         raise CurrentAdvisorError("冻结求解发布清单身份不正确")
     return payload
 
@@ -242,8 +247,8 @@ def write_solver_release_bundle(
             "streamlit_config_sha256": sha256_file(paths.root / ".streamlit" / "config.toml"),
             "pyproject_sha256": sha256_file(paths.root / "pyproject.toml"),
             "uv_lock_sha256": sha256_file(paths.root / "uv.lock"),
-            "policy_sha256": sha256_file(policy_path),
-            "canonical_rules_sha256": sha256_file(paths.rules),
+            "policy_sha256": sha256_json(policy.model_dump(mode="json")),
+            "canonical_rules_sha256": sha256_json(context.canonical_rules),
             "tournament_manifest_sha256": sha256_file(paths.tournament),
             "p3_evidence_sha256": policy.source.p3_evidence_sha256,
             "data_snapshot_sha256": policy.source.data_snapshot_sha256,
@@ -254,6 +259,8 @@ def write_solver_release_bundle(
             "rule_snapshot_sha256": policy.source.rule_snapshot_sha256,
             "client_roll_sha256": sha256_json(client_roll),
         },
+        "policy": policy.model_dump(mode="json"),
+        "canonical_rules": context.canonical_rules,
         "runtime_contract": {
             "accepted_input": "confirmed-group-roll-state-v1",
             "contains_raw_data": False,
@@ -454,9 +461,12 @@ def load_solver_release_context(
     pointer = None if path is not None else _solver_release_pointer(paths)
     selected_path = (path or default_solver_release_path(paths)).resolve()
     payload = _read_release_payload(selected_path, pointer=pointer)
-    if payload.get("schema_version") != SOLVER_RELEASE_SCHEMA_VERSION:
-        raise CurrentAdvisorError("unsupported solver release schema")
-    if payload.get("release_id") != SOLVER_RELEASE_ID:
+    release_identity = (payload.get("schema_version"), payload.get("release_id"))
+    legacy_release = release_identity == (
+        _LEGACY_SOLVER_RELEASE_SCHEMA_VERSION,
+        _LEGACY_SOLVER_RELEASE_ID,
+    )
+    if not legacy_release and release_identity != (SOLVER_RELEASE_SCHEMA_VERSION, SOLVER_RELEASE_ID):
         raise CurrentAdvisorError("unexpected solver release identity")
     runtime_contract = payload.get("runtime_contract")
     expected_runtime_contract = {
@@ -475,27 +485,30 @@ def load_solver_release_context(
     if pointer is not None and payload.get("as_of") != pointer["as_of"]:
         raise CurrentAdvisorError("solver release cutoff differs from its pointer")
 
-    policy_path = paths.config / "models" / "fantasy-group-current-screen-advisor-v2.json"
     provenance = payload.get("provenance")
     if not isinstance(provenance, Mapping):
         raise CurrentAdvisorError("solver release provenance is missing")
-    local_hashes = {
-        "source_tree_sha256": source_tree_hash(paths),
-        "manual_entrypoint_sha256": sha256_file(paths.root / "streamlit_app.py"),
-        "local_ocr_entrypoint_sha256": sha256_file(paths.root / "local_ocr_app.py"),
-        "streamlit_config_sha256": sha256_file(paths.root / ".streamlit" / "config.toml"),
-        "pyproject_sha256": sha256_file(paths.root / "pyproject.toml"),
-        "uv_lock_sha256": sha256_file(paths.root / "uv.lock"),
-        "policy_sha256": sha256_file(policy_path),
-        "canonical_rules_sha256": sha256_file(paths.rules),
-        "tournament_manifest_sha256": sha256_file(paths.tournament),
-    }
-    if any(provenance.get(key) != value for key, value in local_hashes.items()):
-        raise CurrentAdvisorError("solver release source or configuration drifted")
-
-    policy = load_current_advisor_policy(policy_path)
+    if legacy_release:
+        policy = load_current_advisor_policy(
+            paths.config / "models" / "fantasy-group-current-screen-advisor-v2.json"
+        )
+        canonical_rules = load_rules(paths.rules)
+    else:
+        policy_payload = payload.get("policy")
+        canonical_rules_payload = payload.get("canonical_rules")
+        if not isinstance(policy_payload, Mapping) or not isinstance(canonical_rules_payload, Mapping):
+            raise CurrentAdvisorError("solver release lacks its frozen Group policy or rules")
+        try:
+            policy = CurrentAdvisorPolicy.model_validate(policy_payload)
+        except ValueError as error:
+            raise CurrentAdvisorError("solver release frozen Group policy is invalid") from error
+        canonical_rules = dict(canonical_rules_payload)
+        if provenance.get("policy_sha256") != sha256_json(policy.model_dump(mode="json")):
+            raise CurrentAdvisorError("solver release frozen Group policy hash is invalid")
+        if provenance.get("canonical_rules_sha256") != sha256_json(canonical_rules):
+            raise CurrentAdvisorError("solver release frozen Group rules hash is invalid")
     if payload.get("as_of") != policy.as_of or int(payload.get("seed", -1)) != policy.seed:
-        raise CurrentAdvisorError("solver release cutoff or seed differs from the current policy")
+        raise CurrentAdvisorError("solver release cutoff or seed differs from its frozen policy")
     source_expectations = {
         "p3_evidence_sha256": policy.source.p3_evidence_sha256,
         "data_snapshot_sha256": policy.source.data_snapshot_sha256,
@@ -507,7 +520,6 @@ def load_solver_release_context(
     if any(provenance.get(key) != value for key, value in source_expectations.items()):
         raise CurrentAdvisorError("solver release frozen evidence identity drifted")
 
-    canonical_rules = load_rules(paths.rules)
     client_roll = payload.get("client_roll")
     if not isinstance(client_roll, Mapping):
         raise CurrentAdvisorError("solver release client Roll rules are missing")
@@ -531,11 +543,9 @@ def load_solver_release_context(
     if _title_evidence_hash(title_evidence) != policy.source.title_evidence_sha256:
         raise CurrentAdvisorError("solver release Title evidence hash is invalid")
 
-    manifest = load_tournament_manifest(paths.tournament)
-    expected_names = [(int(team.team_id), team.name) for team in manifest.teams]
     supplied_names = [(int(row["team_id"]), str(row["name"])) for row in payload.get("team_names", [])]
-    if supplied_names != expected_names:
-        raise CurrentAdvisorError("solver release Team identities differ from the manifest")
+    if len(supplied_names) != 16 or len({team_id for team_id, _ in supplied_names}) != 16:
+        raise CurrentAdvisorError("solver release requires sixteen unique frozen Team identities")
     warnings = payload.get("warnings")
     if not isinstance(warnings, list) or not all(isinstance(item, str) for item in warnings):
         raise CurrentAdvisorError("solver release warnings are invalid")

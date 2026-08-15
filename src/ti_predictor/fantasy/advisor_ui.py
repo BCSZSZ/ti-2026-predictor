@@ -1,4 +1,4 @@
-"""Streamlit UI for the local current-screen Group Roll advisor."""
+"""Two-period Streamlit shell with an isolated historical Group stack."""
 
 from __future__ import annotations
 
@@ -389,19 +389,16 @@ def _render_details(result: dict[str, Any], context: CurrentAdvisorContext) -> N
         st.caption(f"数据截止：{result['as_of']} · 分析指纹：{result['analysis_sha256'][:12]}")
 
 
-def render_advisor_page(
+def _render_group_advisor(
     *,
     manual_only: bool = False,
     release_bundle_path: Path | None = None,
 ) -> None:
+    st.subheader("小组赛（历史冻结）")
     if manual_only:
-        st.title("Group Roll 手动求解器")
-        st.write("手动录入当前九格、三个选项和剩余 Roll；页面只推荐这一步怎么做。")
-        st.caption("公开只读版：不截图、不运行 OCR、不控制 Dota、不猜下一轮选项。仅支持 Group。")
+        st.caption("独立 Group 栈：九格手填、40 次 Roll、冻结小组赛情景；不读取截图。")
     else:
-        st.title("Group Roll 实时顾问")
-        st.write("本机可自动读取完整 Roll 页面，也可以继续手填；页面只推荐这一步怎么做。")
-        st.caption("本地只读辅助：不控制 Dota、不猜下一轮选项。仅支持 Group 三格战旗。")
+        st.caption("独立 Group 栈：三面战旗 × 每面三格、40 次 Roll、只接受 Group OCR。")
 
     try:
         selected_release_path = (release_bundle_path or default_solver_release_path()).resolve()
@@ -463,3 +460,50 @@ def render_advisor_page(
             "在游戏里完成操作后，再点击一次“识别下一次稳定的 Dota 画面”并切回游戏；"
             "也可以手动修改实际发生变化的字段后重新计算。"
         )
+
+
+def render_advisor_page(
+    *,
+    manual_only: bool = False,
+    release_bundle_path: Path | None = None,
+) -> None:
+    """Render one active period stack behind a two-option tab switch."""
+
+    from ti_predictor.fantasy.main_advisor_ui import render_main_advisor
+
+    if manual_only:
+        st.title("Fantasy Roll 手动求解器")
+        st.write("在 Main 与已冻结的小组赛之间切换；两个阶段分别校验、识别和计算。")
+        st.caption(
+            "公开只读版：不截图、不运行 OCR、不控制 Dota；默认 G 不猜下一轮，可选 G-Lite 只做受限抽样。"
+        )
+    else:
+        st.title("Fantasy Roll 实时顾问")
+        st.write("Main 与小组赛使用两套状态、OCR 和求解逻辑；同一时间只运行当前 Tab。")
+        st.caption("本地只读辅助：不控制 Dota、不自动填写游戏；默认 G 不猜下一轮，可选 G-Lite 只做受限抽样。")
+
+    main_label = "Main（当前 · 五格）"
+    group_label = "小组赛（历史 · 三格）"
+    main_tab, group_tab = st.tabs(
+        (main_label, group_label),
+        default=main_label,
+        key="fantasy_advisor_period_tab",
+        on_change="rerun",
+    )
+    try:
+        selected_release_path = (release_bundle_path or default_solver_release_path()).resolve()
+    except (OSError, ValueError) as error:
+        st.error(f"共享冻结运行时清单不可用：{error}")
+        return
+    if st.session_state.get("fantasy_advisor_period_tab") == group_label:
+        with group_tab:
+            _render_group_advisor(
+                manual_only=manual_only,
+                release_bundle_path=selected_release_path,
+            )
+    else:
+        with main_tab:
+            render_main_advisor(
+                manual_only=manual_only,
+                group_release_path=selected_release_path,
+            )

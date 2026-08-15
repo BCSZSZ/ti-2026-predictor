@@ -1,0 +1,159 @@
+{
+  "schema_version": 2,
+  "experiment_id": "ti2026-main-roll-strategy-simulator-v1",
+  "period": "main",
+  "as_of": "2026-08-13T13:23:17Z",
+  "research_only": true,
+  "web_integration": false,
+  "runtime_pointer_writes": false,
+  "dota_client_control": false,
+  "source": {
+    "rule_snapshot_id": "20260813T132319Z-9728c506baf6",
+    "rule_snapshot_sha256": "9728c506baf6b5b2a706d0c70e4869fc6354c543d0cb4b911a4bf8427276bf06",
+    "canonical_rules_sha256": "401e8d89222320d42eac3dba3b97d2f9b72b97134c4e707a558c97f7ebed2f60",
+    "main_release_canonical_rules_sha256": "651b14850c7bce585da3695a73f2107a0b2019af8dc333a4f4346c252a8296cd",
+    "roll_rules_sha256": "e333d2e2be6fc6ade1fd4c3d619b3ad80bb6c18405568ccdb8fef21b4d3b8918",
+    "main_release_sha256": "94c00919f01395dae7f1eb371db0156cc8225c5b9aa9f5b02ccb9083d6d714c9",
+    "main_release_file_sha256": "f0478e6d348f91f6a09f58c07e724b745d20b7fef1c4077fb9cbd64f99ee7dc4",
+    "group_scenario_sha256": "12e6b771845c4df5b3c6da495f27a84f17ca7faf4c7264eb882b26f507b8a1c0",
+    "group_scenario_as_of": "2026-08-10T13:45:12Z",
+    "main_scenario_sha256": "bae9b31d109fca11cd66983156bb8edb2010f7b864f15d4fc892bdfeb1358ead",
+    "main_pool_sha256": "6a01d321a8956211ebeb27a0537e8a311b7d6d6c6d90fb15843715901d2ed72d",
+    "team_strength_model_sha256": "7cfc89b3c6dd11992315e6475856bf0d5334e1ff3854e736aaa82d4fd9218f58",
+    "eligibility_mode": "projected"
+  },
+  "starting_state": {
+    "relative_path": "config/research/states/ti2026-main-reference-screen-20260814.json",
+    "file_sha256": "337c126fac348ca4d02fabc720b4cf24984e52691ae9e6749afcd20e609c789b",
+    "state_sha256": "ea11a7652749213b8916b67b13a8a5035f27672d80f1e455f00ff86439ff3a0c",
+    "source_image_sha256": "f857aa380787e520808c934f7027b648824c812f3e60b3bddd2cdb3751ac623c",
+    "ocr_observation_sha256": "952e59f1adff6ba0706ed80cc8b619e651c3b92580527e786001d25a1a74e02d",
+    "remaining_rolls": 30
+  },
+  "projected_roster_validation": {
+    "scenario_kind": "projected-derived-eight-team-roster",
+    "objective": "expected-roster-conditional-team-matching",
+    "outer_source": "all-frozen-group-scenario-rows",
+    "outer_scenario_count": 256,
+    "outer_weighting": "empirical-row-equal",
+    "fold_count": 8,
+    "fold_salt": "ti2026-main-projected-derived-roster-fold-v1",
+    "tuning_folds": [0],
+    "confirmation_folds": [1, 2, 3, 4, 5, 6, 7],
+    "inner_scenarios_per_phase": 4,
+    "inner_seed": 2026081501,
+    "convergence_inner_scenario_counts": [4, 8, 16],
+    "team_selection_phase": "independent-inner-selection",
+    "outcome_phase": "independent-inner-evaluation"
+  },
+  "probability_models": [
+    {
+      "model_id": "client-weight-primary-v1",
+      "offer_weight_power": 1.0,
+      "quality_weight_power": 1.0,
+      "repeat_current_factor": 1.0,
+      "multi_target_correlation": 0.0,
+      "random_target_sampling": "uniform",
+      "increment_boundary": "clamp",
+      "replacement_offer": "independent"
+    },
+    {
+      "model_id": "flattened-weights-v1",
+      "offer_weight_power": 0.5,
+      "quality_weight_power": 0.5,
+      "repeat_current_factor": 1.0,
+      "multi_target_correlation": 0.0,
+      "random_target_sampling": "uniform",
+      "increment_boundary": "clamp",
+      "replacement_offer": "independent"
+    },
+    {
+      "model_id": "sharpened-weights-v1",
+      "offer_weight_power": 2.0,
+      "quality_weight_power": 2.0,
+      "repeat_current_factor": 1.0,
+      "multi_target_correlation": 0.0,
+      "random_target_sampling": "uniform",
+      "increment_boundary": "clamp",
+      "replacement_offer": "independent"
+    },
+    {
+      "model_id": "repeat-suppressed-v1",
+      "offer_weight_power": 1.0,
+      "quality_weight_power": 1.0,
+      "repeat_current_factor": 0.01,
+      "multi_target_correlation": 0.0,
+      "random_target_sampling": "uniform",
+      "increment_boundary": "clamp",
+      "replacement_offer": "independent"
+    },
+    {
+      "model_id": "correlated-multi-target-v1",
+      "offer_weight_power": 1.0,
+      "quality_weight_power": 1.0,
+      "repeat_current_factor": 1.0,
+      "multi_target_correlation": 0.25,
+      "random_target_sampling": "uniform",
+      "increment_boundary": "clamp",
+      "replacement_offer": "independent"
+    }
+  ],
+  "primary_probability_model": "client-weight-primary-v1",
+  "strategies": {
+    "greedy": {
+      "policy_id": "main-greedy-immediate-v1",
+      "mean_retention_epsilon": 0.0,
+      "cvar_alpha": 0.1,
+      "improvement_tolerance": 1e-09
+    },
+    "target": {
+      "policy_id": "main-target-shape-distance-v2",
+      "evaluation_mode": "exact-distance-potential",
+      "decision_seed": 2026081407,
+      "candidate_limit": 4,
+      "fractal_quality_permutation_limit": 8,
+      "reachability_samples": 32,
+      "reachability_action_limit": 32,
+      "potential_weight": 0.1,
+      "maximum_immediate_loss_fraction": 0.0,
+      "cvar_alpha": 0.1
+    },
+    "hybrid": {
+      "policy_id": "main-horizon-hybrid-v2",
+      "switch_mode": "fixed",
+      "fixed_remaining_threshold": 20,
+      "hit_time_quantile": 0.8,
+      "safety_buffer": 2,
+      "minimum_reach_probability": 0.1
+    }
+  },
+  "splits": {
+    "tuning": {
+      "start": 202608140000,
+      "count": 8
+    },
+    "confirmation": {
+      "start": 202608150000,
+      "count": 32
+    }
+  },
+  "tuning_protocol": {
+    "parameter_search_seed_count": 4,
+    "candidate_validation_seed_count": 4,
+    "minimum_validation_mean_difference": 0.0,
+    "cvar_noninferiority_fraction": 0.01
+  },
+  "release_gate": {
+    "confidence_level": 0.95,
+    "minimum_relative_mean_gain": 0.005,
+    "cvar_noninferiority_fraction": 0.01,
+    "require_primary_mean_ci_above_zero": true,
+    "require_probability_sensitivity_report": true,
+    "require_nonnegative_mean_all_probability_models": true,
+    "roster_fold_noninferiority_fraction": 0.01,
+    "require_every_confirmation_fold_noninferior": true,
+    "direct_t_vs_h_minimum_relative_gain": 0.005,
+    "complexity_preference": "target-unless-hybrid-materially-better",
+    "automatic_web_promotion": false
+  }
+}

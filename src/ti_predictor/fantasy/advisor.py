@@ -122,7 +122,7 @@ class AdvisorBoundaryPolicy(StrictModel):
     dota_client_control: Literal[False]
     automatic_filling: Literal[False]
     unconfirmed_ocr_action: Literal[False]
-    main_execution: Literal["fail_closed"]
+    period_stack: Literal["group"]
 
 
 class AdvisorPerformancePolicy(StrictModel):

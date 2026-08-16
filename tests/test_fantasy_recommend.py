@@ -50,6 +50,43 @@ def test_weighted_estimate_uses_explicit_evidence_weights() -> None:
     assert estimate.coverage == 1.0
 
 
+def test_role_rankings_only_include_explicit_main_candidates(
+    project_paths,
+    rules_payload,
+    monkeypatch,
+) -> None:
+    manifest = load_tournament_manifest(project_paths.tournament)
+    candidate_ids = tuple(manifest.main_event_seeds[:2])
+    recommender = FantasyRecommender(
+        pd.DataFrame(),
+        manifest,
+        rules_payload,
+        TeamStrengthModel({}),
+        as_of="2026-08-16T15:31:30Z",
+        candidate_team_ids=candidate_ids,
+    )
+    monkeypatch.setattr(
+        recommender,
+        "_team_stat",
+        lambda team, role, stat_id: {
+            "team_id": team.team_id,
+            "team": team.name,
+            "role": role,
+            "stat_id": stat_id,
+            "mean": 1.0,
+            "std": 0.0,
+            "coverage": 1.0,
+            "observations": 10,
+            "min_player_observations": 10,
+            "players": [],
+        },
+    )
+
+    rankings = recommender._role_rankings("core", StrategyProfile.EXPECTED_POINTS, 1)
+
+    assert {row["team_id"] for row in rankings} == set(candidate_ids)
+
+
 def test_generic_recommendation_routes_title_to_standalone_evidence(
     project_paths,
     rules_payload,

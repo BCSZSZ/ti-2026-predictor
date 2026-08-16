@@ -23,7 +23,7 @@ from scipy import stats
 from ti_predictor.fantasy.main_roll_research_contract import MainRollResearchManifest
 from ti_predictor.fantasy.main_roll_research_experiment import (
     _build_policies,
-    _validate_runtime_sources,
+    load_frozen_main_research_context,
 )
 from ti_predictor.fantasy.main_roll_research_probability import MainRollProbabilityProvider
 from ti_predictor.fantasy.main_roll_research_rosters import (
@@ -48,7 +48,6 @@ from ti_predictor.fantasy.main_roll_research_states import (
     state_index_semantic_hash,
 )
 from ti_predictor.fantasy.main_roll_research_terminal import VectorizedMainResearchTerminal
-from ti_predictor.fantasy.main_solver_release import load_main_solver_release_context
 from ti_predictor.fantasy.roll import RollRuleSet
 from ti_predictor.fantasy.solver_release import load_solver_release_context
 from ti_predictor.fantasy.valuation import lower_tail_cvar
@@ -90,9 +89,8 @@ _COVERAGE_WORKER_CONTEXT: (
 def _validate_loaded_release(
     manifest: MainRollResearchManifest,
 ):
-    _validate_runtime_sources(manifest)
     group_context = load_solver_release_context()
-    main_context = load_main_solver_release_context(group_context)
+    main_context = load_frozen_main_research_context(group_context, manifest)
     if sha256_json(group_context.canonical_rules) != manifest.source.main_release_canonical_rules_sha256:
         raise MainStartingStateCoverageExperimentError(
             "loaded Main release rules differ from the base research manifest"

@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 
 from ti_predictor.fantasy.main_roll_research_contract import load_main_roll_research_manifest
+from ti_predictor.fantasy.main_roll_research_experiment import load_frozen_main_research_context
 from ti_predictor.fantasy.main_roll_research_rosters import (
     INNER_EVALUATION,
     INNER_SELECTION,
@@ -16,7 +17,6 @@ from ti_predictor.fantasy.main_roll_research_rosters import (
 )
 from ti_predictor.fantasy.main_roll_research_simulator import state_from_payload
 from ti_predictor.fantasy.main_roll_research_terminal import VectorizedMainResearchTerminal
-from ti_predictor.fantasy.main_solver_release import load_main_solver_release_context
 from ti_predictor.fantasy.solver_release import load_solver_release_context
 from ti_predictor.hashing import sha256_json
 from ti_predictor.models.ratings import TeamStrengthModel
@@ -26,7 +26,7 @@ def _frozen_inputs():
     root = Path(__file__).resolve().parents[1]
     manifest = load_main_roll_research_manifest(root / "config/research/fantasy-main-roll-simulator-v1.json")
     group = load_solver_release_context()
-    main = load_main_solver_release_context(group)
+    main = load_frozen_main_research_context(group, manifest)
     assert main.terminal.scenario_set.model_sha256 == manifest.source.team_strength_model_sha256
     model = TeamStrengthModel(
         {team_id: 1500.0 + index * 15.0 for index, team_id in enumerate(main.terminal.scenario_set.team_ids)}

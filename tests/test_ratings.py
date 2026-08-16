@@ -10,7 +10,7 @@ from ti_predictor.models.evidence import (
     normalize_exact_patch,
     normalize_patch_family,
 )
-from ti_predictor.models.policy import TeamStrengthPolicy
+from ti_predictor.models.policy import CurrentEventStageScope, TeamStrengthPolicy
 from ti_predictor.models.ratings import fit_team_strengths, glicko_probability
 
 
@@ -123,6 +123,103 @@ def test_current_exact_patch_multiplier_uses_reviewed_utc_boundary() -> None:
     assert evidence.audit["current_exact_patch_weight_active"] is True
     assert evidence.audit["selected_by_exact_patch_multiplier"]["1.5"]["games"] == 2
     assert any(issue.code == "model-evidence-exact-patch-conflict" for issue in evidence.issues)
+
+
+def test_main_stage_multiplier_is_frozen_and_channel_specific() -> None:
+    scope = CurrentEventStageScope(
+        event_id="international_2026",
+        target_period="main",
+        league_id=19719,
+        stage_id="swiss-and-advancement",
+        completed_at="2026-08-16T11:32:38Z",
+        snapshot_available_at="2026-08-16T14:06:16Z",
+        match_ids=(1,),
+        match_ids_sha256="6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+        source="test fixture",
+        provenance="derived",
+    )
+    policy = _policy().model_copy(
+        update={
+            "current_event_stage_scope": scope,
+            "team_strength_current_event_stage_multiplier": 1.5,
+            "fantasy_current_event_stage_multiplier": 1.25,
+        }
+    )
+    frame = pd.DataFrame(
+        [
+            _game(
+                match_id=1,
+                league_id=19719,
+                start_time="2026-08-16T10:00:00Z",
+                patch_name="7.41e",
+                league_tier="premium",
+            ),
+            _game(
+                match_id=2,
+                league_id=19719,
+                start_time="2026-08-16T10:00:00Z",
+                patch_name="7.41e",
+                league_tier="premium",
+            ),
+        ]
+    )
+
+    team = build_evidence_set(
+        frame,
+        _patches(),
+        as_of="2026-08-16T15:00:00Z",
+        policy=policy,
+        target_team_ids={1, 2},
+        evidence_channel="team_strength",
+    )
+    fantasy = build_evidence_set(
+        frame,
+        _patches(),
+        as_of="2026-08-16T15:00:00Z",
+        policy=policy,
+        target_team_ids={1, 2},
+        evidence_channel="fantasy",
+    )
+
+    team_weights = team.matches.set_index("match_id")["evidence_weight"]
+    fantasy_weights = fantasy.matches.set_index("match_id")["evidence_weight"]
+    assert team_weights.loc[1] / team_weights.loc[2] == pytest.approx(1.5)
+    assert fantasy_weights.loc[1] / fantasy_weights.loc[2] == pytest.approx(1.25)
+    assert team.audit["current_event_stage_games"] == 1
+    assert fantasy.audit["evidence_channel"] == "fantasy"
+    assert not [issue for issue in team.issues if issue.severity == "blocking"]
+
+
+def test_active_main_stage_scope_blocks_when_a_frozen_game_is_missing() -> None:
+    scope = CurrentEventStageScope(
+        event_id="international_2026",
+        target_period="main",
+        league_id=19719,
+        stage_id="swiss-and-advancement",
+        completed_at="2026-08-16T11:32:38Z",
+        snapshot_available_at="2026-08-16T14:06:16Z",
+        match_ids=(1, 2),
+        match_ids_sha256="17f8af97ad4a7f7639a4c9171d5185cbafb85462877a4746c21bdb0a4f940ca0",
+        source="test fixture",
+        provenance="derived",
+    )
+    policy = _policy().model_copy(
+        update={
+            "current_event_stage_scope": scope,
+            "team_strength_current_event_stage_multiplier": 1.5,
+            "fantasy_current_event_stage_multiplier": 1.5,
+        }
+    )
+    evidence = build_evidence_set(
+        pd.DataFrame([_game(match_id=1, league_id=19719)]),
+        _patches(),
+        as_of="2026-08-16T15:00:00Z",
+        policy=policy,
+        target_team_ids={1, 2},
+    )
+
+    assert evidence.audit["current_event_stage_missing_match_ids"] == [2]
+    assert any(issue.code == "model-current-event-stage-missing-games" for issue in evidence.issues)
 
 
 def test_weighted_elo_uses_game_weight_and_filters_future() -> None:

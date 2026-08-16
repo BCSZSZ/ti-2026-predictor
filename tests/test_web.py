@@ -98,7 +98,7 @@ def test_streamlit_group_advisor_default_input_calculates_recommendation_and_tit
     assert any("在游戏里完成操作后" in info.value for info in app.info)
 
 
-def test_streamlit_main_tab_uses_five_slots_and_calculates_with_projected_entrants() -> None:
+def test_streamlit_main_tab_uses_five_slots_and_calculates_with_actual_entrants() -> None:
     app_path = Path(__file__).resolve().parents[1] / "src/ti_predictor/web_app.py"
     app = _open_roll_page(AppTest.from_file(str(app_path)).run(timeout=20))
 
@@ -119,7 +119,8 @@ def test_streamlit_main_tab_uses_five_slots_and_calculates_with_projected_entran
     ]
     calculate = next(button for button in app.button if button.label.startswith("计算 Main"))
     assert not calculate.disabled
-    assert any("当前 16 队" in warning.value for warning in app.warning)
+    assert any("实际八队" in success.value for success in app.success)
+    assert not any("当前 16 队" in warning.value for warning in app.warning)
 
     calculate.click()
     app.run(timeout=20)
@@ -152,7 +153,7 @@ def test_streamlit_main_strategy_can_switch_to_g_lite_without_exposing_failed_va
     assert not app.error
 
 
-def test_streamlit_projected_main_manual_lineup_exposes_current_sixteen_candidates() -> None:
+def test_streamlit_actual_main_manual_lineup_exposes_confirmed_eight_candidates() -> None:
     app_path = Path(__file__).resolve().parents[1] / "src/ti_predictor/web_app.py"
     app = _open_roll_page(AppTest.from_file(str(app_path)).run(timeout=20))
 
@@ -163,9 +164,9 @@ def test_streamlit_projected_main_manual_lineup_exposes_current_sixteen_candidat
     role_selects = {
         select.label: select for select in app.selectbox if select.label in {"核心位", "中单", "辅助位"}
     }
-    assert len(role_selects["核心位"].options) == 16
-    assert len(role_selects["中单"].options) == 15
-    assert len(role_selects["辅助位"].options) == 16
-    assert "LGD Gaming" in role_selects["核心位"].options
-    assert "LGD Gaming" not in role_selects["中单"].options
+    assert len(role_selects["核心位"].options) == 8
+    assert len(role_selects["中单"].options) == 8
+    assert len(role_selects["辅助位"].options) == 8
+    assert "LGD Gaming" not in role_selects["核心位"].options
+    assert "Team Yandex" in role_selects["中单"].options
     assert not app.error

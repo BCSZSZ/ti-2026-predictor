@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "policy_id": "ti2026-main-fantasy-publication-v1",
+  "period": "main",
+  "eligibility_mode": "actual",
+  "team_count": 8,
+  "scenario_count": 256,
+  "cvar_alpha": 0.1,
+  "bootstrap_seed": 2026081701,
+  "bootstrap": {
+    "replicates": 400,
+    "scenarios_per_replicate": 256,
+    "confidence_level": 0.95,
+    "unit": "full_series_block"
+  }
+}

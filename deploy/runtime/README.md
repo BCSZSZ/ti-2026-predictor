@@ -21,6 +21,10 @@
 截图或 OCR 模型。用户 clone 仓库后不需要
 下载或生成 `data/raw`、`data/processed`、`data/cache` 或 `artifacts`。
 
+当前 Main 指针已是 `ready / actual`：数据截止 `2026-08-16T15:31:30Z`，正式八队的三个位置
+均为 8 个候选，并内嵌赛后重建的 Main Fantasy Series pool。此前 projected 16 队流程保留为
+维护者历史说明，不是当前玩家运行时。
+
 正常用户不需要执行本目录的生成流程。维护者只有在 P3、Title、客户端规则与发布政策全部通过
 审计后，才从本机证据仓生成新版本：
 

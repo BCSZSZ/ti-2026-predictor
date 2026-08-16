@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 
@@ -54,9 +54,15 @@ def team_strength_policy_path(
     manifest: TournamentManifest,
     *,
     config_root: Path | None = None,
+    period: Literal["group", "main"] = "group",
 ) -> Path:
     root = (config_root or PATHS.config).resolve()
-    path = (root / manifest.team_strength_policy).resolve()
+    relative = (
+        manifest.main_team_strength_policy
+        if period == "main" and manifest.main_team_strength_policy is not None
+        else manifest.team_strength_policy
+    )
+    path = (root / relative).resolve()
     if path != root and root not in path.parents:
         raise ValueError("team_strength_policy must stay within the config directory")
     return path
@@ -66,9 +72,10 @@ def load_team_strength_policy(
     manifest: TournamentManifest | None = None,
     *,
     config_root: Path | None = None,
+    period: Literal["group", "main"] = "group",
 ) -> TeamStrengthPolicy:
     selected = manifest or load_tournament_manifest()
-    path = team_strength_policy_path(selected, config_root=config_root)
+    path = team_strength_policy_path(selected, config_root=config_root, period=period)
     return TeamStrengthPolicy.model_validate_json(path.read_text(encoding="utf-8"))
 
 

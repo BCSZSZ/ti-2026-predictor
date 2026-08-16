@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 from time import perf_counter
-from typing import Any
+from typing import Any, Literal
 
 import pandas as pd
 
@@ -39,6 +39,7 @@ from ti_predictor.fantasy.valuation import (
 )
 from ti_predictor.hashing import sha256_file, sha256_json
 from ti_predictor.identity import canonicalize_match_team_ids
+from ti_predictor.ingest.main_actual import main_evidence_paths
 from ti_predictor.models.evidence import build_evidence_set
 from ti_predictor.models.policy import EvidenceScopePolicy
 from ti_predictor.models.ratings import ModelReport, TeamStrengthModel, fit_team_strengths
@@ -104,9 +105,17 @@ def _available_by_as_of(frame: pd.DataFrame, as_of) -> pd.DataFrame:
     return result.loc[available].copy()
 
 
-def _load_strength_model(paths: ProjectPaths, as_of) -> tuple[TeamStrengthModel, ModelReport]:
+def _load_strength_model(
+    paths: ProjectPaths,
+    as_of,
+    *,
+    period: Literal["group", "main"] = "group",
+) -> tuple[TeamStrengthModel, ModelReport]:
     manifest = load_tournament_manifest(paths.tournament)
-    policy = load_team_strength_policy(manifest, config_root=paths.config)
+    if period == "main" and manifest.main_event_seeds and paths.processed_override is None:
+        paths = main_evidence_paths(paths, require=True)
+        manifest = load_tournament_manifest(paths.tournament)
+    policy = load_team_strength_policy(manifest, config_root=paths.config, period=period)
     matches = read_parquet_if_exists(paths.processed / "matches.parquet")
     patches = read_parquet_if_exists(paths.processed / "patches.parquet")
     matches = _available_by_as_of(matches, as_of)
@@ -152,7 +161,7 @@ def _load_strength_model(paths: ProjectPaths, as_of) -> tuple[TeamStrengthModel,
         calibration_as_of=calibration_as_of,
         calibration_target_patch_family=policy.ti2025_holdout.target_patch_family,
     )
-    policy_path = team_strength_policy_path(manifest, config_root=paths.config)
+    policy_path = team_strength_policy_path(manifest, config_root=paths.config, period=period)
     report.evidence_audit["policy_sha256"] = sha256_file(policy_path)
     report.evidence_audit["team_identity_normalization"] = identity_audit
     return model, report
@@ -162,13 +171,14 @@ def load_strength_model_as_of(
     *,
     as_of,
     paths: ProjectPaths = PATHS,
+    period: Literal["group", "main"] = "group",
 ) -> tuple[TeamStrengthModel, ModelReport]:
     """Load the governed Team-strength model using no information after ``as_of``."""
 
     cutoff = as_utc(as_of)
     if cutoff is None:
         raise ValueError("as_of is required")
-    return _load_strength_model(paths, cutoff)
+    return _load_strength_model(paths, cutoff, period=period)
 
 
 def _status(recommendations: list[Recommendation], model_report: ModelReport) -> str:
@@ -524,9 +534,14 @@ def generate_bracket(
     selected_profiles = _profiles(profile)
     manifest = load_tournament_manifest(paths.tournament)
     rules = load_rules(paths.rules)
-    model, report = _load_strength_model(paths, cutoff)
-    report.issues.extend(rule_snapshot_issues(cutoff, paths))
     projected = not bool(team_ids or manifest.main_event_seeds)
+    run_paths = (
+        paths
+        if projected or paths.processed_override is not None
+        else main_evidence_paths(paths, require=True)
+    )
+    model, report = _load_strength_model(run_paths, cutoff, period="main")
+    report.issues.extend(rule_snapshot_issues(cutoff, run_paths))
     seeds = team_ids or manifest.main_event_seeds
     if not seeds:
         seeds = [team_id for team_id, _ in model.ranked([team.team_id for team in manifest.teams])[:8]]
@@ -554,7 +569,7 @@ def generate_bracket(
         extra={
             "seeds": [{"team_id": team_id, "team": names.get(team_id, str(team_id))} for team_id in seeds]
         },
-        paths=paths,
+        paths=run_paths,
     )
 
 
@@ -570,9 +585,15 @@ def generate_fantasy(
     selected_profiles = _profiles(profile)
     manifest = load_tournament_manifest(paths.tournament)
     rules = load_rules(paths.rules)
-    observations = read_parquet_if_exists(paths.processed / "fantasy_performance_samples.parquet")
-    matches = read_parquet_if_exists(paths.processed / "matches.parquet")
-    patches = read_parquet_if_exists(paths.processed / "patches.parquet")
+    selected_period: Literal["group", "main"] = "main" if period == "main" else "group"
+    run_paths = (
+        main_evidence_paths(paths, require=True)
+        if selected_period == "main" and manifest.main_event_seeds and paths.processed_override is None
+        else paths
+    )
+    observations = read_parquet_if_exists(run_paths.processed / "fantasy_performance_samples.parquet")
+    matches = read_parquet_if_exists(run_paths.processed / "matches.parquet")
+    patches = read_parquet_if_exists(run_paths.processed / "patches.parquet")
     if not observations.empty and not matches.empty:
         metadata_columns = [
             column
@@ -600,8 +621,12 @@ def generate_fantasy(
             radiant_win = observations["radiant_win"].astype("boolean")
             observations.loc[radiant, "team_win"] = radiant_win.loc[radiant]
             observations.loc[dire, "team_win"] = ~radiant_win.loc[dire]
-    model, report = _load_strength_model(paths, cutoff)
-    policy = load_team_strength_policy(manifest, config_root=paths.config)
+    model, report = _load_strength_model(run_paths, cutoff, period=selected_period)
+    policy = load_team_strength_policy(
+        manifest,
+        config_root=paths.config,
+        period=selected_period,
+    )
     fantasy_evidence_audit: dict[str, Any] = {}
     if not observations.empty:
         # Production generation fails closed when the patch/tier evidence set cannot be built.
@@ -620,6 +645,7 @@ def generate_fantasy(
             as_of=cutoff,
             policy=fantasy_evidence_policy,
             target_patch_family=model.target_patch_family,
+            evidence_channel="fantasy",
         )
         evidence_columns = fantasy_evidence.matches[
             ["match_id", "evidence_weight", "patch_family", "normalized_league_tier"]
@@ -650,8 +676,18 @@ def generate_fantasy(
                 "effective_target_player_row_weight": float(weighted_target_rows["evidence_weight"].sum()),
             }
         )
-    report.issues.extend(rule_snapshot_issues(cutoff, paths))
-    recommender = FantasyRecommender(observations, manifest, rules, model, as_of=cutoff)
+    report.issues.extend(rule_snapshot_issues(cutoff, run_paths))
+    candidate_team_ids = (
+        tuple(manifest.main_event_seeds) if selected_period == "main" and manifest.main_event_seeds else None
+    )
+    recommender = FantasyRecommender(
+        observations,
+        manifest,
+        rules,
+        model,
+        as_of=cutoff,
+        candidate_team_ids=candidate_team_ids,
+    )
     stat_priority_guide = recommender.stat_priority_guide(period=period)
     recommendations = [recommender.recommend(period=period, profile=item) for item in selected_profiles]
     return _finalize(
@@ -683,7 +719,7 @@ def generate_fantasy(
             "fantasy_evidence_audit": fantasy_evidence_audit,
             "stat_priority_guide": stat_priority_guide,
         },
-        paths=paths,
+        paths=run_paths,
     )
 
 

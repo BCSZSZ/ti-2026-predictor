@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1100" viewBox="0 0 1920 1100" role="img" aria-labelledby="title desc">
+  <title id="title">TI 2026 Main Event 双败淘汰赛预测树</title>
+  <desc id="desc">胜者组从四场首轮进入半决赛和胜者组决赛，败者进入败者组；TEAM VISION 被推荐在总决赛击败 Team Liquid 夺冠。</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111318"/>
+      <stop offset="0.55" stop-color="#17191f"/>
+      <stop offset="1" stop-color="#0d0f13"/>
+    </linearGradient>
+    <linearGradient id="champion" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f1cf79"/>
+      <stop offset="1" stop-color="#b77d28"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#000000" flood-opacity="0.42"/>
+    </filter>
+    <style>
+      .title { fill: #f5e5ba; font: 700 34px "Segoe UI", "Microsoft YaHei", sans-serif; letter-spacing: 1px; }
+      .subtitle { fill: #aeb2bb; font: 16px "Segoe UI", "Microsoft YaHei", sans-serif; }
+      .band-title { fill: #e6c77d; font: 700 22px "Segoe UI", "Microsoft YaHei", sans-serif; letter-spacing: 2px; }
+      .match-shell { fill: #20232a; stroke: #706343; stroke-width: 1.5; }
+      .match-header { fill: #16191f; }
+      .match-label { fill: #c9ad6e; font: 600 12px "Segoe UI", "Microsoft YaHei", sans-serif; letter-spacing: .5px; }
+      .team { fill: #e7e8ea; font: 600 16px "Segoe UI", "Microsoft YaHei", sans-serif; }
+      .winner-row { fill: #d4a64e; }
+      .winner { fill: #15171b; font: 750 16px "Segoe UI", "Microsoft YaHei", sans-serif; }
+      .check { fill: #15171b; font: 800 17px "Segoe UI Symbol", "Segoe UI", sans-serif; }
+      .separator { stroke: #3c4048; stroke-width: 1; }
+      .upper-line { fill: none; stroke: #c7a35e; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+      .lower-line { fill: none; stroke: #79a1b8; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+      .drop-line { fill: none; stroke: #9c7857; stroke-width: 2.5; stroke-dasharray: 8 7; stroke-linecap: round; stroke-linejoin: round; }
+      .drop-label { fill: #b89574; font: 12px "Segoe UI", "Microsoft YaHei", sans-serif; }
+      .section-rule { stroke: #4c4436; stroke-width: 1.5; }
+      .legend { fill: #aeb2bb; font: 14px "Segoe UI", "Microsoft YaHei", sans-serif; }
+      .champion-kicker { fill: #4b3515; font: 700 12px "Segoe UI", "Microsoft YaHei", sans-serif; letter-spacing: 1.5px; }
+      .champion-team { fill: #111318; font: 800 20px "Segoe UI", "Microsoft YaHei", sans-serif; }
+      .champion-prob { fill: #3f2c12; font: 650 14px "Segoe UI", "Microsoft YaHei", sans-serif; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1100" fill="url(#background)"/>
+  <rect x="22" y="102" width="1876" height="490" rx="14" fill="#191b21" stroke="#34302a"/>
+  <rect x="22" y="630" width="1876" height="390" rx="14" fill="#151a20" stroke="#2e3940"/>
+
+  <text class="title" x="42" y="52">TI 2026 MAIN EVENT · 推荐双败网格</text>
+  <text class="subtitle" x="42" y="82">期望积分、Top-10 与 Top-100 代理目标给出同一答案 · 期望积分 2647.872 · P50 / P90 = 2520 / 5400</text>
+
+  <text class="band-title" x="42" y="132">胜者组</text>
+
+  <text class="band-title" x="42" y="664">败者组</text>
+
+  <!-- Advancement paths are drawn behind match cards. -->
+  <g aria-label="胜者组晋级线">
+    <path class="upper-line" d="M320 182 H355 V232 H390"/>
+    <path class="upper-line" d="M320 282 H355 V261 H390"/>
+    <path class="upper-line" d="M320 422 H355 V472 H390"/>
+    <path class="upper-line" d="M320 522 H355 V501 H390"/>
+    <path class="upper-line" d="M670 261 H705 V352 H740"/>
+    <path class="upper-line" d="M670 472 H705 V381 H740"/>
+    <path class="upper-line" d="M1020 352 H1398 V537 H1440"/>
+  </g>
+
+  <g aria-label="败者组晋级线">
+    <path class="lower-line" d="M320 766 H350 V712 H390"/>
+    <path class="lower-line" d="M320 917 H350 V922 H390"/>
+    <path class="lower-line" d="M670 741 H705 V822 H740"/>
+    <path class="lower-line" d="M670 951 H705 V851 H740"/>
+    <path class="lower-line" d="M1020 822 H1090"/>
+    <path class="lower-line" d="M1370 851 H1406 V566 H1440"/>
+  </g>
+
+  <g aria-label="从胜者组落入败者组的路径">
+    <path class="drop-line" d="M670 232 H688 V741 H390"/>
+    <path class="drop-line" d="M670 501 H720 V951 H390"/>
+    <path class="drop-line" d="M1020 381 H1052 V851 H1090"/>
+    <text class="drop-label" x="696" y="650">胜者组半决赛败者 ↓</text>
+    <text class="drop-label" x="1060" y="650">胜者组决赛败者 ↓</text>
+  </g>
+
+  <!-- Upper bracket round one. -->
+  <g transform="translate(40 145)" filter="url(#shadow)" data-node="upper_r1_a" data-left-team-id="10150413" data-right-team-id="7119388" data-winner-team-id="10150413" aria-label="胜者组第一轮 A，Iron Wing 战胜 Team Spirit">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">UB R1 · A</text>
+    <rect class="winner-row" x="1" y="22" width="278" height="29"/>
+    <text class="winner" x="12" y="43">Iron Wing</text>
+    <text class="check" x="255" y="43">✓</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <text class="team" x="12" y="72">Team Spirit</text>
+  </g>
+
+  <g transform="translate(40 245)" filter="url(#shadow)" data-node="upper_r1_b" data-left-team-id="9572001" data-right-team-id="8255888" data-winner-team-id="9572001" aria-label="胜者组第一轮 B，TEAM VISION 战胜 BoomBoys">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">UB R1 · B</text>
+    <rect class="winner-row" x="1" y="22" width="278" height="29"/>
+    <text class="winner" x="12" y="43">TEAM VISION</text>
+    <text class="check" x="255" y="43">✓</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <text class="team" x="12" y="72">BoomBoys</text>
+  </g>
+
+  <g transform="translate(40 385)" filter="url(#shadow)" data-node="upper_r1_c" data-left-team-id="2163" data-right-team-id="9823272" data-winner-team-id="2163" aria-label="胜者组第一轮 C，Team Liquid 战胜 Team Yandex">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">UB R1 · C</text>
+    <rect class="winner-row" x="1" y="22" width="278" height="29"/>
+    <text class="winner" x="12" y="43">Team Liquid</text>
+    <text class="check" x="255" y="43">✓</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <text class="team" x="12" y="72">Team Yandex</text>
+  </g>
+
+  <g transform="translate(40 485)" filter="url(#shadow)" data-node="upper_r1_d" data-left-team-id="10136357" data-right-team-id="9247354" data-winner-team-id="10136357" aria-label="胜者组第一轮 D，Nigma Galaxy 战胜 Team Falcons">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">UB R1 · D</text>
+    <rect class="winner-row" x="1" y="22" width="278" height="29"/>
+    <text class="winner" x="12" y="43">Nigma Galaxy</text>
+    <text class="check" x="255" y="43">✓</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <text class="team" x="12" y="72">Team Falcons</text>
+  </g>
+
+  <!-- Upper bracket semifinals and final. -->
+  <g transform="translate(390 195)" filter="url(#shadow)" data-node="upper_semifinal_a" data-left-team-id="10150413" data-right-team-id="9572001" data-winner-team-id="9572001" aria-label="胜者组半决赛 A，TEAM VISION 战胜 Iron Wing">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">UB SEMI · A</text>
+    <text class="team" x="12" y="43">Iron Wing</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <rect class="winner-row" x="1" y="51" width="278" height="28"/>
+    <text class="winner" x="12" y="72">TEAM VISION</text>
+    <text class="check" x="255" y="72">✓</text>
+  </g>
+
+  <g transform="translate(390 435)" filter="url(#shadow)" data-node="upper_semifinal_b" data-left-team-id="2163" data-right-team-id="10136357" data-winner-team-id="2163" aria-label="胜者组半决赛 B，Team Liquid 战胜 Nigma Galaxy">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">UB SEMI · B</text>
+    <rect class="winner-row" x="1" y="22" width="278" height="29"/>
+    <text class="winner" x="12" y="43">Team Liquid</text>
+    <text class="check" x="255" y="43">✓</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <text class="team" x="12" y="72">Nigma Galaxy</text>
+  </g>
+
+  <g transform="translate(740 315)" filter="url(#shadow)" data-node="upper_final" data-left-team-id="9572001" data-right-team-id="2163" data-winner-team-id="9572001" aria-label="胜者组决赛，TEAM VISION 战胜 Team Liquid">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">UPPER FINAL</text>
+    <rect class="winner-row" x="1" y="22" width="278" height="29"/>
+    <text class="winner" x="12" y="43">TEAM VISION</text>
+    <text class="check" x="255" y="43">✓</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <text class="team" x="12" y="72">Team Liquid</text>
+  </g>
+
+  <!-- Lower bracket. Lower R1 receives the four upper R1 losers. -->
+  <text class="drop-label" x="40" y="716">UB R1 A / B 败者</text>
+  <g transform="translate(40 725)" filter="url(#shadow)" data-node="lower_r1_a" data-left-team-id="7119388" data-right-team-id="8255888" data-winner-team-id="8255888" aria-label="败者组第一轮 A，BoomBoys 战胜 Team Spirit">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">LB R1 · A</text>
+    <text class="team" x="12" y="43">Team Spirit</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <rect class="winner-row" x="1" y="51" width="278" height="28"/>
+    <text class="winner" x="12" y="72">BoomBoys</text>
+    <text class="check" x="255" y="72">✓</text>
+  </g>
+
+  <text class="drop-label" x="40" y="867">UB R1 C / D 败者</text>
+  <g transform="translate(40 876)" filter="url(#shadow)" data-node="lower_r1_b" data-left-team-id="9823272" data-right-team-id="9247354" data-winner-team-id="9823272" aria-label="败者组第一轮 B，Team Yandex 战胜 Team Falcons">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">LB R1 · B</text>
+    <rect class="winner-row" x="1" y="22" width="278" height="29"/>
+    <text class="winner" x="12" y="43">Team Yandex</text>
+    <text class="check" x="255" y="43">✓</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <text class="team" x="12" y="72">Team Falcons</text>
+  </g>
+
+  <g transform="translate(390 675)" filter="url(#shadow)" data-node="lower_r2_a" data-left-team-id="8255888" data-right-team-id="10150413" data-winner-team-id="10150413" aria-label="败者组第二轮 A，Iron Wing 战胜 BoomBoys">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">LB R2 · A</text>
+    <text class="team" x="12" y="43">BoomBoys</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <rect class="winner-row" x="1" y="51" width="278" height="28"/>
+    <text class="winner" x="12" y="72">Iron Wing</text>
+    <text class="check" x="255" y="72">✓</text>
+  </g>
+
+  <g transform="translate(390 885)" filter="url(#shadow)" data-node="lower_r2_b" data-left-team-id="9823272" data-right-team-id="10136357" data-winner-team-id="10136357" aria-label="败者组第二轮 B，Nigma Galaxy 战胜 Team Yandex">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">LB R2 · B</text>
+    <text class="team" x="12" y="43">Team Yandex</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <rect class="winner-row" x="1" y="51" width="278" height="28"/>
+    <text class="winner" x="12" y="72">Nigma Galaxy</text>
+    <text class="check" x="255" y="72">✓</text>
+  </g>
+
+  <g transform="translate(740 785)" filter="url(#shadow)" data-node="lower_r3" data-left-team-id="10150413" data-right-team-id="10136357" data-winner-team-id="10150413" aria-label="败者组第三轮，Iron Wing 战胜 Nigma Galaxy">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">LB R3</text>
+    <rect class="winner-row" x="1" y="22" width="278" height="29"/>
+    <text class="winner" x="12" y="43">Iron Wing</text>
+    <text class="check" x="255" y="43">✓</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <text class="team" x="12" y="72">Nigma Galaxy</text>
+  </g>
+
+  <g transform="translate(1090 785)" filter="url(#shadow)" data-node="lower_final" data-left-team-id="10150413" data-right-team-id="2163" data-winner-team-id="2163" aria-label="败者组决赛，Team Liquid 战胜 Iron Wing">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">LOWER FINAL</text>
+    <text class="team" x="12" y="43">Iron Wing</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <rect class="winner-row" x="1" y="51" width="278" height="28"/>
+    <text class="winner" x="12" y="72">Team Liquid</text>
+    <text class="check" x="255" y="72">✓</text>
+  </g>
+
+  <!-- Grand final and champion. -->
+  <g transform="translate(1440 500)" filter="url(#shadow)" data-node="grand_final" data-left-team-id="9572001" data-right-team-id="2163" data-winner-team-id="9572001" aria-label="总决赛，TEAM VISION 战胜 Team Liquid">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">GRAND FINAL</text>
+    <rect class="winner-row" x="1" y="22" width="278" height="29"/>
+    <text class="winner" x="12" y="43">TEAM VISION</text>
+    <text class="check" x="255" y="43">✓</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <text class="team" x="12" y="72">Team Liquid</text>
+  </g>
+
+  <path class="upper-line" d="M1720 537 H1755"/>
+  <g transform="translate(1755 490)" filter="url(#shadow)" aria-label="推荐冠军 TEAM VISION，冠军边际概率 40.37%">
+    <rect width="145" height="100" rx="12" fill="url(#champion)"/>
+    <text class="champion-kicker" x="72.5" y="25" text-anchor="middle">推荐冠军</text>
+    <text class="champion-team" x="72.5" y="54" text-anchor="middle">VISION</text>
+    <text class="champion-prob" x="72.5" y="79" text-anchor="middle">40.37%</text>
+  </g>
+
+  <line class="section-rule" x1="40" y1="1000" x2="1880" y2="1000"/>
+  <line class="upper-line" x1="44" y1="1038" x2="88" y2="1038"/>
+  <text class="legend" x="100" y="1043">胜者晋级</text>
+  <line class="lower-line" x1="230" y1="1038" x2="274" y2="1038"/>
+  <text class="legend" x="286" y="1043">败者组晋级</text>
+  <line class="drop-line" x1="444" y1="1038" x2="488" y2="1038"/>
+  <text class="legend" x="500" y="1043">败者落入下一层败者组</text>
+  <rect class="winner-row" x="740" y="1025" width="28" height="24" rx="3"/>
+  <text class="legend" x="780" y="1043">本项目建议胜者</text>
+  <text class="legend" x="1878" y="1043" text-anchor="end">Forecast 截止：2026-08-16 15:31:30 UTC</text>
+  <text class="subtitle" x="42" y="1075">这是模型建议网格，不是 Valve 官方赛果；实际比赛发生后不要用已知赛果回填本次 Forecast。</text>
+</svg>

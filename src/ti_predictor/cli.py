@@ -19,6 +19,7 @@ from ti_predictor.fantasy.main_evidence import (
     build_main_evidence_snapshot,
     validate_actual_main_evidence_refresh,
 )
+from ti_predictor.fantasy.main_publication import generate_main_publication_evidence
 from ti_predictor.fantasy.main_scenarios import (
     build_main_scenario_set_from_model,
     build_projected_main_scenario_set_from_group,
@@ -46,6 +47,11 @@ from ti_predictor.forecasting import (
     load_strength_model_as_of,
 )
 from ti_predictor.hashing import sha256_json
+from ti_predictor.ingest.main_actual import (
+    freeze_main_actual_snapshot,
+    load_main_actual_workspace,
+    prepare_main_actual_workspace,
+)
 from ti_predictor.ingest.opendota import (
     DEFAULT_OPENDOTA_RUN_REQUEST_LIMIT,
     OpenDotaSafetyStop,
@@ -54,7 +60,7 @@ from ti_predictor.ingest.opendota import (
 )
 from ti_predictor.ingest.replay import ReplayParser, sync_replay_fantasy_history
 from ti_predictor.ocr import inspect_screenshot
-from ti_predictor.paths import PATHS
+from ti_predictor.paths import PATHS, ProjectPaths
 from ti_predictor.rules import create_rule_snapshot, parse_as_of, validate_snapshot
 
 
@@ -342,6 +348,65 @@ def data_fantasy_history(
     _exit_for_status(result.status)
 
 
+@data_app.command("main-actual-materialize")
+def data_main_actual_materialize(
+    as_of: Annotated[
+        str,
+        typer.Option("--as-of", help="Main actual 数据与模型的显式 UTC 截止时间。"),
+    ],
+    catalog_audit: Annotated[
+        Path,
+        typer.Option("--catalog-audit", exists=True, dir_okay=False),
+    ] = PATHS.raw / "opendota/audits/20260816T122321Z/manifest.json",
+    workspace: Annotated[
+        Path,
+        typer.Option("--workspace", file_okay=False),
+    ] = PATHS.processed / "work/main-actual-20260816T140616Z",
+) -> None:
+    """Materialize Main actual processed evidence from immutable local raw captures."""
+
+    result = prepare_main_actual_workspace(
+        as_of=parse_as_of(as_of),
+        catalog_audit_path=catalog_audit,
+        workspace_path=workspace,
+    )
+    _echo(
+        {
+            "status": "prepared-replay-pending",
+            "as_of": result.as_of,
+            "workspace": str(result.path),
+            "stage_game_count": result.stage_game_count,
+            "entrant_team_ids": list(result.entrant_team_ids),
+            "replay_target_game_count": len(result.replay_target_match_ids),
+            "replay_target_match_ids_sha256": result.replay_target_match_ids_sha256,
+            "workspace_manifest": str(result.manifest_path),
+        }
+    )
+
+
+@data_app.command("main-actual-freeze")
+def data_main_actual_freeze(
+    workspace: Annotated[
+        Path,
+        typer.Option("--workspace", exists=True, file_okay=False),
+    ] = PATHS.processed / "work/main-actual-20260816T140616Z",
+) -> None:
+    """Freeze an exact-replay Main workspace and select it for Main evidence builds."""
+
+    result = freeze_main_actual_snapshot(load_main_actual_workspace(workspace))
+    _echo(
+        {
+            "status": "ready",
+            "snapshot": str(result.path),
+            "pointer": str(result.pointer_path),
+            "manifest": str(result.manifest_path),
+            "manifest_sha256": result.manifest_sha256,
+            "semantic_hash": result.semantic_hash,
+            "replay_target_game_count": result.replay_target_game_count,
+        }
+    )
+
+
 @data_app.command("replay-fantasy")
 def data_replay_fantasy(
     as_of: Annotated[str, typer.Option("--as-of", help="只纳入该时点前已完成的比赛。")],
@@ -374,6 +439,15 @@ def data_replay_fantasy(
         Path | None,
         typer.Option("--parser-jar", exists=True, dir_okay=False, help="覆盖默认 Clarity parser JAR。"),
     ] = None,
+    processed_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--processed-dir",
+            exists=True,
+            file_okay=False,
+            help="将 replay 结果写入隔离 processed 工作区；默认使用 data/processed。",
+        ),
+    ] = None,
 ) -> None:
     cutoff = parse_as_of(as_of)
 
@@ -385,6 +459,11 @@ def data_replay_fantasy(
         ):
             typer.echo(json.dumps(payload, ensure_ascii=False, default=str), err=True)
 
+    selected_paths = (
+        PATHS
+        if processed_dir is None
+        else ProjectPaths(root=PATHS.root, processed_override=processed_dir.resolve())
+    )
     result = sync_replay_fantasy_history(
         as_of=cutoff,
         year=year,
@@ -394,6 +473,7 @@ def data_replay_fantasy(
         checkpoint_every=checkpoint_every,
         refresh=refresh,
         parser=ReplayParser(jar_path=parser_jar),
+        paths=selected_paths,
         progress=progress,
     )
     _echo(
@@ -595,6 +675,41 @@ def fantasy_title_evidence(
             "report_path": str(result.report_path),
             "evidence_sha256": result.evidence["evidence_sha256"],
             "default_title": result.evidence["analysis"]["recommendation"],
+        }
+    )
+    _exit_for_status(result.run.status)
+
+
+@fantasy_app.command("main-publication-evidence")
+def fantasy_main_publication_evidence(
+    as_of: Annotated[
+        str,
+        typer.Option("--as-of", help="必须等于当前 actual Main 求解包的显式 UTC 截止时间。"),
+    ],
+    hero_source: Annotated[
+        Path,
+        typer.Option(
+            "--hero-source",
+            exists=True,
+            dir_okay=False,
+            help="已归档的 Valve scripts/npc/npc_heroes.txt。",
+        ),
+    ],
+) -> None:
+    result = generate_main_publication_evidence(
+        as_of=parse_as_of(as_of),
+        hero_source_path=hero_source,
+    )
+    _echo(
+        {
+            "run_id": result.run.run_id,
+            "status": result.run.status,
+            "run_path": str(result.run_path),
+            "evidence_path": str(result.evidence_path),
+            "stat_report_path": str(result.stat_report_path),
+            "title_report_path": str(result.title_report_path),
+            "evidence_sha256": result.evidence["evidence_sha256"],
+            "default_title": result.evidence["title_analysis"]["recommendation"],
         }
     )
     _exit_for_status(result.run.status)

@@ -12,7 +12,19 @@ OCR 版。它覆盖：
 
 LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统计模型和固定随机种子产生。
 
-## v0.2.0：Main 五格与 G/G-Lite
+## v0.3.0：actual 八队、最新 Fantasy 与 Main 玩家资料
+
+- Main 当前发布已从 projected 16 队切换为 `ready / actual`：Core / Mid / Support 均只提供正式
+  八队，并使用小组赛与突围赛后重建的 Main Fantasy Series pool。
+- TI 已结束阶段在 Team-strength 与 Fantasy 两条证据通道中各自使用 1.5×；精确版本 7.41e 的
+  1.5×、赛事级别和 60 天半衰期继续生效。
+- 新增 [Main 30 Roll 玩家手册](docs/playbooks/main-roll/main-roll-publication-manual-v1.md)、
+  [Main Stat 与队伍 Top 3 完整表](docs/playbooks/main-roll/stat-team-top3-publication-v1.md)和
+  [Main Title 分析与推荐](docs/reports/ti2026-main-fantasy-title-recommendation-2026-08-17.md)。
+- Streamlit 云端仍只手填；Windows 本地版仍额外提供 Main 15 格 OCR。两个入口现在共同读取
+  actual 八队、`2026-08-16T15:31:30Z` 数据截止的内容寻址求解包。
+
+## v0.2.0：Main 五格与 G/G-Lite（历史）
 
 - 页面用独立 Tab 切换 `Main（当前 · 五格）` 与 `小组赛（历史 · 三格）`，两阶段不共享状态、
   OCR 或求解逻辑。
@@ -45,8 +57,10 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 - 原始数据同步、规则抓取或完整未来路线搜索（可选 G-Lite 仅做冻结的受限下一轮抽样）；
 - 本机 `data/raw`、`data/processed` 或 `artifacts` 目录依赖。
 
-云端使用 [`deploy/runtime/current.json`](deploy/runtime/current.json) 指向的内容寻址
-**冻结求解发布包**，数据截止为 `2026-08-10T13:45:12Z`。发布包只含求解所需的紧凑派生证据，
+云端分别使用 [`deploy/runtime/current.json`](deploy/runtime/current.json) 和
+[`deploy/runtime/main-current.json`](deploy/runtime/main-current.json) 指向的内容寻址
+**冻结求解发布包**。Group 历史包截止 `2026-08-10T13:45:12Z`；Main 当前包截止
+`2026-08-16T15:31:30Z`，为 `ready / actual` 八队。发布包只含求解所需的紧凑派生证据，
 不含也不会下载约 188 GB 的原始数据。本地手动预览：
 
 ```powershell
@@ -95,9 +109,26 @@ uv 的官方安装入口见 [Astral uv Installation](https://docs.astral.sh/uv/g
 它逐项区分 Valve/客户端事实、`exact`/`derived` 观测、模型推断和仍未闭合的草案，不把
 `publishable` 误写成“预测一定正确”；[首轮与 LGD 实装、重算及验收记录](docs/reports/ti2026-swiss-round1-roster-update-2026-08-10.md)
 保存本阶段的正式运行和数学闭合检查；只想看数据来源、计分、平均分与 Series 时，
-使用[方法极简速查](docs/reports/ti2026-methodology-quick-reference-2026-08-10.md)。本轮所有仍然有效的
-玩家版 Markdown 已集中到
-[TI 2026 玩家发布包](docs/publication/ti2026-release-bundle-2026-08-11/README.md)。
+使用[方法极简速查](docs/reports/ti2026-methodology-quick-reference-2026-08-10.md)。当前 Main Event
+玩家版已集中到
+[TI 2026 Main Event 玩家发布包](docs/publication/ti2026-release-bundle-2026-08-17/README.md)；
+[2026-08-11 Group 发布包](docs/publication/ti2026-release-bundle-2026-08-11/README.md)保持为小组赛阶段
+的冻结历史版本。
+
+## Main Event 当前版本
+
+当前实际八队、官方直播首轮、1.5× 已结束 TI 阶段权重、完整双败网格、Fantasy 通用基准和
+Main 五格求解发布见
+[Main Event 完整报告](docs/reports/ti2026-main-event-publication-2026-08-17.md)。模型枚举
+`16,384` 个合法双败网格后，期望积分、Top-10 和 Top-100 代理目标均推荐 **TEAM VISION
+冠军**；完整路径已改为可缩放的[双败淘汰赛树状图](docs/assets/ti2026-main-event-double-elimination-bracket-2026-08-17.svg)。
+
+Main 五格运行时为 `ready / actual`，Core / Mid / Support 各有 8 个实际参赛队候选。Web 默认
+使用 G，也允许用户主动选择 G-Lite；Streamlit 云端只接受手动 15 格录入，本地版另外保留截图
+识别。Main 锁定时间为 `2026-08-20T02:00:00Z`。当前 Stat、Title 和逐 Roll 使用说明集中在
+[Main Fantasy 玩家资料](docs/playbooks/main-roll/README.md)。
+
+## Group 冻结历史版本
 
 当前面向玩家的小组赛结论见
 [TI 2026 瑞士轮 Forecast：16 队身份归一与 LGD 0.60 主情景](docs/reports/ti2026-group-forecast-publication-2026-08-10.md)。
@@ -156,6 +187,7 @@ uv run ti fantasy group-evidence --as-of 2026-08-10T13:45:12Z --seed 20260813 --
 uv run ti fantasy group-playbook-evidence --as-of 2026-08-06T17:27:00Z --playbook-version v2
 uv run ti fantasy group-cross-audit --as-of 2026-08-06T17:27:00Z --cross-audit-version v2
 uv run ti fantasy group-advisor-evidence --as-of 2026-08-06T08:15:00Z
+uv run ti fantasy main-publication-evidence --as-of 2026-08-16T15:31:30Z --hero-source data/raw/rules-title/20260810T134512Z-7d89d1a71895/scripts/npc/npc_heroes.txt
 uv run ti dev web
 ```
 
@@ -229,17 +261,16 @@ Chrome 可以放在另一块屏幕，也可以与 Dota 同屏并用 Alt+Tab 切�
 会自动填入本页并重新计算。Main 默认使用 `G`（只看当前一步），也允许玩家主动切换到
 `G-Lite`：后者只在前两项足够接近时，用固定 4 个样本做一次有限二步比较，每局最多触发
 4 次。`G-Lite` 仅有 100 个合成开发状态的正向点估计，尚未完成独立 confirmation，因此不替代
-默认 `G`。页面给出当前动作建议、风险说明、当前三个位置的队伍组合及自动 Title 排名。它直接使用
-2026-08-10 的当前 P3/Title/Swiss 冻结证据，不依赖旧 P4/P5/P6 手册门禁；只有用户选择
-`G-Lite` 且触发近似平手条件时才生成受限的下一轮样本。程序不会向 Dota 发送鼠标、键盘或
-内存操作。每次识别完成后会自动停止；玩家在游戏内操作后，
-需要再次点击识别按钮读取实际新画面。
+默认 `G`。Main 页面给出当前动作建议、风险说明和三个位置的 actual 八队匹配；Group 历史页面
+继续显示其冻结 Title 排名。Main 的独立 Title 建议见当前 Main 玩家资料，它尚未与五格终局联合
+优化。Main 逐 Roll 使用 `2026-08-16T15:31:30Z` 的赛后 pool；只有用户选择 `G-Lite` 且触发
+近似平手条件时才生成受限的下一轮样本。程序不会向 Dota 发送鼠标、键盘或内存操作。每次识别
+完成后会自动停止；玩家在游戏内操作后，需要再次点击识别按钮读取实际新画面。
 两个玩家入口都直接加载仓库内按阶段冻结的求解发布包，不再执行约 40 秒的真实数据冷启动。
-Main 实际八队形成前，五槽识别、手填和计算均可用：候选列表保留当前 16 队，每个预测情景
-只让 8 队进入 Main，未晋级情景计 0，并明确显示 provisional 与预测种子 proxy。Group 结束后
-先更新比赛与 Fantasy 原始数据，再按正式种子把候选列表缩为实际 8 队并发布 ready 包。一步计算
-仍约 0.6 秒，缓存重算约 0.05 秒。旧 P7 v1 会话与证据命令作为历史兼容证据保留，不再是
-玩家页面运行路径。实装范围和验收标准见
+Main 现在已经完成赛后数据、actual 八队和正式种子更新：候选列表为 8 队，每个情景均从同一
+八队生成完整双败路径，指针明确显示 `ready / actual`。此前 16 队 projected 包只保留为历史
+证据，不再是玩家页面运行路径。一步计算仍约 0.6 秒，缓存重算约 0.05 秒。旧 P7 v1 会话与证据
+命令作为历史兼容证据保留。实装范围和验收标准见
 [v2 实装计划](docs/plans/current-screen-roll-advisor-v2.md)，完成结果见
 [易懂总结](docs/reports/current-screen-roll-advisor-v2-implementation-2026-08-09.md)。
 完整操作顺序、主赛事种子导入和状态含义见 [docs/runbook.md](docs/runbook.md)。模型的时间
@@ -284,7 +315,8 @@ Dota。Dota 最小化、尚未切回或不在完整 Roll 页面时只会继续�
   生效；名称相似本身不足以合并，未来超出生效区间的比赛不会自动继承。
 - LGD `0.60` 是显式 roster-shock 情景而非已验证效应量；Fantasy 的 LGD 中单保持不可用，不以
   0 分或旧中单历史填补。
-- 主赛事实际八队与种子未写入前，14 节点网格会生成但保持 `blocked`。
+- 主赛事实际八队与官方直播首轮已写入；若后续客户端结构化槽位与直播转录冲突，必须重新生成，
+  不得静默沿用当前网格。
 - Fantasy 默认只用覆盖充分的 `exact/derived` 字段；五项原生 replay 统计只有通过逐场状态、
   字段存在性和 Watcher build 门槛后才参与，OpenDota proxy 永不参与默认最优解。
 - 实时 OCR 只在完整观测时自动填入本地顾问；任何不完整观测都会阻止自动计算。

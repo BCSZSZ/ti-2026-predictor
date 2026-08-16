@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import dataclass
 from math import ceil
 from typing import Any
@@ -77,6 +78,7 @@ class FantasyRecommender:
         strength_model: TeamStrengthModel,
         *,
         as_of,
+        candidate_team_ids: Collection[int] | None = None,
     ) -> None:
         self.as_of = as_utc(as_of)
         self.manifest = manifest
@@ -107,6 +109,17 @@ class FantasyRecommender:
             for player in players
         }
         self.team_names = {team.team_id: team.name for team in manifest.teams}
+        candidate_ids = (
+            {int(team_id) for team_id in candidate_team_ids}
+            if candidate_team_ids is not None
+            else set(self.team_names)
+        )
+        unknown_ids = sorted(candidate_ids - set(self.team_names))
+        if unknown_ids:
+            raise ValueError(f"unknown Fantasy candidate Team IDs: {unknown_ids}")
+        self.candidate_teams = tuple(team for team in manifest.teams if team.team_id in candidate_ids)
+        if not self.candidate_teams:
+            raise ValueError("Fantasy candidate Team set must not be empty")
         self._player_estimate_cache: dict[tuple[int, str], EmpiricalEstimate] = {}
         self._global_prior_cache: dict[tuple[str, str], tuple[float, float]] = {}
 
@@ -239,7 +252,7 @@ class FantasyRecommender:
     def _role_rankings(self, role: str, profile: StrategyProfile, banner_slots: int) -> list[dict[str, Any]]:
         colors = self.rules["fantasy"]["role_banners"][role][:banner_slots]
         rankings: list[dict[str, Any]] = []
-        for team in self.manifest.teams:
+        for team in self.candidate_teams:
             emblems: list[dict[str, Any]] = []
             used_stats: set[str] = set()
             total_expected = 0.0
@@ -315,7 +328,7 @@ class FantasyRecommender:
             raise ValueError(f"unknown Fantasy period: {period}")
         banner_slots = int(periods[period]["banner_slots"])
         profile_z = {"stable": -0.85, "expected": 0.0, "upside": 1.65}
-        team_by_id = {team.team_id: team for team in self.manifest.teams}
+        team_by_id = {team.team_id: team for team in self.candidate_teams}
         role_guides: dict[str, Any] = {}
 
         for role in ("core", "mid", "support"):

@@ -20,6 +20,7 @@ def project_paths(tmp_path: Path) -> ProjectPaths:
     for policy_name in (
         "team-strength-v1.json",
         "team-strength-v2.json",
+        "team-strength-main-v1.json",
         "group-swiss-v1.json",
         "fantasy-group-scenarios-v1.json",
         "fantasy-group-scenarios-v2.json",

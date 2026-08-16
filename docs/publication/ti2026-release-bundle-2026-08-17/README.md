@@ -75,18 +75,18 @@ Main 的 Core / Mid / Support 候选均为 `8 / 8`，没有缺失位置。缺失
 
 - 淘汰赛 Forecast run：`bracket-6702d61436d49c8a`
 - 通用 Main Fantasy run：`fantasy-7d5a8ecd1ec8d9d4`
-- Main 五格求解发布：`main-roll-20260816T153130Z-12a3f9cd8696.json.zst`
+- Main 五格求解发布：`main-roll-20260816T153130Z-d80b978920bb.json.zst`
 - 求解发布内容 SHA-256：
-  `12a3f9cd869626fc42eb686ff87c5e667e48d01d43da4920129a534fd0147e34`
+  `d80b978920bb297d40137657a08b6c475cff2c741d3ae0156052dcab6a0be935`
 - Main evidence snapshot semantic SHA-256：
   `4b189f4726d7e996a70a174feb6be04c4ccaf6148dd006f46fffe523c7cc8bcb`
 - Team-strength policy SHA-256：
   `4895101201e20afd5baf5fecfb46cf171b58285f044a90a84afa4b96ef23875f`
 - 客户端规则快照：`20260813T132319Z-9728c506baf6`
 - Main 玩家出版证据：
-  `039e9c14dca244718e84f0c7c41bc04192abb287218d2c0386b6266ff292bba8`
-- 固定源码身份：
-  `7f1c0bbc9334e3131a1b12ead0afa693144a03aa-dirty-a9c0ec237f07`
+  `868d010c01682ce3f3af957ada4fbb68a012d1792d8ffa6796a4039bd6ce9696`
+- 求解发布源码身份：`b5f48ef541dc3735affdb9513ae2f508f0acf377`
+- 玩家出版运行源码身份：`66c9e435e7d13041841fb95954e0325858f59091`
 
 ## 包内文件
 

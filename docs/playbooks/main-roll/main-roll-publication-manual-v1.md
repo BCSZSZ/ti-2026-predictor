@@ -145,11 +145,11 @@ Main 当前可发布的操作策略就是 G，另保留用户可选的 G-Lite。
 
 ## 发布身份
 
-- Main release：`12a3f9cd869626fc42eb686ff87c5e667e48d01d43da4920129a534fd0147e34`
-- Main release 文件：`40b91220e6329abe770cab1607a78e42f49326d1a075b53f0a5f0f7646921b5b`
+- Main release：`d80b978920bb297d40137657a08b6c475cff2c741d3ae0156052dcab6a0be935`
+- Main release 文件：`2698442afcfcc00373b1d1a80ed6b9c8066f5c55cbc81a0eaa8a407a108203cc`
 - Main Scenario：`76a399cc00d0ba4389a06e0c74e3ddea2c3db7174734358149e2e0b953c22a88`
 - 最新 Main Series pool：`e623437a7e1da94519a0bfd3b9c8680e3e0c5f7a9a2c09e873f40938e4eaab41`
-- Main 玩家出版证据：`039e9c14dca244718e84f0c7c41bc04192abb287218d2c0386b6266ff292bba8`
+- Main 玩家出版证据：`868d010c01682ce3f3af957ada4fbb68a012d1792d8ffa6796a4039bd6ce9696`
 
 这些身份不匹配时，先停止使用文档与页面的组合结果，重新发布或刷新服务；不要把不同时间点的
 actual/projected、Stat、Title 和求解包拼在一起。

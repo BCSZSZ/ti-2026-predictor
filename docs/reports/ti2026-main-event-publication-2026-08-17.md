@@ -7,11 +7,11 @@
 - Main 锁定时间：`2026-08-20T02:00:00Z`
 - 淘汰赛 Forecast：`bracket-6702d61436d49c8a`
 - 通用 Main Fantasy：`fantasy-7d5a8ecd1ec8d9d4`
-- 五格求解发布：`main-roll-20260816T153130Z-12a3f9cd8696.json.zst`
+- 五格求解发布：`main-roll-20260816T153130Z-d80b978920bb.json.zst`
 - 求解发布内容 SHA-256：
-  `12a3f9cd869626fc42eb686ff87c5e667e48d01d43da4920129a534fd0147e34`
-- 固定源码身份：
-  `7f1c0bbc9334e3131a1b12ead0afa693144a03aa-dirty-a9c0ec237f07`
+  `d80b978920bb297d40137657a08b6c475cff2c741d3ae0156052dcab6a0be935`
+- 求解发布源码身份：`b5f48ef541dc3735affdb9513ae2f508f0acf377`
+- 玩家出版运行源码身份：`66c9e435e7d13041841fb95954e0325858f59091`
 
 ## 先看结论
 
@@ -214,7 +214,7 @@ actual 八队另生成了绑定同一求解发布包的三份玩家资料：
 
 Main Title 使用 1,073 场不可变原始详情与 1,395 个队伍×位置完整 Series blocks。Clutch 仍以
 历史 BO3 打满比例作为 proxy，没有把可能的 BO5 总决赛冒充为已经精算。Main 玩家出版证据为
-`039e9c14dca244718e84f0c7c41bc04192abb287218d2c0386b6266ff292bba8`。Group 三格手册冻结的
+`868d010c01682ce3f3af957ada4fbb68a012d1792d8ffa6796a4039bd6ce9696`。Group 三格手册冻结的
 B/C/D 操作规则没有直接搬到 Main。
 
 ## 冻结数据与哈希

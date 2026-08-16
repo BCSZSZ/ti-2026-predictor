@@ -16,7 +16,11 @@ def test_vectorized_research_terminal_matches_frozen_production_arithmetic() -> 
     root = Path(__file__).resolve().parents[1]
     manifest = load_main_roll_research_manifest(root / "config/research/fantasy-main-roll-simulator-v1.json")
     group = load_solver_release_context()
-    main = load_frozen_main_research_context(group, manifest)
+    main = load_frozen_main_research_context(
+        group,
+        manifest,
+        rule_snapshot_path=root / "tests/fixtures/fantasy_main_rule_snapshot_identity_20260813.json",
+    )
     state_path = root / "config/research/states/ti2026-main-reference-screen-20260814.json"
     state = state_from_payload(
         json.loads(state_path.read_text(encoding="utf-8")),

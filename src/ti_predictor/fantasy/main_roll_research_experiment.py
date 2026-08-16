@@ -797,9 +797,15 @@ def _frozen_main_release_path(manifest: MainRollResearchManifest) -> Path:
     return selected
 
 
-def _validate_runtime_sources(manifest: MainRollResearchManifest) -> None:
+def _validate_runtime_sources(
+    manifest: MainRollResearchManifest,
+    *,
+    rule_snapshot_path: Path | None = None,
+) -> None:
     _frozen_main_release_path(manifest)
-    snapshot_path = PATHS.root / "data/raw/rules" / manifest.source.rule_snapshot_id / "rule_snapshot.json"
+    snapshot_path = rule_snapshot_path or (
+        PATHS.root / "data/raw/rules" / manifest.source.rule_snapshot_id / "rule_snapshot.json"
+    )
     try:
         snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
@@ -812,10 +818,19 @@ def _validate_runtime_sources(manifest: MainRollResearchManifest) -> None:
         raise MainResearchExperimentError("current canonical Rule file differs from the manifest")
 
 
-def load_frozen_main_research_context(group_context, manifest: MainRollResearchManifest):
-    """Load the manifest-pinned projected release without consulting the production pointer."""
+def load_frozen_main_research_context(
+    group_context,
+    manifest: MainRollResearchManifest,
+    *,
+    rule_snapshot_path: Path | None = None,
+):
+    """Load the manifest-pinned projected release without consulting the production pointer.
 
-    _validate_runtime_sources(manifest)
+    Production callers use the immutable raw client snapshot. Tests may provide a committed
+    identity fixture so a clean checkout does not depend on ignored raw evidence.
+    """
+
+    _validate_runtime_sources(manifest, rule_snapshot_path=rule_snapshot_path)
     main_context = load_main_solver_release_context(
         group_context,
         path=_frozen_main_release_path(manifest),

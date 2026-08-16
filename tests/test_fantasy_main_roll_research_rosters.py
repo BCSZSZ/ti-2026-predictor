@@ -26,7 +26,11 @@ def _frozen_inputs():
     root = Path(__file__).resolve().parents[1]
     manifest = load_main_roll_research_manifest(root / "config/research/fantasy-main-roll-simulator-v1.json")
     group = load_solver_release_context()
-    main = load_frozen_main_research_context(group, manifest)
+    main = load_frozen_main_research_context(
+        group,
+        manifest,
+        rule_snapshot_path=root / "tests/fixtures/fantasy_main_rule_snapshot_identity_20260813.json",
+    )
     assert main.terminal.scenario_set.model_sha256 == manifest.source.team_strength_model_sha256
     model = TeamStrengthModel(
         {team_id: 1500.0 + index * 15.0 for index, team_id in enumerate(main.terminal.scenario_set.team_ids)}

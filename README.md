@@ -1,6 +1,9 @@
 # TI 2026 游戏内预测决策台
 
-这是一个只在本机运行、可复现的 TI 2026 游戏内活动辅助工具。它覆盖：
+[![GitHub Release](https://img.shields.io/github/v/release/BCSZSZ/ti-2026-predictor?display_name=tag)](https://github.com/BCSZSZ/ti-2026-predictor/releases/latest)
+
+这是一个可复现的 TI 2026 游戏内活动辅助工具，提供公开 Streamlit 手填版和 Windows 本地
+OCR 版。它覆盖：
 
 - 小组赛 16 项预测；
 - 主赛事 14 节点双败预测；
@@ -9,7 +12,27 @@
 
 LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统计模型和固定随机种子产生。
 
+## v0.2.0：Main 五格与 G/G-Lite
+
+- 页面用独立 Tab 切换 `Main（当前 · 五格）` 与 `小组赛（历史 · 三格）`，两阶段不共享状态、
+  OCR 或求解逻辑。
+- Main 支持三面战旗各五格、三个共享 Roll 选项和 30 次 Roll。实际八队冻结前使用 16 支候选队，
+  每个预测情景仍只让八队进入 Main，并显式标记为 `projected/provisional`。
+- 默认策略是 `G`（只比较当前一步）；用户也可主动选择 `G-Lite`，仅在近似平手时执行固定预算的
+  有限二步抽样。G-Lite 当前只有开发阶段正向证据，不替代默认 G，也不宣称全局最优。
+- 公开 Streamlit 只允许手动录入；Windows 本地版在相同手填与求解功能之上，额外提供 Main
+  15 格和小组赛九格的一次性画面识别。两个版本都不会控制 Dota 或自动提交选择。
+
+完整变更见 [v0.2.0 Release](https://github.com/BCSZSZ/ti-2026-predictor/releases/tag/v0.2.0)。
+
 ## 两种发布方式
+
+| 能力 | 公开 Streamlit | Windows 本地版 |
+| --- | --- | --- |
+| Main 五格 / 小组赛三格手填 | 支持 | 支持 |
+| G / G-Lite 分析 | 支持 | 支持 |
+| Dota 画面识别 | 不提供 | 支持 Main 15 格与小组赛九格 |
+| 控制客户端或自动填写 | 不提供 | 不提供 |
 
 ### 1. 公开 Streamlit：仅手动输入
 

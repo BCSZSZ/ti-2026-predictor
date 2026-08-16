@@ -6,7 +6,7 @@ from collections import defaultdict, deque
 from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -239,12 +239,13 @@ def build_evidence_set(
     policy: TeamStrengthPolicy,
     target_patch_family: str | None = None,
     target_team_ids: Collection[int] | None = None,
+    evidence_channel: Literal["team_strength", "fantasy"] = "team_strength",
 ) -> EvidenceSet:
     cutoff = as_utc(as_of)
     if cutoff is None:
         raise ValueError("as_of is required")
     frame, structural_audit, issues = prepare_completed_games(matches, as_of=cutoff)
-    for column in ("patch_name", "league_tier"):
+    for column in ("patch_name", "league_tier", "league_id"):
         if column not in frame:
             frame[column] = None
     target, previous, sequence = patch_window(
@@ -305,9 +306,58 @@ def build_evidence_set(
     age_days = (pd.Timestamp(cutoff) - frame["start_time"]).dt.total_seconds() / 86400.0
     frame["age_days"] = age_days.astype(float)
     frame["time_weight"] = np.power(2.0, -frame["age_days"] / policy.time_half_life_days)
-    frame["evidence_weight"] = (frame["patch_weight"] * frame["tier_weight"] * frame["time_weight"]).astype(
-        float
+    frame["current_event_stage"] = False
+    frame["current_event_stage_multiplier"] = 1.0
+    stage_scope = policy.current_event_stage_scope
+    stage_scope_active = bool(
+        stage_scope is not None and pd.Timestamp(stage_scope.snapshot_available_at) <= pd.Timestamp(cutoff)
     )
+    stage_multiplier = (
+        policy.team_strength_current_event_stage_multiplier
+        if evidence_channel == "team_strength"
+        else policy.fantasy_current_event_stage_multiplier
+    )
+    stage_scope_ids = set(stage_scope.match_ids) if stage_scope is not None else set()
+    stage_present_ids: set[int] = set()
+    stage_missing_ids: list[int] = []
+    stage_league_conflict_ids: list[int] = []
+    if stage_scope_active and stage_scope is not None:
+        match_ids = pd.to_numeric(frame["match_id"], errors="coerce")
+        stage_mask = match_ids.isin(stage_scope_ids)
+        stage_present_ids = {int(value) for value in match_ids.loc[stage_mask].dropna()}
+        stage_missing_ids = sorted(stage_scope_ids - stage_present_ids)
+        league_ids = pd.to_numeric(frame["league_id"], errors="coerce")
+        stage_league_conflict = stage_mask & ~league_ids.eq(stage_scope.league_id)
+        stage_league_conflict_ids = sorted(
+            int(value) for value in match_ids.loc[stage_league_conflict].dropna()
+        )
+        valid_stage = stage_mask & ~stage_league_conflict
+        frame.loc[valid_stage, "current_event_stage"] = True
+        frame.loc[valid_stage, "current_event_stage_multiplier"] = stage_multiplier
+        if stage_missing_ids:
+            issues.append(
+                AuditIssue(
+                    code="model-current-event-stage-missing-games",
+                    severity="blocking",
+                    message="Frozen current-event stage Games are missing from model evidence",
+                    context={"match_ids": stage_missing_ids},
+                )
+            )
+        if stage_league_conflict_ids:
+            issues.append(
+                AuditIssue(
+                    code="model-current-event-stage-league-conflict",
+                    severity="blocking",
+                    message="Frozen current-event stage Games conflict with the declared League ID",
+                    context={"match_ids": stage_league_conflict_ids},
+                )
+            )
+    frame["evidence_weight"] = (
+        frame["patch_weight"]
+        * frame["tier_weight"]
+        * frame["time_weight"]
+        * frame["current_event_stage_multiplier"]
+    ).astype(float)
 
     unknown_patch = frame["patch_family"].isna()
     unrecognized_patch = frame["patch_family"].notna() & ~frame["patch_family"].isin(sequence)
@@ -416,9 +466,10 @@ def build_evidence_set(
             )
         )
     audit: dict[str, Any] = {
-        "weight_formula_version": "major_exact_tier_time_v4",
+        "weight_formula_version": "major_exact_tier_time_stage_v5",
         "weight_policy_sha256": sha256_json(policy.model_dump(mode="json")),
         "policy_id": policy.policy_id,
+        "evidence_channel": evidence_channel,
         "as_of": cutoff.isoformat().replace("+00:00", "Z"),
         "target_patch_family": target,
         "previous_patch_family": previous,
@@ -440,11 +491,23 @@ def build_evidence_set(
         "current_exact_patch_effective_weight": float(
             included.loc[included["current_exact_patch"], "evidence_weight"].sum()
         ),
+        "current_event_stage_scope": (None if stage_scope is None else stage_scope.model_dump(mode="json")),
+        "current_event_stage_scope_active": stage_scope_active,
+        "current_event_stage_multiplier": stage_multiplier,
+        "current_event_stage_present_games": len(stage_present_ids),
+        "current_event_stage_missing_match_ids": stage_missing_ids,
+        "current_event_stage_league_conflict_match_ids": stage_league_conflict_ids,
+        "current_event_stage_games": int(included["current_event_stage"].sum()),
+        "current_event_stage_effective_weight": float(
+            included.loc[included["current_event_stage"], "evidence_weight"].sum()
+        ),
         "by_patch_family": _breakdown(frame, "patch_family"),
         "by_exact_patch_multiplier": _breakdown(frame, "exact_patch_multiplier"),
+        "by_current_event_stage_multiplier": _breakdown(frame, "current_event_stage_multiplier"),
         "by_league_tier": _breakdown(frame, "normalized_league_tier"),
         "selected_by_patch_family": _breakdown(included, "patch_family"),
         "selected_by_exact_patch_multiplier": _breakdown(included, "exact_patch_multiplier"),
+        "selected_by_current_event_stage_multiplier": _breakdown(included, "current_event_stage_multiplier"),
         "selected_by_league_tier": _breakdown(included, "normalized_league_tier"),
         "selected_by_team_identity_bridge": _identity_bridge_breakdown(frame, included),
     }

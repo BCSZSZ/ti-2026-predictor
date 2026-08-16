@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
@@ -19,6 +20,33 @@ class CurrentExactPatchWeight(_PolicyModel):
     patch_name: str = Field(pattern=r"^\d+\.\d+[a-z]+$")
     active_from: AwareDatetime
     multiplier: float = Field(gt=0.0, le=10.0)
+
+
+class CurrentEventStageScope(_PolicyModel):
+    event_id: str = Field(min_length=1)
+    target_period: Literal["main"]
+    league_id: int = Field(gt=0)
+    stage_id: str = Field(min_length=1)
+    completed_at: AwareDatetime
+    snapshot_available_at: AwareDatetime
+    match_ids: tuple[int, ...] = Field(min_length=1)
+    match_ids_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    source: str = Field(min_length=1)
+    provenance: Literal["exact", "derived"]
+
+    @model_validator(mode="after")
+    def validate_frozen_game_scope(self) -> CurrentEventStageScope:
+        if len(self.match_ids) != len(set(self.match_ids)):
+            raise ValueError("current-event stage match_ids must be unique")
+        if any(match_id <= 0 for match_id in self.match_ids):
+            raise ValueError("current-event stage match_ids must contain only positive stable IDs")
+        if self.snapshot_available_at < self.completed_at:
+            raise ValueError("current-event stage snapshot cannot predate stage completion")
+        payload = ",".join(str(match_id) for match_id in sorted(self.match_ids))
+        actual_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        if actual_hash != self.match_ids_sha256:
+            raise ValueError("current-event stage match_ids_sha256 does not match match_ids")
+        return self
 
 
 class EloPolicy(_PolicyModel):
@@ -88,6 +116,9 @@ class TeamStrengthPolicy(_PolicyModel):
     evidence_scope: EvidenceScopePolicy = Field(default_factory=EvidenceScopePolicy)
     patch_weights: PatchWeights
     current_exact_patch_weight: CurrentExactPatchWeight | None = None
+    current_event_stage_scope: CurrentEventStageScope | None = None
+    team_strength_current_event_stage_multiplier: float = Field(default=1.0, gt=0.0, le=10.0)
+    fantasy_current_event_stage_multiplier: float = Field(default=1.0, gt=0.0, le=10.0)
     tier_weights: dict[str, float]
     time_half_life_days: float = Field(gt=0.0)
     elo: EloPolicy
@@ -107,6 +138,11 @@ class TeamStrengthPolicy(_PolicyModel):
             and not self.ti2025_holdout.target_team_ids
         ):
             raise ValueError("target-connected policies must declare TI 2025 target_team_ids")
+        if self.current_event_stage_scope is None and (
+            self.team_strength_current_event_stage_multiplier != 1.0
+            or self.fantasy_current_event_stage_multiplier != 1.0
+        ):
+            raise ValueError("current-event stage multipliers require a frozen stage scope")
         return self
 
 

@@ -15,6 +15,7 @@ def _project_root() -> Path:
 @dataclass(frozen=True)
 class ProjectPaths:
     root: Path = _project_root()
+    processed_override: Path | None = None
 
     @property
     def config(self) -> Path:
@@ -46,7 +47,7 @@ class ProjectPaths:
 
     @property
     def processed(self) -> Path:
-        return self.data / "processed"
+        return self.processed_override or self.data / "processed"
 
     @property
     def cache(self) -> Path:

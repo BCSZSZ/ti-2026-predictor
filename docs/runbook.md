@@ -215,9 +215,10 @@ with a newly captured OpenDota response.
 uv run ti web
 ```
 
-服务启动时自动验证 `current.json` 与 `main-current.json` 并加载其指向的当前发布包；存在正式
-`actual` 包时使用八队模式，否则直接使用可计算的 16 队 `projected` 模式。玩家不运行下面的
-发布命令，也不需要填写 `as_of`。`--manual` 可关闭 Windows 本地 OCR，只保留手动录入。
+服务启动时自动验证 `current.json` 与 `main-current.json` 并加载其指向的当前发布包。当前 Main
+已是 `ready / actual`：数据截止 `2026-08-16T15:31:30Z`，三个位置各使用正式八队与赛后
+Fantasy pool。16 队 `projected` 只保留为名单形成前的维护者历史流程。玩家不运行下面的发布
+命令，也不需要填写 `as_of`。`--manual` 可关闭 Windows 本地 OCR，只保留手动录入。
 
 Main 页面提供两个正式入口策略：默认 `G` 只比较当前可见动作的一步期望价值；用户可切换到
 `G-Lite`，后者仅在前两项差距不超过当前价值的 0.05% 时，对两项各抽 4 个固定下一轮样本，
@@ -242,13 +243,30 @@ proxy，页面会显示 provisional 警告，但计算按钮保持可用。
 Group 与淘汰轮结束、实际八队和种子形成后，必须先更新比赛与 Fantasy 原始证据，再缩减候选集：
 
 ```powershell
-uv run --env-file .env ti data sync --as-of 2026-08-16T23:59:59Z --year 2026 --request-limit 500
-uv run ti data replay-fantasy --as-of 2026-08-16T23:59:59Z --year 2026 --workers 4
-# 将 8 个稳定 Team ID 按正式 Main 种子顺序写入 config/ti2026.yaml 的 main_event_seeds
-uv run ti fantasy main-solver-release --mode actual --as-of 2026-08-16T23:59:59Z
+uv run ti data main-actual-materialize `
+  --as-of 2026-08-16T15:31:30Z `
+  --catalog-audit data/raw/opendota/audits/20260816T122321Z/manifest.json `
+  --workspace data/processed/work/main-actual-20260816T153130Z
+uv run ti data replay-fantasy `
+  --as-of 2026-08-16T15:31:30Z `
+  --year 2026 `
+  --workers 4 `
+  --processed-dir data/processed/work/main-actual-20260816T153130Z
+uv run ti data main-actual-freeze `
+  --workspace data/processed/work/main-actual-20260816T153130Z
+uv run ti fantasy main-solver-release --mode actual --as-of 2026-08-16T15:31:30Z
+uv run ti fantasy main-publication-evidence `
+  --as-of 2026-08-16T15:31:30Z `
+  --hero-source data/raw/rules-title/20260810T134512Z-7d89d1a71895/scripts/npc/npc_heroes.txt
 ```
 
-`actual` 模式会从刷新后的 processed snapshot 重建并内嵌 Main Fantasy Series pools；它要求存在
+`main-actual-materialize` 只读取不可变 OpenDota raw 和全年目录审计，不发网络请求；它会生成隔离
+workspace，并把 replay 范围缩到实际八队在本届 TI 已打的比赛。`replay-fantasy` 在该 workspace
+中复用既有 exact 结果，只补齐剩余比赛。若 replay 的实际抓取时间晚于第一次 materialize 的
+`as_of`，必须把最终 `as_of` 推进到最后一次抓取之后，重新 materialize 并从已缓存 raw 复算，
+然后才允许 freeze。Group 的 processed 数据和发布指针始终不被覆盖。
+
+`actual` 模式会从指针选中的内容寻址 Main snapshot 重建并内嵌 Fantasy Series pools；它要求存在
 晚于 Group 冻结点的本届赛事 Fantasy Game，并要求八支实际参赛队都已有本届赛事 Fantasy 行。
 如果池仍与 Group 冻结包相同、名单不是 8 队、截止时间晚于 `main_lock_at` 或模型/证据被阻断，
 发布命令会失败。默认 `--mode auto` 在没有 8 个种子时选择 `projected`，有 8 个种子时选择

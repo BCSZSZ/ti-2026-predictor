@@ -20,6 +20,7 @@ from typing import Any, Literal
 import numpy as np
 from scipy import stats
 
+from ti_predictor.fantasy.main_advice_strategy import load_main_advice_strategy_catalog
 from ti_predictor.fantasy.main_roll import MainRollState
 from ti_predictor.fantasy.main_roll_research_contract import (
     MainRollResearchManifest,
@@ -93,9 +94,8 @@ def _initialize_episode_worker_from_files(
 ) -> None:
     global _WORKER_CONTEXT
     manifest = load_main_roll_research_manifest(Path(manifest_path))
-    _validate_runtime_sources(manifest)
     group_context = load_solver_release_context()
-    main_context = load_main_solver_release_context(group_context)
+    main_context = load_frozen_main_research_context(group_context, manifest)
     model, model_report = load_strength_model_as_of(as_of=manifest.as_of)
     blocking = [issue.message for issue in model_report.issues if issue.severity == "blocking"]
     if blocking or sha256_json(model.as_dict()) != manifest.source.team_strength_model_sha256:
@@ -780,18 +780,32 @@ def write_research_experiment_bundle(
     return destination
 
 
-def _validate_runtime_sources(manifest: MainRollResearchManifest) -> None:
-    pointer_path = PATHS.root / "deploy/runtime/main-current.json"
-    pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
-    if pointer.get("release_sha256") != manifest.source.main_release_sha256:
-        raise MainResearchExperimentError("Main release differs from the frozen research manifest")
-    if pointer.get("file_sha256") != manifest.source.main_release_file_sha256:
-        raise MainResearchExperimentError("Main release file differs from the research manifest")
-    if pointer.get("eligibility_mode") != manifest.source.eligibility_mode:
-        raise MainResearchExperimentError("Main eligibility mode differs from the research manifest")
-    if pointer.get("as_of") != manifest.as_of:
-        raise MainResearchExperimentError("Main release cutoff differs from the research manifest")
-    snapshot_path = PATHS.root / "data/raw/rules" / manifest.source.rule_snapshot_id / "rule_snapshot.json"
+def _frozen_main_release_path(manifest: MainRollResearchManifest) -> Path:
+    cutoff = manifest.as_of.replace("-", "").replace(":", "")
+    selected = (
+        PATHS.root
+        / "deploy/runtime/releases"
+        / f"main-roll-{cutoff}-{manifest.source.main_release_sha256[:12]}.json.zst"
+    ).resolve()
+    runtime_root = (PATHS.root / "deploy/runtime/releases").resolve()
+    if not selected.is_relative_to(runtime_root):
+        raise MainResearchExperimentError("frozen Main release escaped the runtime release directory")
+    if not selected.is_file():
+        raise MainResearchExperimentError("frozen Main research release is unavailable")
+    if sha256_file(selected) != manifest.source.main_release_file_sha256:
+        raise MainResearchExperimentError("frozen Main release file differs from the research manifest")
+    return selected
+
+
+def _validate_runtime_sources(
+    manifest: MainRollResearchManifest,
+    *,
+    rule_snapshot_path: Path | None = None,
+) -> None:
+    _frozen_main_release_path(manifest)
+    snapshot_path = rule_snapshot_path or (
+        PATHS.root / "data/raw/rules" / manifest.source.rule_snapshot_id / "rule_snapshot.json"
+    )
     try:
         snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
@@ -802,6 +816,47 @@ def _validate_runtime_sources(manifest: MainRollResearchManifest) -> None:
         raise MainResearchExperimentError("canonical Rule file differs from the client snapshot")
     if rules_hash(PATHS.rules) != manifest.source.canonical_rules_sha256:
         raise MainResearchExperimentError("current canonical Rule file differs from the manifest")
+
+
+def load_frozen_main_research_context(
+    group_context,
+    manifest: MainRollResearchManifest,
+    *,
+    rule_snapshot_path: Path | None = None,
+):
+    """Load the manifest-pinned projected release without consulting the production pointer.
+
+    Production callers use the immutable raw client snapshot. Tests may provide a committed
+    identity fixture so a clean checkout does not depend on ignored raw evidence.
+    """
+
+    _validate_runtime_sources(manifest, rule_snapshot_path=rule_snapshot_path)
+    main_context = load_main_solver_release_context(
+        group_context,
+        path=_frozen_main_release_path(manifest),
+        legacy_research_strategy_catalog=load_main_advice_strategy_catalog(
+            PATHS.config / "models/fantasy-main-advice-strategies-v1.json"
+        ),
+    )
+    if main_context.eligibility_mode != manifest.source.eligibility_mode:
+        raise MainResearchExperimentError("frozen Main eligibility mode differs from the manifest")
+    if main_context.as_of != manifest.as_of:
+        raise MainResearchExperimentError("frozen Main cutoff differs from the manifest")
+    if sha256_json(group_context.canonical_rules) != manifest.source.main_release_canonical_rules_sha256:
+        raise MainResearchExperimentError("frozen Main release rules differ from the manifest")
+    if sha256_json(asdict(main_context.roll_rules)) != manifest.source.roll_rules_sha256:
+        raise MainResearchExperimentError("frozen Roll rules differ from the manifest")
+    if group_context.scenarios.semantic_hash != manifest.source.group_scenario_sha256:
+        raise MainResearchExperimentError("frozen Group Scenarios differ from the manifest")
+    if group_context.scenarios.as_of != manifest.source.group_scenario_as_of:
+        raise MainResearchExperimentError("frozen Group Scenario cutoff differs from the manifest")
+    if main_context.terminal.scenario_set.semantic_hash != manifest.source.main_scenario_sha256:
+        raise MainResearchExperimentError("frozen Main Scenarios differ from the manifest")
+    if main_context.terminal.pool_result.semantic_hash != manifest.source.main_pool_sha256:
+        raise MainResearchExperimentError("frozen Main Series pools differ from the manifest")
+    if main_context.terminal.scenario_set.model_sha256 != manifest.source.team_strength_model_sha256:
+        raise MainResearchExperimentError("frozen Main Team-strength model differs from the manifest")
+    return main_context
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -840,9 +895,8 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     arguments = _parser().parse_args(argv)
     manifest = load_main_roll_research_manifest(arguments.manifest.resolve())
-    _validate_runtime_sources(manifest)
     group_context = load_solver_release_context()
-    main_context = load_main_solver_release_context(group_context)
+    main_context = load_frozen_main_research_context(group_context, manifest)
     if sha256_json(group_context.canonical_rules) != manifest.source.main_release_canonical_rules_sha256:
         raise MainResearchExperimentError("loaded Main release rules differ from the manifest")
     if sha256_json(asdict(main_context.roll_rules)) != manifest.source.roll_rules_sha256:

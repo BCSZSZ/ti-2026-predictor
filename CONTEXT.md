@@ -95,15 +95,25 @@ _Avoid_: Exact hotfix Patch, calendar year, API version
 
 **Game evidence weight / 单局证据权重**:
 A preregistered non-negative measure of how much one historical Game informs a Forecast, based
-only on its Major gameplay patch, whether it is on the Current exact gameplay patch, League tier
-and age at the run's `as_of`.
+on its Major gameplay patch, whether it is on the Current exact gameplay patch, League tier, age
+at the run's `as_of` and any declared Current-event stage evidence multiplier.
 _Avoid_: Sampling probability, confidence score, post-hoc performance adjustment
+
+**Current-event stage evidence multiplier / 当前赛事阶段证据乘数**:
+A preregistered coefficient that gives completed Games from a declared earlier stage of the event
+currently being forecast additional evidential influence without changing their observed results.
+_Avoid_: Fantasy score multiplier, tournament prestige bonus, post-hoc recent-form adjustment
 
 **Target-team evidence network / 目标队证据网络**:
 The union of connected components in the positive-weight, `as_of`-prior professional Game graph
 that contain a declared Forecast target team. It recursively includes opponents while excluding
 disconnected competition ecosystems.
 _Avoid_: Target-team-only history, complete professional catalog, current-team history
+
+**Target-network detail scope / 目标网络详情范围**:
+The Games in a declared UTC-year Target-team evidence network whose immutable match-detail
+responses are retained for completeness auditing and later feature generation.
+_Avoid_: Professional match catalog, Fantasy player history scope, all parsed match details
 
 **Tournament holdout / 赛事留出集**:
 A complete tournament excluded from model fitting and parameter selection, then evaluated only
@@ -113,6 +123,16 @@ _Avoid_: Calibration window, rolling validation window, training tournament
 **Data snapshot / 数据快照**:
 An immutable view of raw and normalized evidence available at a fixed collection time.
 _Avoid_: Forecast run
+
+**Scope event cutoff / 范围事件截止**:
+A UTC boundary selecting which completed Games may belong to one acquisition scope; it does not
+assert that every source response was already available at that boundary.
+_Avoid_: Forecast `as_of`, snapshot availability time, fetch completion time
+
+**Snapshot availability time / 快照可用时间**:
+The latest source-capture time among all evidence in a Data snapshot, establishing the earliest
+Forecast `as_of` that may use the complete snapshot.
+_Avoid_: Scope event cutoff, Game completion time, run start
 
 ## Fantasy
 

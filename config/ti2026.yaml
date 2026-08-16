@@ -3,6 +3,7 @@ event_id: international_2026
 display_name: The International 2026
 league_id: 19719
 team_strength_policy: models/team-strength-v2.json
+main_team_strength_policy: models/team-strength-main-v1.json
 timezone: Asia/Shanghai
 history_league_ids:
   - 18324
@@ -10,8 +11,9 @@ group_lock_at: '2026-08-13T02:00:00Z'
 main_lock_at: '2026-08-20T02:00:00Z'
 roster_valid_from: '2026-07-31T00:00:00Z'
 roster_snapshot_as_of: '2026-08-10T13:44:36Z'
-# Fill only after Valve publishes the actual eight-team Main Event seeding.
-main_event_seeds: []
+# Official-broadcast Main bracket seed order. BracketEngine maps this to
+# 1v8, 4v5, 2v7 and 3v6, reproducing the four published first-round slots.
+main_event_seeds: [10150413, 2163, 10136357, 9572001, 8255888, 9247354, 9823272, 7119388]
 teams:
   - team_id: 2163
     name: Team Liquid

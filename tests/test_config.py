@@ -7,6 +7,7 @@ import pytest
 from ti_predictor.config import (
     load_swiss_format,
     load_swiss_simulation_policy,
+    load_team_strength_policy,
     load_tournament_manifest,
     roster_intervals,
 )
@@ -71,6 +72,29 @@ def test_manifest_records_verified_registration_identity_bridges(project_paths) 
     assert teams[10150413].registration_identity.valid_from == datetime(2026, 6, 1, tzinfo=UTC)
     assert teams[5017210].registration_identity is not None
     assert teams[5017210].registration_identity.valid_from == datetime(2026, 4, 8, 9, 8, 1, tzinfo=UTC)
+
+
+def test_main_policy_and_official_broadcast_seed_order_are_period_isolated(project_paths) -> None:
+    manifest = load_tournament_manifest(project_paths.tournament)
+    group_policy = load_team_strength_policy(manifest, config_root=project_paths.config)
+    main_policy = load_team_strength_policy(
+        manifest,
+        config_root=project_paths.config,
+        period="main",
+    )
+
+    assert group_policy.current_event_stage_scope is None
+    assert main_policy.current_event_stage_scope is not None
+    assert len(main_policy.current_event_stage_scope.match_ids) == 109
+    assert main_policy.team_strength_current_event_stage_multiplier == 1.5
+    assert main_policy.fantasy_current_event_stage_multiplier == 1.5
+    seeds = manifest.main_event_seeds
+    assert [(seeds[0], seeds[7]), (seeds[3], seeds[4]), (seeds[1], seeds[6]), (seeds[2], seeds[5])] == [
+        (10150413, 7119388),
+        (9572001, 8255888),
+        (2163, 9823272),
+        (10136357, 9247354),
+    ]
 
 
 def test_swiss_format_has_official_round_one_pairs_and_stable_ids(project_paths) -> None:

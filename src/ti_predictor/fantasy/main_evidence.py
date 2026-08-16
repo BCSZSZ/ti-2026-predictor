@@ -18,6 +18,7 @@ from ti_predictor.fantasy.scenarios import (
 )
 from ti_predictor.forecasting import _available_by_as_of, load_strength_model_as_of
 from ti_predictor.hashing import sha256_file, sha256_json
+from ti_predictor.ingest.main_actual import main_evidence_paths
 from ti_predictor.models.evidence import build_evidence_set
 from ti_predictor.models.policy import EvidenceScopePolicy
 from ti_predictor.models.ratings import ModelReport, TeamStrengthModel
@@ -49,6 +50,7 @@ def build_main_evidence_snapshot(
     cutoff = as_utc(as_of)
     if cutoff is None:
         raise ValueError("Main evidence requires an explicit as_of")
+    paths = main_evidence_paths(paths, require=True)
     cutoff_text = cutoff.isoformat().replace("+00:00", "Z")
     manifest = load_tournament_manifest(paths.tournament)
     rules = load_rules(paths.rules)
@@ -66,12 +68,16 @@ def build_main_evidence_snapshot(
     matches = _available_by_as_of(read_parquet_if_exists(matches_path), cutoff)
     observations = _available_by_as_of(read_parquet_if_exists(observations_path), cutoff)
     patches = _available_by_as_of(read_parquet_if_exists(patches_path), cutoff)
-    model, model_report = load_strength_model_as_of(as_of=cutoff, paths=paths)
+    model, model_report = load_strength_model_as_of(as_of=cutoff, paths=paths, period="main")
     blocking_model = [issue.message for issue in model_report.issues if issue.severity == "blocking"]
     if blocking_model:
         raise ValueError("Main Team-strength model is blocked: " + "; ".join(blocking_model))
 
-    strength_policy = load_team_strength_policy(manifest, config_root=paths.config)
+    strength_policy = load_team_strength_policy(
+        manifest,
+        config_root=paths.config,
+        period="main",
+    )
     fantasy_policy = strength_policy.model_copy(
         update={
             "policy_id": f"{strength_policy.policy_id}-fantasy-player-history",
@@ -84,6 +90,7 @@ def build_main_evidence_snapshot(
         as_of=cutoff,
         policy=fantasy_policy,
         target_patch_family=model.target_patch_family,
+        evidence_channel="fantasy",
     )
     blocking_evidence = [issue.message for issue in evidence.issues if issue.severity == "blocking"]
     if blocking_evidence:

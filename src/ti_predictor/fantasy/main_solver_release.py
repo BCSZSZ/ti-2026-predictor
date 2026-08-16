@@ -257,22 +257,41 @@ def load_main_solver_release_context(
     path: Path | None = None,
     *,
     paths: ProjectPaths = PATHS,
+    legacy_research_strategy_catalog: MainAdviceStrategyCatalog | None = None,
 ) -> MainCurrentAdvisorContext:
     pointer = None if path is not None else _read_pointer(paths)
     selected = path.resolve() if path is not None else _release_path(pointer, paths)
     payload = _read_release(selected, pointer=pointer)
-    if payload.get("schema_version") != MAIN_SOLVER_RELEASE_SCHEMA_VERSION:
+    legacy_research_release = (
+        payload.get("schema_version") == 2
+        and pointer is None
+        and legacy_research_strategy_catalog is not None
+    )
+    if legacy_research_strategy_catalog is not None and not legacy_research_release:
+        raise MainSolverReleaseError("legacy Main compatibility is restricted to explicit research files")
+    if payload.get("schema_version") != MAIN_SOLVER_RELEASE_SCHEMA_VERSION and not legacy_research_release:
         raise MainSolverReleaseError("Main 发布文件版本不受支持")
     if payload.get("release_id") != MAIN_SOLVER_RELEASE_ID or payload.get("period") != "main":
         raise MainSolverReleaseError("Main 发布文件身份不正确")
-    expected_runtime = {
-        "accepted_input": "confirmed-main-roll-state-v1",
-        "contains_raw_data": False,
-        "contains_ocr": False,
-        "contains_screen_capture": False,
-        "contains_dota_client_control": False,
-        "future_offer_generation": "g-lite-only-bounded-primary-model-sampling-v1",
-    }
+    expected_runtime = (
+        {
+            "accepted_input": "confirmed-main-roll-state-v1",
+            "contains_raw_data": False,
+            "contains_ocr": False,
+            "contains_screen_capture": False,
+            "contains_dota_client_control": False,
+            "future_offer_generation": False,
+        }
+        if legacy_research_release
+        else {
+            "accepted_input": "confirmed-main-roll-state-v1",
+            "contains_raw_data": False,
+            "contains_ocr": False,
+            "contains_screen_capture": False,
+            "contains_dota_client_control": False,
+            "future_offer_generation": "g-lite-only-bounded-primary-model-sampling-v1",
+        }
+    )
     if payload.get("runtime_contract") != expected_runtime:
         raise MainSolverReleaseError("Main 发布运行边界发生漂移")
     provenance = payload.get("provenance")
@@ -287,15 +306,18 @@ def load_main_solver_release_context(
         raise MainSolverReleaseError("Main 冻结策略无效") from error
     if provenance.get("policy_sha256") != sha256_json(policy.model_dump(mode="json")):
         raise MainSolverReleaseError("Main 冻结策略哈希无效")
-    strategy_payload = payload.get("advice_strategy_catalog")
-    if not isinstance(strategy_payload, Mapping):
-        raise MainSolverReleaseError("Main 发布缺少 G / G-Lite 策略目录")
-    try:
-        strategy_catalog = MainAdviceStrategyCatalog.model_validate(strategy_payload)
-    except ValueError as error:
-        raise MainSolverReleaseError("Main G / G-Lite 策略目录无效") from error
-    if provenance.get("advice_strategy_catalog_sha256") != strategy_catalog.semantic_hash:
-        raise MainSolverReleaseError("Main G / G-Lite 策略目录哈希无效")
+    if legacy_research_release:
+        strategy_catalog = legacy_research_strategy_catalog
+    else:
+        strategy_payload = payload.get("advice_strategy_catalog")
+        if not isinstance(strategy_payload, Mapping):
+            raise MainSolverReleaseError("Main 发布缺少 G / G-Lite 策略目录")
+        try:
+            strategy_catalog = MainAdviceStrategyCatalog.model_validate(strategy_payload)
+        except ValueError as error:
+            raise MainSolverReleaseError("Main G / G-Lite 策略目录无效") from error
+        if provenance.get("advice_strategy_catalog_sha256") != strategy_catalog.semantic_hash:
+            raise MainSolverReleaseError("Main G / G-Lite 策略目录哈希无效")
     if provenance.get("canonical_rules_sha256") != sha256_json(group_context.canonical_rules):
         raise MainSolverReleaseError("Main 发布与规则版本不一致")
     pool_payload = payload.get("pool_result")

@@ -52,9 +52,10 @@ Group 结束后先运行 `ti data sync` 与 `ti data replay-fantasy` 更新原�
 再把实际八个稳定 ID 按正式种子顺序写入 `main_event_seeds`，最后执行：
 
 ```powershell
-uv run ti fantasy main-solver-release --mode actual --as-of <UTC截止时间>
+uv run ti fantasy main-solver-release --mode actual --as-of <UTC截止时间> --hero-source <npc_heroes.txt>
 ```
 
-该命令从刷新后的证据重建并内嵌 Main Series pools，将候选列表缩为八队并把指针改为 `ready`。
+该命令从刷新后的证据重建并内嵌 Main Series pools 与动态 Title 证据，将候选
+列表缩为八队并把指针改为 `ready`。
 缺少晚于 Group 冻结点的本届赛事 Fantasy Game、任一实际参赛队缺少本届赛事 Fantasy 行，或
 样本池仍等于 Group 冻结池时都会失败。消费者仍不得自行同步、重建或访问网络。

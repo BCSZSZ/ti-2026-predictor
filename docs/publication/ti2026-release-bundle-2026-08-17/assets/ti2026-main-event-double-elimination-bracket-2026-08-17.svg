@@ -44,7 +44,7 @@
   <rect x="22" y="630" width="1876" height="390" rx="14" fill="#151a20" stroke="#2e3940"/>
 
   <text class="title" x="42" y="52">TI 2026 MAIN EVENT · 推荐双败网格</text>
-  <text class="subtitle" x="42" y="82">期望积分、Top-10 与 Top-100 代理目标给出同一答案 · 期望积分 2647.872 · P50 / P90 = 2520 / 5400</text>
+  <text class="subtitle" x="42" y="82">默认期望积分网格 2464.237 · P50 / P90 = 1800 / 5400 · 三目标均选 VISION；Top-10 仅 LB R2 A 改选 BB</text>
 
   <text class="band-title" x="42" y="132">胜者组</text>
 
@@ -62,19 +62,19 @@
   </g>
 
   <g aria-label="败者组晋级线">
-    <path class="lower-line" d="M320 766 H350 V712 H390"/>
-    <path class="lower-line" d="M320 917 H350 V922 H390"/>
-    <path class="lower-line" d="M670 741 H705 V822 H740"/>
-    <path class="lower-line" d="M670 951 H705 V851 H740"/>
-    <path class="lower-line" d="M1020 822 H1090"/>
-    <path class="lower-line" d="M1370 851 H1406 V566 H1440"/>
+    <path class="lower-line" d="M320 797 H350 V747 H390"/>
+    <path class="lower-line" d="M320 919 H350 V957 H390"/>
+    <path class="lower-line" d="M670 718 H705 V828 H740"/>
+    <path class="lower-line" d="M670 928 H705 V857 H740"/>
+    <path class="lower-line" d="M1020 857 H1055 V828 H1090"/>
+    <path class="lower-line" d="M1370 857 H1406 V572 H1440"/>
   </g>
 
   <g aria-label="从胜者组落入败者组的路径">
-    <path class="drop-line" d="M670 232 H688 V741 H390"/>
-    <path class="drop-line" d="M670 501 H720 V951 H390"/>
-    <path class="drop-line" d="M1020 381 H1052 V851 H1090"/>
-    <text class="drop-label" x="696" y="650">胜者组半决赛败者 ↓</text>
+    <path class="drop-line" d="M670 507 H700 V718 H390"/>
+    <path class="drop-line" d="M670 238 H720 V928 H390"/>
+    <path class="drop-line" d="M1020 387 H1052 V857 H1090"/>
+    <text class="drop-label" x="696" y="650">胜者组半决赛败者交叉 ↓</text>
     <text class="drop-label" x="1060" y="650">胜者组决赛败者 ↓</text>
   </g>
 
@@ -182,37 +182,37 @@
     <text class="team" x="12" y="72">Team Falcons</text>
   </g>
 
-  <g transform="translate(390 675)" filter="url(#shadow)" data-node="lower_r2_a" data-left-team-id="8255888" data-right-team-id="10150413" data-winner-team-id="10150413" aria-label="败者组第二轮 A，Iron Wing 战胜 BoomBoys">
+  <g transform="translate(390 675)" filter="url(#shadow)" data-node="lower_r2_a" data-left-team-id="10136357" data-right-team-id="8255888" data-winner-team-id="10136357" aria-label="败者组第二轮 A，Nigma Galaxy 战胜 BoomBoys">
     <rect class="match-shell" width="280" height="80" rx="7"/>
     <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
     <text class="match-label" x="12" y="15">LB R2 · A</text>
-    <text class="team" x="12" y="43">BoomBoys</text>
+    <rect class="winner-row" x="1" y="22" width="278" height="29"/>
+    <text class="winner" x="12" y="43">Nigma Galaxy</text>
+    <text class="check" x="255" y="43">✓</text>
     <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
-    <rect class="winner-row" x="1" y="51" width="278" height="28"/>
-    <text class="winner" x="12" y="72">Iron Wing</text>
-    <text class="check" x="255" y="72">✓</text>
+    <text class="team" x="12" y="72">BoomBoys</text>
   </g>
 
-  <g transform="translate(390 885)" filter="url(#shadow)" data-node="lower_r2_b" data-left-team-id="9823272" data-right-team-id="10136357" data-winner-team-id="10136357" aria-label="败者组第二轮 B，Nigma Galaxy 战胜 Team Yandex">
+  <g transform="translate(390 885)" filter="url(#shadow)" data-node="lower_r2_b" data-left-team-id="10150413" data-right-team-id="9823272" data-winner-team-id="10150413" aria-label="败者组第二轮 B，Iron Wing 战胜 Team Yandex">
     <rect class="match-shell" width="280" height="80" rx="7"/>
     <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
     <text class="match-label" x="12" y="15">LB R2 · B</text>
-    <text class="team" x="12" y="43">Team Yandex</text>
-    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
-    <rect class="winner-row" x="1" y="51" width="278" height="28"/>
-    <text class="winner" x="12" y="72">Nigma Galaxy</text>
-    <text class="check" x="255" y="72">✓</text>
-  </g>
-
-  <g transform="translate(740 785)" filter="url(#shadow)" data-node="lower_r3" data-left-team-id="10150413" data-right-team-id="10136357" data-winner-team-id="10150413" aria-label="败者组第三轮，Iron Wing 战胜 Nigma Galaxy">
-    <rect class="match-shell" width="280" height="80" rx="7"/>
-    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
-    <text class="match-label" x="12" y="15">LB R3</text>
     <rect class="winner-row" x="1" y="22" width="278" height="29"/>
     <text class="winner" x="12" y="43">Iron Wing</text>
     <text class="check" x="255" y="43">✓</text>
     <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
-    <text class="team" x="12" y="72">Nigma Galaxy</text>
+    <text class="team" x="12" y="72">Team Yandex</text>
+  </g>
+
+  <g transform="translate(740 785)" filter="url(#shadow)" data-node="lower_r3" data-left-team-id="10136357" data-right-team-id="10150413" data-winner-team-id="10150413" aria-label="败者组第三轮，Iron Wing 战胜 Nigma Galaxy">
+    <rect class="match-shell" width="280" height="80" rx="7"/>
+    <rect class="match-header" x="1" y="1" width="278" height="21" rx="6"/>
+    <text class="match-label" x="12" y="15">LB R3</text>
+    <text class="team" x="12" y="43">Nigma Galaxy</text>
+    <line class="separator" x1="1" y1="51" x2="279" y2="51"/>
+    <rect class="winner-row" x="1" y="51" width="278" height="28"/>
+    <text class="winner" x="12" y="72">Iron Wing</text>
+    <text class="check" x="255" y="72">✓</text>
   </g>
 
   <g transform="translate(1090 785)" filter="url(#shadow)" data-node="lower_final" data-left-team-id="10150413" data-right-team-id="2163" data-winner-team-id="2163" aria-label="败者组决赛，Team Liquid 战胜 Iron Wing">
@@ -239,11 +239,11 @@
   </g>
 
   <path class="upper-line" d="M1720 537 H1755"/>
-  <g transform="translate(1755 490)" filter="url(#shadow)" aria-label="推荐冠军 TEAM VISION，冠军边际概率 40.37%">
+  <g transform="translate(1755 490)" filter="url(#shadow)" aria-label="推荐冠军 TEAM VISION，冠军边际概率 40.15%">
     <rect width="145" height="100" rx="12" fill="url(#champion)"/>
     <text class="champion-kicker" x="72.5" y="25" text-anchor="middle">推荐冠军</text>
     <text class="champion-team" x="72.5" y="54" text-anchor="middle">VISION</text>
-    <text class="champion-prob" x="72.5" y="79" text-anchor="middle">40.37%</text>
+    <text class="champion-prob" x="72.5" y="79" text-anchor="middle">40.15%</text>
   </g>
 
   <line class="section-rule" x1="40" y1="1000" x2="1880" y2="1000"/>

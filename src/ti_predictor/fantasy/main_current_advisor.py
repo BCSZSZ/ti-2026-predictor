@@ -10,6 +10,7 @@ from typing import Any, Literal, Protocol
 import numpy as np
 
 from ti_predictor.fantasy.advisor import action_identity, action_label
+from ti_predictor.fantasy.current_advisor import rank_title_for_lineup
 from ti_predictor.fantasy.main_advice_policy import (
     MainImmediateActionValue,
     choose_greedy_main_action,
@@ -91,6 +92,13 @@ class MainCurrentAdvisorContext:
     scenario_count: int
     team_names: Mapping[int, str]
     strategy_catalog: MainAdviceStrategyCatalog
+    title_evidence: Mapping[str, Any] | None = None
+    title_top_k: int = 3
+    title_excluded_suffix_ids: tuple[str, ...] = (
+        "early_first_blood",
+        "late_first_blood",
+        "fountain",
+    )
     eligibility_mode: Literal["projected", "actual"] = "actual"
     primary_model: str = "client-weight-primary-v1"
     models: tuple[str, ...] = (
@@ -120,6 +128,8 @@ class MainCurrentAdvisorContext:
             raise MainCurrentAdvisorError("Main transition models are inconsistent")
         if self.strategy_catalog.primary_transition_model != self.primary_model:
             raise MainCurrentAdvisorError("Main strategy catalog and transition model are inconsistent")
+        if self.title_top_k < 1 or self.title_top_k > 8:
+            raise MainCurrentAdvisorError("Main Title top_k must be between one and eight")
         if set(dict(self.risk_profiles)) != {"mean-first", "balanced", "downside-first"}:
             raise MainCurrentAdvisorError("Main advisor requires the three risk profiles")
         if not 0.0 < self.cvar_alpha <= 1.0:
@@ -512,6 +522,17 @@ def analyze_main_current_screen(
             str(row["action_id"]),
         )
     )
+    title = (
+        rank_title_for_lineup(
+            context.title_evidence,
+            selected_team_ids=current.selected_team_ids,
+            role_base_means=current.role_base_means,
+            excluded_suffix_ids=context.title_excluded_suffix_ids,
+            top_k=context.title_top_k,
+        )
+        if context.title_evidence is not None
+        else None
+    )
     payload = {
         "schema_version": 2,
         "period": "main",
@@ -553,6 +574,7 @@ def analyze_main_current_screen(
             "maximum_mean": current.maximum_mean,
             "role_base_means": dict(current.role_base_means),
         },
+        "title": title,
         "recommendation": recommendation,
         "primary_action_values": primary_rows,
         "preferred_by_model": list(table.preferred_by_model),

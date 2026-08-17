@@ -31,6 +31,7 @@ from ti_predictor.fantasy.main_solver_release import (
     main_solver_readiness,
     write_main_solver_release_bundle,
 )
+from ti_predictor.fantasy.main_title_runtime import build_main_title_runtime_evidence
 from ti_predictor.fantasy.playbook_reporting import generate_group_playbook_evidence
 from ti_predictor.fantasy.solver_release import (
     SOLVER_RELEASE_ID,
@@ -864,6 +865,15 @@ def fantasy_main_solver_release(
             help="auto 在无正式种子时发布 16 队预测模式，有正式八队后发布实际模式。",
         ),
     ] = "auto",
+    hero_source: Annotated[
+        Path | None,
+        typer.Option(
+            "--hero-source",
+            exists=True,
+            dir_okay=False,
+            help="actual 模式嵌入动态 Title 推荐所需的 Valve npc_heroes.txt。",
+        ),
+    ] = None,
 ) -> None:
     """Build a usable projected Main runtime now, then replace it with actual eight Teams."""
 
@@ -879,6 +889,7 @@ def fantasy_main_solver_release(
     release_pool = group_context.pool_result
     evidence_warnings: tuple[str, ...] = ()
     eligibility_evidence: dict[str, object]
+    title_evidence: dict[str, object] | None = None
     if selected_mode == "projected":
         model, report = load_strength_model_as_of(as_of=cutoff)
         blocking = [issue.message for issue in report.issues if issue.severity == "blocking"]
@@ -914,6 +925,8 @@ def fantasy_main_solver_release(
             "source_group_as_of": group_context.scenarios.as_of,
         }
     else:
+        if hero_source is None:
+            raise typer.BadParameter("actual 模式要求 --hero-source，以便把 Main Title 推荐嵌入 Web 发布包")
         if len(manifest.main_event_seeds) != policy.entrant_team_count:
             raise typer.BadParameter(
                 "actual 模式要求 config/ti2026.yaml 提供按正式种子排序的 8 个 main_event_seeds"
@@ -951,6 +964,15 @@ def fantasy_main_solver_release(
             "latest_current_event_fantasy_start_at": (evidence.latest_current_event_fantasy_start_at),
             "refreshed_after_group_as_of": group_context.policy.as_of,
         }
+        title_evidence = build_main_title_runtime_evidence(
+            as_of=cutoff,
+            pool_result=release_pool,
+            team_ids=scenarios.team_ids,
+            team_names={team_id: group_context.team_names[team_id] for team_id in scenarios.team_ids},
+            canonical_rules=group_context.canonical_rules,
+            scenario_sha256=scenarios.semantic_hash,
+            hero_source_path=hero_source,
+        )
     result = write_main_solver_release_bundle(
         group_context,
         scenarios,
@@ -958,6 +980,7 @@ def fantasy_main_solver_release(
         pool_result=release_pool,
         additional_warnings=evidence_warnings,
         eligibility_evidence=eligibility_evidence,
+        title_evidence=title_evidence,
     )
     _echo(
         {
@@ -975,6 +998,9 @@ def fantasy_main_solver_release(
             "bytes": result.bytes,
             "file_sha256": result.file_sha256,
             "release_sha256": result.release_sha256,
+            "title_evidence_sha256": (
+                title_evidence["evidence_sha256"] if title_evidence is not None else None
+            ),
         }
     )
 

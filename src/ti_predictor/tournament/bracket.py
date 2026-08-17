@@ -84,8 +84,9 @@ class BracketEngine:
         w5, _ = play(l2, l3)
         w6, l6 = play(w0, w1)
         w7, l7 = play(w2, w3)
-        w8, _ = play(w4, l6)
-        w9, _ = play(w5, l7)
+        # Valve crosses the upper-semifinal losers into the opposite lower-bracket half.
+        w8, _ = play(l7, w4)
+        w9, _ = play(l6, w5)
         w10, _ = play(w8, w9)
         w11, l11 = play(w6, w7)
         w12, _ = play(w10, l11)

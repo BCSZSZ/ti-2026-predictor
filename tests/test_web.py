@@ -127,6 +127,7 @@ def test_streamlit_main_tab_uses_five_slots_and_calculates_with_actual_entrants(
 
     assert any(subheader.value == "Main 现在的结论" for subheader in app.subheader)
     assert any(subheader.value == "Main 当前队伍组合" for subheader in app.subheader)
+    assert any(subheader.value == "自动 Title 建议" for subheader in app.subheader)
     assert not app.error
 
 

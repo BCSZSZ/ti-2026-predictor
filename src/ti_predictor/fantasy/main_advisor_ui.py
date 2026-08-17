@@ -51,6 +51,9 @@ _GRADE_LABELS = {
     "refresh": "建议刷新",
     "complete": "Roll 已完成",
 }
+_TITLE_LABEL_OVERRIDES = {
+    "clutch": "以历史完整 BO3 打到第 3 局作为 Main 触发代理",
+}
 
 
 @st.cache_resource(show_spinner=False)
@@ -336,6 +339,35 @@ def _render_result(result: dict[str, Any]) -> None:
         strict=True,
     ):
         column.metric(_ROLE_LABELS[role], team)
+    title = result.get("title")
+    if title is None:
+        st.warning("当前 Main 求解发布包没有携带 Title 证据；更新项目文件并重启服务后再计算。")
+    else:
+        prefix = title["recommended_prefix"]
+        suffix = title["recommended_suffix"]
+        st.subheader("自动 Title 建议")
+        st.success(
+            f"**{prefix['name']} + {suffix['name']}**\n\n"
+            f"按当前三支队伍与三面战旗基础贡献加权，纸面平均加成约 "
+            f"**+{title['estimated_pair_bonus_percent']:.2f}%**。"
+        )
+        title_columns = st.columns(2)
+        with title_columns[0]:
+            st.markdown("**Prefix 前三**")
+            for row in title["prefixes"]:
+                st.markdown(
+                    f"**{row['rank']}. {row['name']} · +{row['paper_bonus_percent']:.2f}%**  \n"
+                    f"{row['label']} · 预计触发 {row['trigger_rate']:.1%}"
+                )
+        with title_columns[1]:
+            st.markdown("**Suffix 前三**")
+            for row in title["suffixes"]:
+                st.markdown(
+                    f"**{row['rank']}. {row['name']} · +{row['paper_bonus_percent']:.2f}%**  \n"
+                    f"{_TITLE_LABEL_OVERRIDES.get(row['id'], row['label'])} · "
+                    f"预计触发 {row['trigger_rate']:.1%}"
+                )
+        st.caption(f"{title['method']} {title['limitation']}")
     with st.expander("Main 计算边界"):
         for limitation in result["limitations"]:
             st.warning(limitation)

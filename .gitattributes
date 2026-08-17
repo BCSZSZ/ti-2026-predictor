@@ -7,6 +7,8 @@
 *.toml text eol=lf
 *.lock text eol=lf
 *.vdata text eol=lf
+*.svg text eol=lf
+*.sha256 text eol=lf
 .env.example text eol=lf
 .gitattributes text eol=lf
 .gitignore text eol=lf

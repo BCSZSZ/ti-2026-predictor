@@ -85,7 +85,7 @@ G-Lite 的 100 个合成开发状态给出正向点估计，但尚未完成独�
 
 ## Stat 表怎样配合求解器
 
-[Main Stat 与队伍 Top 3 完整表](stat-team-top3-publication-v1.md)列出 42 个位置/颜色/Stat 行、
+[Main Stat 与队伍 Top 3 完整表](main-stat-team-top3-publication-v1.md)列出 42 个位置/颜色/Stat 行、
 实际八队 Top 3 和 400 次 Series 分组重采样稳定率。它适合回答“这个 Stat 大致强不强、哪些队
 更适合”，但不能代替当前画面计算：
 
@@ -99,26 +99,53 @@ G-Lite 的 100 个合成开发状态给出正向点估计，但尚未完成独�
 
 ## Title 在 Roll 之外单独处理
 
-Title 免费更换，不消耗 30 次 Roll。当前 actual 八队的中性默认从 Group 阶段的
-`Cerulean + the Clutch` 更新为 **Elemental + the Clutch**。Prefix 明显依赖最终三个队伍与位置，
-所以先完成战旗和队伍，再复查 Title；完整触发率、排名、冲突项和 BO5 边界见
-[Main Title 分析与推荐](../../reports/ti2026-main-fantasy-title-recommendation-2026-08-17.md)。
+Title 免费更换，不消耗 30 次 Roll。不知道最终三队时，actual 八队的中性默认从
+Group 阶段的 `Cerulean + the Clutch` 更新为 **Elemental + the Clutch**。现在公开 Streamlit 与
+本地 Web 会按当前 Core / Mid / Support 三队和战旗基础贡献动态重算 Prefix / Suffix 前三；
+页面默认状态的结果是 **Otherworldly + the Underdog**。所以先完成战旗和队伍，再复查
+Title；完整触发率、排名、冲突项和 BO5 边界见
+[Main Title 分析与推荐](../reports/ti2026-main-fantasy-title-recommendation-2026-08-17.md)。
 
 当前 G/G-Lite 终局值没有把 Title 联合优化进去。Title 报告是独立免费调整依据，不应把纸面触发
 加成直接当成求解器总分提升。
 
 ## 随机模型与已知边界
 
-当前客户端证据包含 20 个正权重 operation；每次从中按权重无放回抽出三个不同选项。主模型：
+G 与 G-Lite 共用 `client-weight-primary-v1`。当前同屏三个选项是已观察事实；G 不猜下一轮，
+所以 operation 出现率只影响“刷新”后的机会成本。G-Lite 仅在有限二步触发时，才按该分布为
+每个候选抽 4 个下一轮样本。
 
-- Stat：同色六项等概率；
-- Trait：五种等概率；
-- Quality：使用客户端暴露的 T1–T5 权重；
-- 多个合法目标：在合法目标集合中均匀选择；
-- operation 24：均匀选择一个降级槽，再从其余四槽中均匀选择两个不同升级槽。
+客户端证据包含 20 个正权重 operation，总权重 `168`；每轮需要得到三个互不重复的选项。
+项目按暴露权重顺序无放回抽取，主模型的单个 operation 出现率按权重分为：
 
-最后一条是明确假设：客户端公开了操作及 All target，但没有公布逐次目标出率。页面还保留
-flattened / sharpened 两种权重敏感性用于动作一致性提示；它们不是 Valve 公布的真实出率。
+| operation 权重 | 数量 | 首抽概率 | 三格中至少出现一次 |
+| ---: | ---: | ---: | ---: |
+| 10 | 12 | 5.9524% | 17.7257% |
+| 8 | 1 | 4.7619% | 14.3741% |
+| 6 | 6 | 3.5714% | 10.9236% |
+| 4 | 1 | 2.3810% | 7.3762% |
+
+Quality 重随使用客户端暴露的 `[10, 20, 10, 5, 2]` 权重：
+
+| 新 Quality | T1 | T2 | T3 | T4 | T5 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 主模型概率 | 21.2766% | 42.5532% | 21.2766% | 10.6383% | 4.2553% |
+
+Trait 暂按五种各 `20%`；Stat 暂按同色六项各 `16.6667%`；多个合法目标均匀选择，多槽结果
+独立，且重随允许得到当前值。ID 23 随机一格 +1，各格 `20%`；ID 24 的 30 个“一个降级、
+两个升级”目标组合各 `3.3333%`，所以指定一格边际为降级 20%、升级 40%、不变 40%。
+
+这里必须区分证据等级：operation/Quality 权重来自本机客户端，可信度高；按权重顺序无放回是
+项目推导；Trait/Stat 等概率、目标均匀、多槽独立与可重复当前值是服务器 RNG 未公开时的显式
+模型假设。flattened / sharpened 只做权重敏感性提示，不是 Valve 公布的真实出率。
+
+仓库最新客户端规则快照取自 `2026-08-13`，不能据此证明到 `2026-08-17` 完全没有 GC 漂移；
+初始 15 格与首次三个选项的玩家总体联合分布也仍未知。G 不需要这个总体先验，因为它只读当前
+已观察画面；G-Lite 另假设 replacement offer 在给定权重后与前序独立。
+
+20 个 operation 的逐项权重、首抽与三格出现率，Quality 三模型分布，完整 Trait/Stat 池、
+目标槽规则以及每项来源可信度，全部列在
+[Main 概率参考](../reports/ti2026-main-probability-reference-2026-08-17.md)。
 
 Main Series 数来自完整双败 bracket 情景；单个 Series 的 Fantasy 表现仍以历史完整 BO2/BO3
 块为 proxy，尚未精确拆分可能的 BO5 总决赛。当前实际八队、最新赛后 Fantasy pool、Main Elo
@@ -145,11 +172,12 @@ Main 当前可发布的操作策略就是 G，另保留用户可选的 G-Lite。
 
 ## 发布身份
 
-- Main release：`d80b978920bb297d40137657a08b6c475cff2c741d3ae0156052dcab6a0be935`
-- Main release 文件：`2698442afcfcc00373b1d1a80ed6b9c8066f5c55cbc81a0eaa8a407a108203cc`
-- Main Scenario：`76a399cc00d0ba4389a06e0c74e3ddea2c3db7174734358149e2e0b953c22a88`
+- Main release：`b2a9f1af583546dd64d7564c8ceaf866cf8546e35b7e720d8b47229b42735fe0`
+- Main release 文件：`7c2297b507a3a99597f1557075da2f6c33f06bb00039601dea822dcb3eba9056`
+- Main Scenario：`3f1aad154b20bdce7795ec293efa7462b7932a74bc8dcec967f7c048ae5a56b3`
 - 最新 Main Series pool：`e623437a7e1da94519a0bfd3b9c8680e3e0c5f7a9a2c09e873f40938e4eaab41`
-- Main 玩家出版证据：`868d010c01682ce3f3af957ada4fbb68a012d1792d8ffa6796a4039bd6ce9696`
+- Main Title 运行时证据：`fbb3a6ae18ea3bd8e86ce20ac203db154ed09ebadebfe2c21f4767b5e7b85e5e`
+- Main 玩家出版证据：`97c4590267860438071924b439ce70ee122c7a8f287d3a04eb092a539dd50f66`
 
 这些身份不匹配时，先停止使用文档与页面的组合结果，重新发布或刷新服务；不要把不同时间点的
 actual/projected、Stat、Title 和求解包拼在一起。

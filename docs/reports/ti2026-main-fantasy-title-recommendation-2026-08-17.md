@@ -6,6 +6,11 @@
 
 不知道三面最终战旗时，默认选 **Elemental + the Clutch**。Title 免费更换，因此应先完成三面五格战旗和队伍选择，再按实际三个队伍复查。
 
+公开 Streamlit 手填版和本地 OCR 版现在都会在每次 Main 计算后，按当前 Core / Mid /
+Support 三队与三面战旗基础贡献动态重算 Title，而不是固定显示上述全局默认。页面默认画面
+的动态结果是 **Otherworldly + the Underdog**，纸面平均加成约 **+4.28%**；Prefix 前三为
+Otherworldly / Emerald / Cerulean，Suffix 前三为 the Underdog / the Clutch / the Lucky。
+
 ## Prefix 完整排名
 
 | 排名 | Prefix | 触发条件 | 触发率 | 纸面平均加成 | 适配池数 | 判断 |

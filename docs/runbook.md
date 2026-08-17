@@ -254,7 +254,10 @@ uv run ti data replay-fantasy `
   --processed-dir data/processed/work/main-actual-20260816T153130Z
 uv run ti data main-actual-freeze `
   --workspace data/processed/work/main-actual-20260816T153130Z
-uv run ti fantasy main-solver-release --mode actual --as-of 2026-08-16T15:31:30Z
+uv run ti fantasy main-solver-release `
+  --mode actual `
+  --as-of 2026-08-16T15:31:30Z `
+  --hero-source data/raw/rules-title/20260810T134512Z-7d89d1a71895/scripts/npc/npc_heroes.txt
 uv run ti fantasy main-publication-evidence `
   --as-of 2026-08-16T15:31:30Z `
   --hero-source data/raw/rules-title/20260810T134512Z-7d89d1a71895/scripts/npc/npc_heroes.txt

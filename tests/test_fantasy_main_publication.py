@@ -37,6 +37,14 @@ def test_current_main_publication_subset_contains_only_the_24_actual_team_role_p
     ]
     assert selected.audit["eligibility_mode"] == "actual"
     assert selected.audit["parent_pool_set_sha256"] == context.terminal.pool_result.semantic_hash
+    assert context.title_evidence is not None
+    assert context.title_evidence["eligibility_mode"] == "actual"
+    assert context.title_evidence["team_ids"] == list(team_ids)
+    assert len(context.title_evidence["analysis"]["pools"]) == 24
+    assert (
+        context.title_evidence["evidence_sha256"]
+        == "fbb3a6ae18ea3bd8e86ce20ac203db154ed09ebadebfe2c21f4767b5e7b85e5e"
+    )
 
 
 def test_main_stat_report_uses_five_slot_actual_scope_without_group_rule_claims() -> None:

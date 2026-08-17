@@ -12,32 +12,39 @@ TI 小组赛与突围赛的最新数据，以及 Main 五格 Fantasy 求解发�
 
 ## 先看结果
 
-- 三个淘汰赛目标枚举完整 `16,384` 个合法双败网格后给出同一答案：推荐
-  **TEAM VISION 冠军**，冠军边际概率 **40.37%**。
+- 三个淘汰赛目标枚举完整 `16,384` 个合法双败网格后都推荐 **TEAM VISION 冠军**，冠军
+  边际概率 **40.15%**。期望积分与 Top-100 代理给出同一完整网格；Top-10 代理只在败者组
+  第二轮 A 改选 BoomBoys 胜 Nigma Galaxy。
 - 建议决赛路径为：胜者组决赛 TEAM VISION 胜 Team Liquid；败者组决赛 Team Liquid 胜
   Iron Wing；总决赛 TEAM VISION 胜 Team Liquid。
-- 完整网格的期望活动积分为 **2647.872**，分布 P50 / P90 为 **2520 / 5400**。
+- 默认完整网格的期望活动积分为 **2464.237**，分布 P50 / P90 为 **1800 / 5400**。
+- 作为对照，在 `16,384` 个拓扑自洽网格中均匀乱填的期望只有 **3.7500 / 14** 个正确节点、
+  **1367.525** 分；当前推荐为 **5.4122 / 14**、**2464.237** 分，积分期望提升 **80.20%**。
 - 无个人战旗画面时的通用 Fantasy 基准为：**VISION Core + Nigma Mid + Nigma Support**。
 - 有个人画面时，应在 Web 手动录入 Core / Mid / Support 共 15 格，再用 **G（默认）**或
   **G-Lite（用户主动选择）**分析；通用基准不能替代当前画面的逐 Roll 决策。
-- actual 八队 Title 的中性默认是 **Elemental + the Clutch**；先完成三面战旗与队伍，再利用
-  免费更换机会复查 Prefix/Suffix。
+- actual 八队 Title 的无画面中性默认是 **Elemental + the Clutch**；公开 Streamlit 与
+  本地 Web 会按当前三队动态重算 Prefix/Suffix 前三，页面默认画面为
+  **Otherworldly + the Underdog**。
 
 Main 锁定时间是 `2026-08-20T02:00:00Z`，即北京时间 10:00、日本时间 11:00。
 
 ## 怎样使用
 
-1. 淘汰赛预测直接参考上方双败树；金色行是建议胜者，实线是晋级，棕色虚线是从胜者组落入
-   败者组。需要逐节点文字表和全部概率时，打开
+1. 淘汰赛预测默认参考上方“期望积分”双败树；金色行是建议胜者，实线是晋级，棕色虚线是从
+   胜者组交叉落入败者组。需要 Top-10 的单节点变体、逐节点文字表和全部概率时，打开
    [完整 Main 报告](reports/ti2026-main-event-publication-2026-08-17.md)。
 2. Streamlit Web 只做手动录入：填写当前三面战旗的 15 格、剩余 Roll 和三个操作选项，然后
-   选择 G 或 G-Lite。云端不读取本机截图，也不带 OCR 依赖。
+   选择 G 或 G-Lite。计算结果会同时显示按当前三队重算的 Title；云端不读取本机截图，
+   也不带 OCR 依赖。
 3. 本地版提供同一套手动分析，并额外保留 Main 五格截图识别；识别后仍应人工复核 45 个战旗
    字段、三个操作和剩余 Roll。
 4. G 是正式默认：只比较当前可见动作的一步期望终局价值。G-Lite 只在前两项差距不超过当前
    价值 `0.05%` 时做很小的两步抽样，每局最多触发 4 次；它是可选实验策略，不自动替代 G。
 5. Stat、队伍 Top 3、Title 和逐 Roll 的完整用法见包内 `playbooks/` 与 Title 报告；Main
    五格不能直接沿用 Group 三格手册的 B/C/D 操作规则。
+6. 八队完整胜率矩阵、随机乱填基线、20 个 operation 出现率、Quality/Trait/Stat 分布以及
+   来源可信度见 [Main 概率参考](reports/ti2026-main-probability-reference-2026-08-17.md)。
 
 本项目不登录 Steam、不控制 Dota 客户端，也不自动填写游戏内预测。
 
@@ -73,20 +80,22 @@ Main 的 Core / Mid / Support 候选均为 `8 / 8`，没有缺失位置。缺失
 
 ## 发布身份
 
-- 淘汰赛 Forecast run：`bracket-6702d61436d49c8a`
-- 通用 Main Fantasy run：`fantasy-7d5a8ecd1ec8d9d4`
-- Main 五格求解发布：`main-roll-20260816T153130Z-d80b978920bb.json.zst`
+- 淘汰赛 Forecast run：`bracket-eb209f6fad530148`
+- 通用 Main Fantasy run：`fantasy-cf5ab8f302bfd876`
+- Main 五格求解发布：`main-roll-20260816T153130Z-b2a9f1af5835.json.zst`
 - 求解发布内容 SHA-256：
-  `d80b978920bb297d40137657a08b6c475cff2c741d3ae0156052dcab6a0be935`
+  `b2a9f1af583546dd64d7564c8ceaf866cf8546e35b7e720d8b47229b42735fe0`
 - Main evidence snapshot semantic SHA-256：
   `4b189f4726d7e996a70a174feb6be04c4ccaf6148dd006f46fffe523c7cc8bcb`
 - Team-strength policy SHA-256：
   `4895101201e20afd5baf5fecfb46cf171b58285f044a90a84afa4b96ef23875f`
 - 客户端规则快照：`20260813T132319Z-9728c506baf6`
 - Main 玩家出版证据：
-  `868d010c01682ce3f3af957ada4fbb68a012d1792d8ffa6796a4039bd6ce9696`
-- 求解发布源码身份：`b5f48ef541dc3735affdb9513ae2f508f0acf377`
-- 玩家出版运行源码身份：`66c9e435e7d13041841fb95954e0325858f59091`
+  `97c4590267860438071924b439ce70ee122c7a8f287d3a04eb092a539dd50f66`
+- Main Title 运行时证据：
+  `fbb3a6ae18ea3bd8e86ce20ac203db154ed09ebadebfe2c21f4767b5e7b85e5e`
+- 求解发布源码身份：`047305d7cea97698572ddea94d3d2d53fdd7321d-dirty-54bf22abf4f9`
+- 玩家出版运行源码身份：`047305d7cea97698572ddea94d3d2d53fdd7321d-dirty-54bf22abf4f9`
 
 ## 包内文件
 
@@ -100,6 +109,8 @@ Main 的 Core / Mid / Support 候选均为 `8 / 8`，没有缺失位置。缺失
   位置/颜色/Stat 行、实际八队 Top 3 与 400 次 Series 分组重采样稳定率。
 - [Main Title 分析与推荐](reports/ti2026-main-fantasy-title-recommendation-2026-08-17.md)：
   Prefix、Suffix、触发率、默认组合、客户端冲突和 BO5 proxy 边界。
+- [Main 概率参考](reports/ti2026-main-probability-reference-2026-08-17.md)：八队两两节点胜率、
+  随机合法网格与模型推荐的数学期望、G/G-Lite 所用 Roll 选项与结果分布、来源和可信度。
 - [双败淘汰赛 PNG 预览](assets/ti2026-main-event-double-elimination-bracket-2026-08-17.png)与
   [可缩放 SVG 原图](assets/ti2026-main-event-double-elimination-bracket-2026-08-17.svg)：同一份建议网格；
   Markdown 默认显示 PNG，点击图片可打开矢量版。
@@ -109,7 +120,7 @@ Main 的 Core / Mid / Support 候选均为 `8 / 8`，没有缺失位置。缺失
 
 - 官方直播首轮对阵是人工转录。如果客户端或 Valve 结构化接口随后给出不同槽位，必须重跑并
   发布新版本，不能静默改这份冻结结果。
-- `40.37%` 是模型冠军边际概率，不是保证；精确名次的可信度低于大致实力层。
+- `40.15%` 是模型冠军边际概率，不是保证；精确名次的可信度低于大致实力层。
 - Top-10 / Top-100 没有 Valve 服务器总体分位阈值，因此仍是低置信代理目标。
 - Fantasy 通用阵容没有读取个人战旗库存；实际决策必须以当前可见 15 格和操作为输入。
 - 本包只包含可公开分享的 Markdown 与 SVG，不包含大型 raw data、Replay、运行产物或本机 OCR

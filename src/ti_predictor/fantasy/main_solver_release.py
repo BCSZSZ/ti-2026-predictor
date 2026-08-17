@@ -22,6 +22,7 @@ from ti_predictor.fantasy.main_current_advisor import (
     MainTerminalEvaluator,
 )
 from ti_predictor.fantasy.main_scenarios import MainScenarioSet
+from ti_predictor.fantasy.main_title_runtime import validate_main_title_runtime_evidence
 from ti_predictor.fantasy.scenarios import ROLE_IDS, PoolBuildResult, ScenarioDraws
 from ti_predictor.fantasy.solver_release import _load_pool_result, _pool_result_payload
 from ti_predictor.hashing import canonical_json, sha256_bytes, sha256_file, sha256_json
@@ -365,6 +366,25 @@ def load_main_solver_release_context(
         raise MainSolverReleaseError("Main 发布队伍身份与稳定 ID 清单不一致")
     if group_context.roll_rules.main_rolls != 30:
         raise MainSolverReleaseError("Main 发布要求客户端规则为 30 次 Roll")
+    title_evidence = None
+    title_payload = payload.get("title_evidence")
+    if title_payload is not None:
+        if not isinstance(title_payload, Mapping):
+            raise MainSolverReleaseError("Main Title 证据格式无效")
+        try:
+            title_evidence = validate_main_title_runtime_evidence(
+                title_payload,
+                as_of=str(payload["as_of"]),
+                pool_result=pool_result,
+                team_ids=scenarios.team_ids,
+                scenario_sha256=scenarios.semantic_hash,
+            )
+        except ValueError as error:
+            raise MainSolverReleaseError(str(error)) from error
+        if provenance.get("title_evidence_sha256") != title_evidence["evidence_sha256"]:
+            raise MainSolverReleaseError("Main Title 证据来源身份不一致")
+    elif provenance.get("title_evidence_sha256") is not None:
+        raise MainSolverReleaseError("Main Title 证据正文缺失")
     warnings = payload.get("warnings", [])
     if not isinstance(warnings, list) or not all(isinstance(item, str) for item in warnings):
         raise MainSolverReleaseError("Main 发布警告字段无效")
@@ -380,6 +400,7 @@ def load_main_solver_release_context(
         scenario_count=len(scenarios.scenario_ids),
         team_names=dict(names),
         strategy_catalog=strategy_catalog,
+        title_evidence=title_evidence,
         eligibility_mode=scenarios.eligibility_mode,
         warnings=tuple(warnings),
     )
@@ -393,6 +414,7 @@ def write_main_solver_release_bundle(
     pool_result: PoolBuildResult | None = None,
     additional_warnings: tuple[str, ...] = (),
     eligibility_evidence: Mapping[str, Any] | None = None,
+    title_evidence: Mapping[str, Any] | None = None,
     output_path: Path | None = None,
     paths: ProjectPaths = PATHS,
 ) -> MainSolverReleaseWriteResult:
@@ -417,6 +439,20 @@ def write_main_solver_release_bundle(
         raise MainSolverReleaseError("Main Scenario 候选 Team 数与当前策略不一致")
     effective_pool = pool_result or group_context.pool_result
     MainTerminalEvaluator(effective_pool, scenarios, group_context.canonical_rules)
+    validated_title_evidence = None
+    if title_evidence is not None:
+        if scenarios.eligibility_mode != "actual":
+            raise MainSolverReleaseError("Main Title runtime evidence is restricted to actual eligibility")
+        try:
+            validated_title_evidence = validate_main_title_runtime_evidence(
+                title_evidence,
+                as_of=scenarios.as_of,
+                pool_result=effective_pool,
+                team_ids=scenarios.team_ids,
+                scenario_sha256=scenarios.semantic_hash,
+            )
+        except ValueError as error:
+            raise MainSolverReleaseError(str(error)) from error
     names = [
         {"team_id": team_id, "name": group_context.team_names[team_id]} for team_id in scenarios.team_ids
     ]
@@ -437,6 +473,11 @@ def write_main_solver_release_bundle(
             "tournament_manifest_sha256": sha256_file(paths.tournament),
             "scenario_sha256": scenarios.semantic_hash,
             "model_sha256": scenarios.model_sha256,
+            **(
+                {"title_evidence_sha256": validated_title_evidence["evidence_sha256"]}
+                if validated_title_evidence is not None
+                else {}
+            ),
         },
         "runtime_contract": {
             "accepted_input": "confirmed-main-roll-state-v1",
@@ -456,6 +497,7 @@ def write_main_solver_release_bundle(
         },
         "pool_result": _pool_result_payload(effective_pool),
         "scenarios": _scenario_payload(scenarios),
+        "title_evidence": validated_title_evidence,
         "warnings": [
             "Main Operation #24 的目标概率采用显式假设：均匀选择两个不同槽提升、另一个不同槽降低；"
             "客户端仅公开了操作名与 All target，尚无逐次出率样本。",
@@ -463,6 +505,11 @@ def write_main_solver_release_bundle(
             " BO2/BO3 块为 proxy，不声称精确重建可能的 BO5 局数。",
             "Web 默认使用 G；G-Lite 仅在近似平手时按冻结 seed 与主出率模型生成 4 个"
             "下一轮样本，每局最多触发 4 次，且仍标记为未完成独立 confirmation。",
+            *(
+                validated_title_evidence["warnings"]
+                if validated_title_evidence is not None
+                else ["Main Title runtime evidence is unavailable in this release."]
+            ),
             *(
                 [
                     "当前为预测晋级模式：16 支候选队按 Group 联合情景缩成每个情景的 8 支 Main "

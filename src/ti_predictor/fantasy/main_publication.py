@@ -12,26 +12,24 @@ from pydantic import Field
 
 from ti_predictor.config import load_team_strength_policy, load_tournament_manifest
 from ti_predictor.fantasy.main_solver_release import load_main_solver_release_context
+from ti_predictor.fantasy.main_title_runtime import (
+    build_main_title_runtime_evidence,
+    subset_actual_main_pools,
+)
 from ti_predictor.fantasy.scenarios import (
     ROLE_IDS,
     BootstrapScenarioPolicy,
-    PoolBuildResult,
 )
 from ti_predictor.fantasy.solver_release import load_solver_release_context
-from ti_predictor.fantasy.title import build_title_analysis, parse_title_hero_categories
-from ti_predictor.fantasy.title_reporting import _load_match_features, _raw_capture_index
 from ti_predictor.fantasy.valuation import (
     build_stat_forecast_package,
     cluster_bootstrap_stat_intervals,
 )
-from ti_predictor.forecasting import _available_by_as_of
 from ti_predictor.hashing import sha256_file, sha256_json
-from ti_predictor.ingest.main_actual import main_evidence_paths
 from ti_predictor.paths import PATHS, ProjectPaths
 from ti_predictor.rules import rule_snapshot_at
 from ti_predictor.runs import ArtifactWriter, make_run_id
 from ti_predictor.schemas import ForecastRun, StrictModel, as_utc
-from ti_predictor.storage import read_parquet_if_exists
 
 MAIN_PUBLICATION_POLICY_FILENAME = "fantasy-main-publication-v1.json"
 MAIN_STAT_REPORT_FILENAME = "main-stat-team-top3-publication.md"
@@ -84,49 +82,6 @@ def load_main_publication_policy(path: Path) -> MainPublicationPolicy:
 
 def _escape_cell(value: str) -> str:
     return value.replace("|", "\\|").replace("\n", " ")
-
-
-def subset_actual_main_pools(
-    pool_result: PoolBuildResult,
-    *,
-    team_ids: tuple[int, ...],
-) -> PoolBuildResult:
-    expected = [(team_id, role) for team_id in team_ids for role in ROLE_IDS]
-    pool_by_key = pool_result.by_key()
-    if any(key not in pool_by_key for key in expected):
-        raise ValueError("Main publication requires every actual Team/role pool in seed order")
-    selected = tuple(pool_by_key[key] for key in expected)
-    semantic_hash = sha256_json(
-        {
-            "period": "main",
-            "eligibility_mode": "actual",
-            "parent_pool_set_sha256": pool_result.semantic_hash,
-            "team_ids": team_ids,
-            "pools": [pool.semantic_hash for pool in selected],
-        }
-    )
-    audit = {
-        **pool_result.audit,
-        "period": "main",
-        "eligibility_mode": "actual",
-        "team_ids": list(team_ids),
-        "team_count": len(team_ids),
-        "pool_count": len(selected),
-        "parent_pool_set_sha256": pool_result.semantic_hash,
-        "pool_set_sha256": semantic_hash,
-        "pools": [
-            row
-            for row in pool_result.audit.get("pools", [])
-            if int(row.get("target_team_id", -1)) in set(team_ids)
-        ],
-        "team_role_availability": [
-            row
-            for row in pool_result.audit.get("team_role_availability", [])
-            if int(row.get("target_team_id", -1)) in set(team_ids)
-        ],
-        "unavailable_team_role_count": 0,
-    }
-    return PoolBuildResult(pools=selected, audit=audit, semantic_hash=semantic_hash)
 
 
 def _team_cell(row: Mapping[str, Any], team_names: Mapping[int, str]) -> str:
@@ -454,56 +409,17 @@ def generate_main_publication_evidence(
     )
 
     hero_source = hero_source_path.resolve()
-    if not hero_source.is_file():
-        raise FileNotFoundError(f"Valve npc_heroes.txt is unavailable: {hero_source}")
-    hero_content = hero_source.read_bytes()
-    hero_categories = parse_title_hero_categories(hero_content.decode("utf-8", errors="replace"))
-    evidence_paths = main_evidence_paths(paths, require=True)
-    observations = _available_by_as_of(
-        read_parquet_if_exists(evidence_paths.processed / "fantasy_performance_samples.parquet"), cutoff
+    title_runtime = build_main_title_runtime_evidence(
+        as_of=cutoff,
+        pool_result=main_context.terminal.pool_result,
+        team_ids=team_ids,
+        team_names=main_context.team_names,
+        canonical_rules=main_context.terminal.canonical_rules,
+        scenario_sha256=scenarios.semantic_hash,
+        hero_source_path=hero_source,
+        paths=paths,
     )
-    matches = _available_by_as_of(
-        read_parquet_if_exists(evidence_paths.processed / "matches.parquet"), cutoff
-    )
-    needed_match_ids = {
-        match_id for pool in pool_result.pools for block in pool.blocks for match_id in block.match_ids
-    }
-    source_rows = observations.loc[
-        observations["match_id"].isin(needed_match_ids), ["match_id", "source_sha256"]
-    ].dropna()
-    source_counts = source_rows.groupby("match_id")["source_sha256"].nunique()
-    if source_counts.empty or source_counts.ne(1).any():
-        raise ValueError("each Main Title match must map to one immutable raw source SHA-256")
-    source_by_match = {
-        int(row.match_id): str(row.source_sha256)
-        for row in source_rows.drop_duplicates("match_id").itertuples(index=False)
-    }
-    if set(source_by_match) != needed_match_ids:
-        missing = sorted(needed_match_ids - set(source_by_match))
-        raise ValueError(f"Main Title matches lack raw source identities: {missing[:10]}")
-    captures = _raw_capture_index(paths, set(source_by_match.values()), as_of=cutoff)
-    match_features, raw_audit = _load_match_features(source_by_match, captures)
-    series_types = {
-        int(row.match_id): int(row.series_type)
-        for row in matches.loc[matches["match_id"].isin(needed_match_ids), ["match_id", "series_type"]]
-        .dropna()
-        .itertuples(index=False)
-    }
-    title_analysis = build_title_analysis(
-        pool_result,
-        match_features,
-        series_types,
-        hero_categories,
-        main_context.terminal.canonical_rules,
-        team_names=dict(main_context.team_names),
-    )
-    bo3_values = [
-        float(row["bo3_reaches_game3"])
-        for row in title_analysis["pools"]
-        if row["bo3_reaches_game3"] is not None
-    ]
-    if not bo3_values:
-        raise ValueError("Main Title Clutch proxy has no complete historical BO3 evidence")
+    title_analysis = title_runtime["analysis"]
 
     manifest = load_tournament_manifest(paths.tournament)
     strength_policy = load_team_strength_policy(manifest, config_root=paths.config, period="main")
@@ -517,16 +433,10 @@ def generate_main_publication_evidence(
         "current_event_stage_multiplier": stage_multiplier,
         "time_half_life_days": strength_policy.time_half_life_days,
     }
-    hero_counts = {
-        item["id"]: sum(item["id"] in categories for categories in hero_categories.values())
-        for item in main_context.terminal.canonical_rules["fantasy"]["coach"]["prefixes"]
-    }
     pointer_path = paths.root / "deploy" / "runtime" / "main-current.json"
     pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
-    hero_metadata_path = hero_source.parents[2] / "metadata.json"
-    hero_metadata = (
-        json.loads(hero_metadata_path.read_text(encoding="utf-8")) if hero_metadata_path.is_file() else {}
-    )
+    hero_source_evidence = dict(title_runtime["hero_source"])
+    hero_source_evidence["path"] = hero_source.relative_to(paths.root).as_posix()
     evidence: dict[str, Any] = {
         "artifact_type": "ti2026_main_fantasy_player_publication_evidence",
         "schema_version": 1,
@@ -548,22 +458,12 @@ def generate_main_publication_evidence(
         "pool_audit": pool_result.audit,
         "stat_forecasts": stat_forecasts,
         "cluster_bootstrap": bootstrap,
-        "hero_source": {
-            "resource": "scripts/npc/npc_heroes.txt",
-            "path": hero_source.relative_to(paths.root).as_posix(),
-            "sha256": sha256_file(hero_source),
-            "bytes": len(hero_content),
-            "client_build": hero_metadata.get("client_build"),
-            "mapped_heroes": len(hero_categories),
-            "category_hero_counts": hero_counts,
-        },
-        "raw_detail_audit": raw_audit,
-        "diagnostics": {"mean_bo3_reaches_game3": sum(bo3_values) / len(bo3_values)},
+        "hero_source": hero_source_evidence,
+        "raw_detail_audit": title_runtime["raw_detail_audit"],
+        "diagnostics": title_runtime["diagnostics"],
         "title_analysis": title_analysis,
         "warnings": [
-            "Main Title Clutch uses a historical BO3 proxy and does not separately model "
-            "the possible BO5 grand final.",
-            "Title paper bonuses are not jointly optimized with the five-slot terminal solver.",
+            *title_runtime["warnings"],
             "G-Lite remains user-selected development-positive evidence and is not the default strategy.",
         ],
     }

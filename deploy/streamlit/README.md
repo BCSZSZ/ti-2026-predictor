@@ -38,7 +38,7 @@ Streamlit 当前会优先识别仓库根目录的 `uv.lock` 并使用 uv 安装�
 - 客户端 Roll 规则片段、Series 数值块、Title 边际证据和完整来源哈希。
 
 Main 当前发布包为 `ready / actual`，包含正式 8 个 Main entrant、小组赛与突围赛后重建的
-Fantasy Series pool、五槽/30 Roll 规则、256 个完整双败 Scenario，以及冻结的 G/G-Lite 策略
+Fantasy Series pool、五槽/30 Roll 规则、256 个完整双败 Scenario、动态 Title 证据，以及冻结的 G/G-Lite 策略
 目录。云端只允许手动录入 15 格、三个当前选项和剩余 Roll；G-Lite 仅按发布包内的固定 seed 与
 主出率模型做受限下一轮抽样。当前截止为 `2026-08-16T15:31:30Z`。
 
@@ -53,7 +53,7 @@ Fantasy Series pool、五槽/30 Roll 规则、256 个完整双败 Scenario，以
 ```powershell
 uv sync --locked --extra dev
 uv run ti fantasy solver-release --as-of 2026-08-10T13:45:12Z
-uv run ti fantasy main-solver-release --mode actual --as-of 2026-08-16T15:31:30Z
+uv run ti fantasy main-solver-release --mode actual --as-of 2026-08-16T15:31:30Z --hero-source data/raw/rules-title/20260810T134512Z-7d89d1a71895/scripts/npc/npc_heroes.txt
 uv run ti fantasy main-publication-evidence --as-of 2026-08-16T15:31:30Z --hero-source data/raw/rules-title/20260810T134512Z-7d89d1a71895/scripts/npc/npc_heroes.txt
 uv run pytest tests/test_solver_release.py tests/test_fantasy_main_solver_release.py tests/test_web.py
 ```

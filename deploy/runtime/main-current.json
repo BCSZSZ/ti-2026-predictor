@@ -1,17 +1,17 @@
 {
   "as_of": "2026-08-16T15:31:30Z",
-  "bytes": 327633,
+  "bytes": 337862,
   "candidate_team_count": 8,
   "eligibility_mode": "actual",
   "entrant_team_count": 8,
-  "file": "releases/main-roll-20260816T153130Z-d80b978920bb.json.zst",
-  "file_sha256": "2698442afcfcc00373b1d1a80ed6b9c8066f5c55cbc81a0eaa8a407a108203cc",
+  "file": "releases/main-roll-20260816T153130Z-b2a9f1af5835.json.zst",
+  "file_sha256": "7c2297b507a3a99597f1557075da2f6c33f06bb00039601dea822dcb3eba9056",
   "lock_at": "2026-08-20T02:00:00Z",
   "period": "main",
   "reason": "Main 五槽计算使用已确认并按种子排序的实际八队。",
   "release_id": "ti2026-main-current-screen-solver-v2",
   "release_schema_version": 3,
-  "release_sha256": "d80b978920bb297d40137657a08b6c475cff2c741d3ae0156052dcab6a0be935",
+  "release_sha256": "b2a9f1af583546dd64d7564c8ceaf866cf8546e35b7e720d8b47229b42735fe0",
   "schema_version": 2,
   "status": "ready"
 }

@@ -12,6 +12,13 @@ OCR 版。它覆盖：
 
 LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统计模型和固定随机种子产生。
 
+## v0.3.1：Main Web 动态 Title 推荐
+
+- 公开 Streamlit 手填版与 Windows 本地 OCR 版现在都会按当前 Core / Mid /
+  Support 三队组合计算 Title，显示 Prefix / Suffix 前三、预计触发率与纸面加成。
+- Title 证据已内嵌进同一个 actual 八队 Main 冻结求解包；云端不增加 OCR、
+  原始数据或联网依赖。
+
 ## v0.3.0：actual 八队、最新 Fantasy 与 Main 玩家资料
 
 - Main 当前发布已从 projected 16 队切换为 `ready / actual`：Core / Mid / Support 均只提供正式
@@ -43,6 +50,7 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 | --- | --- | --- |
 | Main 五格 / 小组赛三格手填 | 支持 | 支持 |
 | G / G-Lite 分析 | 支持 | 支持 |
+| 按当前三队动态推荐 Title | 支持 | 支持 |
 | Dota 画面识别 | 不提供 | 支持 Main 15 格与小组赛九格 |
 | 控制客户端或自动填写 | 不提供 | 不提供 |
 
@@ -122,6 +130,9 @@ Main 五格求解发布见
 [Main Event 完整报告](docs/reports/ti2026-main-event-publication-2026-08-17.md)。模型枚举
 `16,384` 个合法双败网格后，期望积分、Top-10 和 Top-100 代理目标均推荐 **TEAM VISION
 冠军**；完整路径已改为可缩放的[双败淘汰赛树状图](docs/assets/ti2026-main-event-double-elimination-bracket-2026-08-17.svg)。
+[Main 概率参考](docs/reports/ti2026-main-probability-reference-2026-08-17.md)另列八队完整
+Elo/Glicko 对位表、随机乱填与模型网格的数学期望，以及 G/G-Lite 所用的全部 Roll 分布与
+来源可信度。
 
 Main 五格运行时为 `ready / actual`，Core / Mid / Support 各有 8 个实际参赛队候选。Web 默认
 使用 G，也允许用户主动选择 G-Lite；Streamlit 云端只接受手动 15 格录入，本地版另外保留截图
@@ -261,9 +272,10 @@ Chrome 可以放在另一块屏幕，也可以与 Dota 同屏并用 Alt+Tab 切�
 会自动填入本页并重新计算。Main 默认使用 `G`（只看当前一步），也允许玩家主动切换到
 `G-Lite`：后者只在前两项足够接近时，用固定 4 个样本做一次有限二步比较，每局最多触发
 4 次。`G-Lite` 仅有 100 个合成开发状态的正向点估计，尚未完成独立 confirmation，因此不替代
-默认 `G`。Main 页面给出当前动作建议、风险说明和三个位置的 actual 八队匹配；Group 历史页面
-继续显示其冻结 Title 排名。Main 的独立 Title 建议见当前 Main 玩家资料，它尚未与五格终局联合
-优化。Main 逐 Roll 使用 `2026-08-16T15:31:30Z` 的赛后 pool；只有用户选择 `G-Lite` 且触发
+默认 `G`。Main 页面给出当前动作建议、风险说明和三个位置的 actual 八队匹配，并按当前三队
+动态重算 Title 前三。Title 是 Roll 之外的免费建议，尚未与五格终局联合优化；Group 历史
+页面继续显示其冻结 Title 排名。Main 逐 Roll 使用 `2026-08-16T15:31:30Z` 的赛后 pool；只有用户
+选择 `G-Lite` 且触发
 近似平手条件时才生成受限的下一轮样本。程序不会向 Dota 发送鼠标、键盘或内存操作。每次识别
 完成后会自动停止；玩家在游戏内操作后，需要再次点击识别按钮读取实际新画面。
 两个玩家入口都直接加载仓库内按阶段冻结的求解发布包，不再执行约 40 秒的真实数据冷启动。

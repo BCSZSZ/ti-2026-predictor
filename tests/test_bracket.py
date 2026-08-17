@@ -39,3 +39,16 @@ def test_bracket_direct_sampling_is_deterministic_and_coherent() -> None:
     assert all(
         winner in participants for winner, participants in zip(first.winners, first.participants, strict=True)
     )
+
+
+def test_lower_round_two_crosses_upper_semifinal_losers() -> None:
+    """Valve sends each upper-semifinal loser into the opposite lower-bracket half."""
+
+    engine = BracketEngine(list(range(1, 9)), TeamStrengthModel({}))
+    path = engine.resolve([0] * 14)
+
+    upper_semifinal_a_loser = next(team_id for team_id in path.participants[6] if team_id != path.winners[6])
+    upper_semifinal_b_loser = next(team_id for team_id in path.participants[7] if team_id != path.winners[7])
+
+    assert path.participants[8] == (upper_semifinal_b_loser, path.winners[4])
+    assert path.participants[9] == (upper_semifinal_a_loser, path.winners[5])

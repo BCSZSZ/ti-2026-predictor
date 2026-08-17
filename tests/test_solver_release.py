@@ -129,6 +129,8 @@ def test_public_streamlit_entrypoint_is_manual_only_and_calculates() -> None:
     main_calculate.click()
     app.run(timeout=20)
     assert any(subheader.value == "Main 现在的结论" for subheader in app.subheader)
+    assert any(subheader.value == "自动 Title 建议" for subheader in app.subheader)
+    assert any("Otherworldly + the Underdog" in success.value for success in app.success)
 
     _run_group_tab(app)
     assert any(button.label == "计算现在应该怎么选" for button in app.button)
@@ -166,3 +168,25 @@ def test_manual_and_local_ocr_entrypoints_share_the_same_solver_result() -> None
     local_result = local.session_state["current_advisor_result"]
     assert manual_result["analysis_sha256"] == local_result["analysis_sha256"]
     assert manual_result["recommendation"] == local_result["recommendation"]
+
+
+def test_manual_and_local_ocr_main_entrypoints_share_the_title_recommendation() -> None:
+    root = Path(__file__).resolve().parents[1]
+    apps = [
+        AppTest.from_file(str(root / entrypoint)).run(timeout=20)
+        for entrypoint in ("streamlit_app.py", "local_ocr_app.py")
+    ]
+
+    for app in apps:
+        calculate = next(button for button in app.button if button.label.startswith("计算 Main"))
+        calculate.click()
+        app.run(timeout=30)
+        assert not app.exception
+        assert not app.error
+        assert any(subheader.value == "自动 Title 建议" for subheader in app.subheader)
+
+    manual_title = apps[0].session_state["main_advisor_result"]["title"]
+    local_title = apps[1].session_state["main_advisor_result"]["title"]
+    assert manual_title == local_title
+    assert manual_title["recommended_prefix"]["name"] == "Otherworldly"
+    assert manual_title["recommended_suffix"]["name"] == "the Underdog"

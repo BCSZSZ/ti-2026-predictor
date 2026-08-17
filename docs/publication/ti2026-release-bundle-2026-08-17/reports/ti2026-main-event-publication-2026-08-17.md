@@ -5,13 +5,13 @@
 
 - 数据与模型截止：`2026-08-16T15:31:30Z`
 - Main 锁定时间：`2026-08-20T02:00:00Z`
-- 淘汰赛 Forecast：`bracket-6702d61436d49c8a`
-- 通用 Main Fantasy：`fantasy-7d5a8ecd1ec8d9d4`
-- 五格求解发布：`main-roll-20260816T153130Z-d80b978920bb.json.zst`
+- 淘汰赛 Forecast：`bracket-eb209f6fad530148`
+- 通用 Main Fantasy：`fantasy-cf5ab8f302bfd876`
+- 五格求解发布：`main-roll-20260816T153130Z-b2a9f1af5835.json.zst`
 - 求解发布内容 SHA-256：
-  `d80b978920bb297d40137657a08b6c475cff2c741d3ae0156052dcab6a0be935`
-- 求解发布源码身份：`b5f48ef541dc3735affdb9513ae2f508f0acf377`
-- 玩家出版运行源码身份：`66c9e435e7d13041841fb95954e0325858f59091`
+  `b2a9f1af583546dd64d7564c8ceaf866cf8546e35b7e720d8b47229b42735fe0`
+- 求解发布源码身份：`047305d7cea97698572ddea94d3d2d53fdd7321d-dirty-54bf22abf4f9`
+- 玩家出版运行源码身份：`047305d7cea97698572ddea94d3d2d53fdd7321d-dirty-54bf22abf4f9`
 
 ## 先看结论
 
@@ -20,7 +20,8 @@
 2. TI 2026 小组赛与突围赛共 `109` 场，全部进入 Elo/Glicko 和 Fantasy 历史证据，并在原有
    版本、赛事级别和 60 天半衰期之外再乘 `1.50`。
 3. 当前八队综合强度前三为 **TEAM VISION、Team Liquid、Nigma Galaxy**。模型枚举完整
-   `2^14 = 16,384` 个合法双败网格后，三个目标都选择 **TEAM VISION 冠军**。
+   `2^14 = 16,384` 个合法双败网格后，三个目标都选择 **TEAM VISION 冠军**；期望积分与
+   top-100 使用同一完整网格，top-10 只在败者组第二轮 A 改选 BoomBoys。
 4. 通用期望型 Fantasy 阵容为：**VISION Core、Nigma Mid、Nigma Support**。这只是无个人
    战旗画面时的基准；实际 Roll 决策仍应在 Web 中录入 15 格后使用 G 或 G-Lite。
 5. Web 当前只提供实际八队，每个 Core / Mid / Support 下拉框均为 `8` 个候选。默认策略仍是
@@ -39,6 +40,11 @@
 
 这些百分比是当前 Elo/Glicko 集成模型交给 BracketEngine 的节点概率，不是盘口，也不是 Valve
 公布的胜率。小幅差距不应理解为确定结果。
+
+败者组第二轮的接线另由当前游戏内 Main bracket 画面确认：A 节点接收胜者组半决赛 B 的败者，
+B 节点接收胜者组半决赛 A 的败者，即两个半区交叉落位。核对截图 SHA-256 为
+`eff7133618ee625277f095607b99dbb35e50e24e61dd7ed7c8b56911d2acb10e`；此前同侧落位的模型与
+发布图已废弃并重新计算。
 
 ## 1.5× 阶段权重怎样计算
 
@@ -103,25 +109,46 @@ Team-strength 与 Fantasy 共用以下权重轴，但两者使用不同证据范
 `0.680296 / 0.243723 / 57.77%`，优于固定 50% 基线的 `0.693147 / 0.250000 / 51.23%`。
 Isotonic 候选的 log loss 没有优于集成，因此按门禁拒绝，没有进入正式概率。
 
+### 八队两两节点胜率
+
+沿用 Group 阶段发布表口径，下面每格是左侧队伍战胜列队伍的概率。这里俗称“Elo 表”，但为与
+实际 Forecast 一致，数值是 **Elo/Glicko 概率各占 50%** 的正式集成，不是纯 Elo 单模型。
+
+| 左队 / 对手 | TEAM VISION | Team Liquid | Nigma Galaxy | Iron Wing | Team Falcons | Team Spirit | Team Yandex | BoomBoys |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **TEAM VISION** | — | **61.32%** | **66.14%** | **68.23%** | **71.94%** | **72.27%** | **73.67%** | **74.07%** |
+| **Team Liquid** | 38.68% | — | **55.25%** | **57.53%** | **61.79%** | **62.17%** | **63.83%** | **64.29%** |
+| **Nigma Galaxy** | 33.86% | 44.75% | — | **52.30%** | **56.68%** | **57.09%** | **58.81%** | **59.29%** |
+| **Iron Wing** | 31.77% | 42.47% | 47.70% | — | **54.42%** | **54.86%** | **56.60%** | **57.10%** |
+| **Team Falcons** | 28.06% | 38.21% | 43.32% | 45.58% | — | **50.46%** | **52.21%** | **52.72%** |
+| **Team Spirit** | 27.73% | 37.83% | 42.91% | 45.14% | 49.54% | — | **51.76%** | **52.26%** |
+| **Team Yandex** | 26.33% | 36.17% | 41.19% | 43.40% | 47.79% | 48.24% | — | **50.50%** |
+| **BoomBoys** | 25.93% | 35.71% | 40.71% | 42.90% | 47.28% | 47.74% | 49.50% | — |
+
+BracketEngine 直接把这些概率用于一个淘汰赛节点，没有另做 BO3 / BO5 series transform。因此
+相对强弱方向比小数点后的精确 series 胜率更可信。完整来源、可信度和复算身份见
+[Main 概率参考](ti2026-main-probability-reference-2026-08-17.md)。
+
 ## 淘汰赛 Forecast
 
 ### 冠军边际概率
 
 | 队伍 | 冠军概率 |
 | --- | ---: |
-| TEAM VISION | **40.37%** |
-| Team Liquid | **18.54%** |
-| Nigma Galaxy | **11.76%** |
-| Iron Wing | **9.22%** |
-| Team Falcons | 5.97% |
-| Team Spirit | 5.57% |
-| Team Yandex | 4.62% |
-| BoomBoys | 3.94% |
+| TEAM VISION | **40.15%** |
+| Team Liquid | **18.44%** |
+| Nigma Galaxy | **11.75%** |
+| Iron Wing | **9.26%** |
+| Team Falcons | 6.03% |
+| Team Spirit | 5.64% |
+| Team Yandex | 4.69% |
+| BoomBoys | 4.04% |
 
 ### 建议填写的完整网格
 
-期望积分、top-10 代理和 top-100 代理三个目标在本次运行中给出同一网格；期望活动积分
-`2647.872`，分布 P50 / P90 为 `2520 / 5400`。
+默认的期望积分网格同时也是 top-100 代理网格；期望活动积分为 `2464.237`，分布 P50 / P90
+为 `1800 / 5400`。top-10 代理只在败者组第二轮 A 改选 BoomBoys，其自身期望积分为
+`2463.615`。由于服务器总体分位阈值没有公开，玩家默认仍应采用期望积分网格。
 
 [![TI 2026 Main Event 双败淘汰赛预测树](../assets/ti2026-main-event-double-elimination-bracket-2026-08-17.png)](../assets/ti2026-main-event-double-elimination-bracket-2026-08-17.svg)
 
@@ -141,14 +168,35 @@ Isotonic 候选的 log loss 没有优于集成，因此按门禁拒绝，没有�
 | 败者组第一轮 B | Team Yandex vs Team Falcons | **Team Yandex** |
 | 胜者组半决赛 A | Iron Wing vs TEAM VISION | **TEAM VISION** |
 | 胜者组半决赛 B | Team Liquid vs Nigma Galaxy | **Team Liquid** |
-| 败者组第二轮 A | BoomBoys vs Iron Wing | **Iron Wing** |
-| 败者组第二轮 B | Team Yandex vs Nigma Galaxy | **Nigma Galaxy** |
-| 败者组第三轮 | Iron Wing vs Nigma Galaxy | **Iron Wing** |
+| 败者组第二轮 A | Nigma Galaxy vs BoomBoys | **Nigma Galaxy** |
+| 败者组第二轮 B | Iron Wing vs Team Yandex | **Iron Wing** |
+| 败者组第三轮 | Nigma Galaxy vs Iron Wing | **Iron Wing** |
 | 胜者组决赛 | TEAM VISION vs Team Liquid | **TEAM VISION** |
 | 败者组决赛 | Iron Wing vs Team Liquid | **Team Liquid** |
 | 总决赛 | TEAM VISION vs Team Liquid | **TEAM VISION** |
 
 </details>
+
+这里的交叉落位来自当前游戏内 Main bracket：败者组第二轮 A 接收
+`Liquid–Nigma Galaxy` 的败者，败者组第二轮 B 接收 `Iron Wing–TEAM VISION` 的败者。
+top-10 代理网格唯一不同之处是把败者组第二轮 A 的胜者由 Nigma Galaxy 改为 BoomBoys；
+其余十三个节点与上表相同。
+
+### 随机乱填与模型网格的数学期望
+
+这里把“随机乱填”定义为：在 `2^14 = 16,384` 个拓扑自洽的完整双败网格中均匀抽一个，而
+不是在下游写入已经被自己上游答案淘汰的队伍。实际赛果路径仍按同一冻结模型分布。
+
+| 填写方法 | 期望正确节点 | 期望正确率 | 期望活动积分 | 相对随机提升 |
+| --- | ---: | ---: | ---: | ---: |
+| 随机合法网格 | **3.7500 / 14** | **26.7857%** | **1367.525** | — |
+| 当前推荐网格 | **5.4122 / 14** | **38.6583%** | **2464.237** | **+1096.712 分（+80.20%）** |
+
+随机命中不是 `7 / 14`：下游节点必须先让真实胜者出现在自己的预测分支里，四个胜者组首轮各
+有 50%，败者组第一轮和胜者组半决赛各 25%，交叉落位后的败者组第二轮及后续节点各
+12.5%。随机积分也不是“期望 3.75 个正确，所以直接查表”；累计积分表非线性，正确算法是
+`E[points(K)]`，少量高命中路径会把结果抬到 `1367.525`。
+完整分层推导、全中概率与计算边界见 [Main 概率参考](ti2026-main-probability-reference-2026-08-17.md)。
 
 ## Fantasy 数据与通用基准
 
@@ -191,7 +239,7 @@ Cr1t-、Sneyking。服务器总体分位阈值没有公开，因此两个尾部�
 - 模型 SHA-256：
   `bf7bd372f1ebc57dee0e238bca21d776411bc0e25f4a28c1f72aafc9dfed76c2`
 - 数据情景 SHA-256：
-  `ba867b6f240495742e03bea752bc312dff506beb146edf53ec6ebce2db45cb16`
+  `3f1aad154b20bdce7795ec293efa7462b7932a74bc8dcec967f7c048ae5a56b3`
 
 策略边界保持研究结论：
 
@@ -205,16 +253,22 @@ Cr1t-、Sneyking。服务器总体分位阈值没有公开，因此两个尾部�
 
 actual 八队另生成了绑定同一求解发布包的三份玩家资料：
 
-- [Main Stat 与队伍 Top 3 完整表](../playbooks/main-roll/stat-team-top3-publication-v1.md)：
+- [Main Stat 与队伍 Top 3 完整表](../playbooks/main-stat-team-top3-publication-v1.md)：
   24 个实际队伍×位置池、42 个位置/颜色/Stat 行、400 次完整 Series 分组重采样；
 - [Main Title 分析与推荐](ti2026-main-fantasy-title-recommendation-2026-08-17.md)：默认从
   Group 的 Cerulean 更新为 **Elemental**，Suffix 继续是 **the Clutch**；
-- [Main 30 Roll 玩家手册](../playbooks/main-roll/main-roll-publication-manual-v1.md)：五格输入、
+- [Main 30 Roll 玩家手册](../playbooks/main-roll-publication-manual-v1.md)：五格输入、
   G/G-Lite、页面指标、随机模型和每次操作后完整重算的实战循环。
+- [Main 概率参考](ti2026-main-probability-reference-2026-08-17.md)：八队两两胜率、随机与模型
+  网格期望、20 个 Roll operation 出现率、Quality/Trait/Stat 结果分布及来源可信度。
 
-Main Title 使用 1,073 场不可变原始详情与 1,395 个队伍×位置完整 Series blocks。Clutch 仍以
-历史 BO3 打满比例作为 proxy，没有把可能的 BO5 总决赛冒充为已经精算。Main 玩家出版证据为
-`868d010c01682ce3f3af957ada4fbb68a012d1792d8ffa6796a4039bd6ce9696`。Group 三格手册冻结的
+Main Title 使用 1,073 场不可变原始详情与 1,395 个队伍×位置完整 Series blocks。公开
+Streamlit 和本地 Web 共享包内 24 个队伍×位置池，每次按当前 Core / Mid / Support 三队和
+当前战旗基础贡献动态重算 Prefix / Suffix 前三；默认画面为 **Otherworldly + the
+Underdog**，而无个人画面的全局中性默认仍是 **Elemental + the Clutch**。Clutch 仍以历史 BO3
+打满比例作为 proxy，没有把可能的 BO5 总决赛冒充为已经精算。内嵌 Title 运行时证据为
+`fbb3a6ae18ea3bd8e86ce20ac203db154ed09ebadebfe2c21f4767b5e7b85e5e`，Main 玩家出版证据为
+`97c4590267860438071924b439ce70ee122c7a8f287d3a04eb092a539dd50f66`。Group 三格手册冻结的
 B/C/D 操作规则没有直接搬到 Main。
 
 ## 冻结数据与哈希
@@ -235,11 +289,12 @@ B/C/D 操作规则没有直接搬到 Main。
 
 ## 验证
 
-- Pytest：`324` 项，`323 passed / 1 skipped`
+- Pytest：`332` 项，`331 passed / 1 skipped`
 - Ruff lint：通过
 - Ruff format check：通过
 - `git diff --check`：通过
-- Streamlit AppTest：Main 五格、G/G-Lite、实际八队手动组合全部通过，页面无 exception/error
+- Streamlit AppTest：Main 五格、G/G-Lite、实际八队手动组合和动态 Title 全部通过，页面无
+  exception/error
 - 旧 projected-16 研究栈：改为显式加载 manifest 冻结发布，不再读取当前生产指针
 
 ## 使用边界

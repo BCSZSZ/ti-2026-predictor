@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "release_id": "ti2026-main-parallel-fantasy-forecast-v1",
+  "status": "ready",
+  "as_of": "2026-08-16T15:31:30Z",
+  "artifact_manifest_sha256": "37a8f22a379caa1906c909b9d9499f06377d550526fee34db49e5557489a8b62",
+  "models": [
+    "historical-template-v1",
+    "player-role-conditional-b1",
+    "series-capped-hybrid-v1-b1"
+  ],
+  "archive": {
+    "file": "releases/main-parallel-forecast-37a8f22a379c.zip",
+    "bytes": 279077018,
+    "sha256": "0ce3be188ba30e188e50c18fc398e34d50c614577a2ebd845762e367355625eb",
+    "download_url": "https://github.com/BCSZSZ/ti-2026-predictor/releases/download/v0.4.0/main-parallel-forecast-37a8f22a379c.zip"
+  }
+}

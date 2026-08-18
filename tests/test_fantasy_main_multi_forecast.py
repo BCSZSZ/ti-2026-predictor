@@ -20,6 +20,7 @@ from ti_predictor.fantasy.main_multi_forecast import (
 from ti_predictor.fantasy.main_multi_forecast_builder import _prediction_semantic_hash
 from ti_predictor.fantasy.roll import BannerState, EmblemState
 from ti_predictor.hashing import sha256_file, sha256_json
+from ti_predictor.paths import PATHS
 
 
 def _banners() -> tuple[BannerState, ...]:
@@ -183,3 +184,25 @@ def test_rejected_calibration_candidate_is_audit_only_for_prediction_identity() 
     assert _prediction_semantic_hash(Model(None, accepted=True)) != _prediction_semantic_hash(
         Model({"x_thresholds": [0.2, 0.8]}, accepted=True)
     )
+
+
+def test_published_pointer_locks_the_three_model_archive_identity() -> None:
+    pointer = json.loads(
+        (PATHS.root / "deploy/runtime/main-forecast-current.json").read_text(encoding="utf-8")
+    )
+
+    assert pointer["status"] == "ready"
+    assert tuple(pointer["models"]) == MAIN_FORECAST_MODELS
+    assert pointer["as_of"] == "2026-08-16T15:31:30Z"
+    assert pointer["artifact_manifest_sha256"] == (
+        "37a8f22a379caa1906c909b9d9499f06377d550526fee34db49e5557489a8b62"
+    )
+    assert pointer["archive"] == {
+        "file": "releases/main-parallel-forecast-37a8f22a379c.zip",
+        "bytes": 279077018,
+        "sha256": "0ce3be188ba30e188e50c18fc398e34d50c614577a2ebd845762e367355625eb",
+        "download_url": (
+            "https://github.com/BCSZSZ/ti-2026-predictor/releases/download/v0.4.0/"
+            "main-parallel-forecast-37a8f22a379c.zip"
+        ),
+    }

@@ -1,0 +1,109 @@
+{
+  "schema_version": 2,
+  "experiment_id": "ti2026-main-player-role-generator-v2-empirical-copula",
+  "period": "main",
+  "as_of": "2026-08-16T15:31:30Z",
+  "evidence": {
+    "scope": "global-positive-weight-current-main-players",
+    "time_half_life_days": 60.0,
+    "maximum_game_parameter_mass": 0.02,
+    "maximum_series_parameter_mass": 0.05,
+    "maximum_residual_game_mass": 0.01,
+    "maximum_residual_series_mass": 0.02
+  },
+  "frozen_b1": {
+    "ridge_alpha": 1.0,
+    "recent_effective_sample_constant": 8.0,
+    "recent_residual_cap_sigma": 0.5,
+    "factor_rank": 12,
+    "covariance_shrinkage": 0.25,
+    "latent_scale": 1.1
+  },
+  "copula_tuning": {
+    "empirical_mixes": [0.25, 0.5, 0.75, 0.9],
+    "latent_scales": [0.9, 1.0, 1.1, 1.2],
+    "maximum_crps_relative_loss_vs_b1": 0.02,
+    "tuning_samples_per_series": 16
+  },
+  "simulation": {
+    "synthetic_samples_per_context": 16,
+    "inner_samples_per_path": 16,
+    "seeds": [2026081801, 2026081802, 2026081803],
+    "cvar_alpha": 0.1
+  },
+  "tuning_folds": [
+    {
+      "fold_id": "dreamleague-29",
+      "league_id": 19696,
+      "train_as_of": "2026-05-13T09:55:00Z",
+      "test_end": "2026-05-24T19:22:35Z"
+    },
+    {
+      "fold_id": "blast-slam-vii",
+      "league_id": 19101,
+      "train_as_of": "2026-05-26T07:57:10Z",
+      "test_end": "2026-06-07T18:32:26Z"
+    },
+    {
+      "fold_id": "ewc-2026",
+      "league_id": 19785,
+      "train_as_of": "2026-07-07T09:24:38Z",
+      "test_end": "2026-07-19T17:49:02Z"
+    },
+    {
+      "fold_id": "1win-essence-ii",
+      "league_id": 20009,
+      "train_as_of": "2026-07-30T09:03:25Z",
+      "test_end": "2026-08-01T20:45:40Z"
+    }
+  ],
+  "confirmation_folds": [
+    {
+      "fold_id": "pgl-wallachia-s7",
+      "league_id": 19435,
+      "train_as_of": "2026-03-07T08:00:31Z",
+      "test_end": "2026-03-15T20:24:45Z"
+    },
+    {
+      "fold_id": "esl-one-birmingham",
+      "league_id": 19422,
+      "train_as_of": "2026-03-22T11:59:55Z",
+      "test_end": "2026-03-29T19:34:21Z"
+    },
+    {
+      "fold_id": "pgl-wallachia-s8",
+      "league_id": 19543,
+      "train_as_of": "2026-04-18T07:00:07Z",
+      "test_end": "2026-04-26T14:11:02Z"
+    },
+    {
+      "fold_id": "ti2026-europe-qualifier",
+      "league_id": 19892,
+      "train_as_of": "2026-06-21T08:02:15Z",
+      "test_end": "2026-06-28T17:21:39Z"
+    }
+  ],
+  "diagnostic_fold": {
+    "fold_id": "ti2026-group-and-advancement-consumed-diagnostic",
+    "league_id": 19719,
+    "train_as_of": "2026-08-13T02:00:00Z",
+    "test_end": "2026-08-16T11:32:39Z"
+  },
+  "gates": {
+    "minimum_series_crps_improvement": 0.02,
+    "series_crps_one_sided_confidence": 0.95,
+    "maximum_joint_energy_relative_loss": 0.01,
+    "maximum_role_crps_relative_loss": 0.02,
+    "coverage_80_lower": 0.75,
+    "coverage_80_upper": 0.85,
+    "coverage_90_lower": 0.86,
+    "coverage_90_upper": 0.94,
+    "maximum_leave_one_game_mean_change": 0.01,
+    "maximum_leave_one_series_mean_change": 0.02,
+    "protected_rank_margin": 0.01,
+    "maximum_monte_carlo_relative_standard_error": 0.002
+  },
+  "maximum_joint_energy_relative_loss_vs_b1": 0.0,
+  "coach_title_policy": "excluded-from-player-role-generator-v2",
+  "research_only": true
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "release_id": "ti2026-main-parallel-fantasy-forecast-v1",
+  "period": "main",
+  "as_of": "2026-08-16T15:31:30Z",
+  "source_v1_manifest_sha256": "e43bfaaad33cc4e3be7428d45548e66a83baabe8a7d0d23148ba74a9c5a936dd",
+  "models": [
+    "historical-template-v1",
+    "player-role-conditional-b1",
+    "series-capped-hybrid-v1-b1"
+  ],
+  "seeds": [2026081701, 2026081702, 2026081703],
+  "inner_samples_per_path": 16,
+  "synthetic_samples_per_context": 16,
+  "maximum_final_series_mass": 0.10,
+  "minimum_conditioned_series": 3,
+  "cvar_alpha": 0.10,
+  "b1": {
+    "ridge_alpha": 1.0,
+    "recent_effective_sample_constant": 8.0,
+    "recent_residual_cap_sigma": 0.5,
+    "factor_rank": 12,
+    "covariance_shrinkage": 0.25,
+    "latent_scale": 1.1,
+    "maximum_game_parameter_mass": 0.02,
+    "maximum_series_parameter_mass": 0.05,
+    "maximum_residual_game_mass": 0.01,
+    "maximum_residual_series_mass": 0.02
+  }
+}

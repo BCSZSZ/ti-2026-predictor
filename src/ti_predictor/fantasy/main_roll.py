@@ -43,7 +43,7 @@ MAIN_ROLL_COUNT = 30
 @dataclass(frozen=True)
 class MainRollState:
     banners: tuple[BannerState, ...]
-    offer: RollOffer
+    offer: RollOffer | None
     remaining_rolls: int
     period: str = MAIN_PERIOD
     slot_count: int = MAIN_SLOT_COUNT
@@ -83,7 +83,12 @@ def validate_main_state(state: MainRollState, rules: RollRuleSet) -> None:
             slot_count=MAIN_SLOT_COUNT,
             period_label="Main",
         )
-    validate_offer(state.offer, rules)
+    if state.remaining_rolls > 0:
+        if state.offer is None:
+            raise RollStateError("an active Main Roll state requires three visible options")
+        validate_offer(state.offer, rules)
+    elif state.offer is not None:
+        validate_offer(state.offer, rules)
 
 
 def operation_applies(banner: BannerState, operation, rules: RollRuleSet) -> bool:
@@ -144,6 +149,8 @@ def legal_actions(state: MainRollState, rules: RollRuleSet) -> tuple[RollAction,
     validate_main_state(state, rules)
     if state.remaining_rolls == 0:
         return ()
+    if state.offer is None:  # narrowed by validation; retained for static type checkers
+        raise RollStateError("an active Main Roll state requires three visible options")
     actions: list[RollAction] = [REFRESH]
     for banner in state.banners:
         for operation_id in state.offer.operation_ids:
@@ -159,7 +166,11 @@ def _require_legal_apply(
     rules: RollRuleSet,
 ) -> BannerState:
     validate_main_state(state, rules)
-    if state.remaining_rolls == 0 or action.operation_id not in state.offer.operation_ids:
+    if (
+        state.remaining_rolls == 0
+        or state.offer is None
+        or action.operation_id not in state.offer.operation_ids
+    ):
         raise RollActionError(f"operation {action.operation_id} is not legal for {action.banner_role}")
     banner = next((item for item in state.banners if item.role == action.banner_role), None)
     if banner is None or not operation_applies(banner, rules.operation(action.operation_id), rules):

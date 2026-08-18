@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "source": {
+    "kind": "user-provided-zero-roll-screen-confirmed-by-current-ocr",
+    "captured_at": "2026-08-17T15:01:22.565545Z",
+    "image_sha256": "51d9fa7f5e641be7d8e62b7dc6ea755046f1c21b402dd491d29622ea63480b36",
+    "ocr_profile_id": "fantasy-main-roll-screen-v1",
+    "confirmation": "all-15-banner-fields-confirmed; terminal-offer-and-roll-count-absent-by-client-design"
+  },
+  "period": "main",
+  "slot_count": 5,
+  "remaining_rolls": 0,
+  "banners": [
+    {
+      "role": "core",
+      "emblems": [
+        {"stat_id": "creep_score", "quality_tier": 3, "trait_id": "fractal"},
+        {"stat_id": "teamfight_participation", "quality_tier": 4, "trait_id": "friendly"},
+        {"stat_id": "kills", "quality_tier": 5, "trait_id": "benevolent"},
+        {"stat_id": "tormentor_kills", "quality_tier": 1, "trait_id": "friendly"},
+        {"stat_id": "madstone_collected", "quality_tier": 2, "trait_id": "friendly"}
+      ]
+    },
+    {
+      "role": "mid",
+      "emblems": [
+        {"stat_id": "creep_score", "quality_tier": 5, "trait_id": "fractal"},
+        {"stat_id": "camps_stacked", "quality_tier": 4, "trait_id": "benevolent"},
+        {"stat_id": "stuns", "quality_tier": 4, "trait_id": "benevolent"},
+        {"stat_id": "tower_kills", "quality_tier": 1, "trait_id": "benevolent"},
+        {"stat_id": "roshan_kills", "quality_tier": 4, "trait_id": "unique"}
+      ]
+    },
+    {
+      "role": "support",
+      "emblems": [
+        {"stat_id": "smokes_used", "quality_tier": 5, "trait_id": "vampiric"},
+        {"stat_id": "teamfight_participation", "quality_tier": 5, "trait_id": "friendly"},
+        {"stat_id": "lotuses_gained", "quality_tier": 3, "trait_id": "friendly"},
+        {"stat_id": "courier_kills", "quality_tier": 3, "trait_id": "benevolent"},
+        {"stat_id": "wards_placed", "quality_tier": 4, "trait_id": "friendly"}
+      ]
+    }
+  ],
+  "offer": null
+}

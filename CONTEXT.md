@@ -174,6 +174,35 @@ entrants from all sixteen candidates; after it is known, all eight candidates ar
 separate settlement model from a Common Fantasy scenario.
 _Avoid_: Group outcome, independent bracket nodes, observed match
 
+**Player-role conditional Fantasy model / 选手—定位条件 Fantasy 模型**:
+A Forecast of one current player's future Fantasy statistics in one Fantasy role, conditional on
+information available or coherently simulated for the Game. It remains separate from War Banner
+scoring and from the player's realized future performance.
+_Avoid_: Historical Game template, player average, realized Fantasy score, War Banner value
+
+**Joint Fantasy residual / Fantasy 联合残差**:
+The correlated within-Game variation across a Team's players and Fantasy statistics after their
+conditional expectations are removed. It represents shared Game uncertainty without inheriting one
+historical Game's absolute performance vector.
+_Avoid_: Historical Game template, independent Stat noise, future Game result
+
+**Empirical-copula Fantasy residual / Fantasy 经验 Copula 残差**:
+A Joint Fantasy residual whose cross-player and cross-Stat rank shape comes from a capped historical
+residual observation after conditional marginals are removed. It is not a historical Game's absolute
+Stat vector.
+_Avoid_: Historical Game template, absolute Game replay, independent Stat noise
+
+**Series-capped template hybrid / Series 限额模板混合**:
+A future Fantasy distribution that retains each v1 historical Series template only up to a fixed
+final probability mass and assigns every truncated remainder to a conditional generator.
+_Avoid_: Capped-and-renormalized v1, empirical-copula residual, score bonus weight
+
+**Parallel Fantasy Forecast / Fantasy 并列预测**:
+Three separately scored Main Fantasy Forecasts for the same confirmed Banner state: historical
+template v1, conditional generator B1, and the Series-capped hybrid.  Each keeps its own Team and
+Title recommendation so disagreement remains visible and no majority vote becomes a hidden default.
+_Avoid_: Ensemble Forecast, consensus answer, averaged model, Roll strategy
+
 **Main candidate Team / Main 候选队**:
 A stable Team identity currently offered by the client for Main Fantasy selection. There are sixteen
 before the actual advancing roster is locked and eight after it is imported. Candidate status does

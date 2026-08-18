@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "experiment_id": "ti2026-main-conditional-truth-v1",
+  "period": "main",
+  "as_of": "2026-08-16T15:31:30Z",
+  "outer_path_count": 16384,
+  "outer_weighting": "exact-series-probability",
+  "inner_samples_per_path": 16,
+  "seeds": [2026081701, 2026081702, 2026081703],
+  "opponent_probability_boundaries": [0.4, 0.6],
+  "minimum_conditioned_series": 3,
+  "historical_series_formats": ["bo2", "bo3", "bo5"],
+  "future_series_formats": ["bo3", "bo5"],
+  "series_probability_model": "iid-binomial-from-frozen-team-strength",
+  "game_sampling": "weighted-result-conditioned-joint-five-player-template",
+  "team_side_correlation": "shared-series-sequence-independent-team-templates-given-game-result",
+  "coach_title_policy": "excluded-from-reference-v1",
+  "cvar_alpha": 0.1,
+  "mean_retention_epsilon": 0.0
+}

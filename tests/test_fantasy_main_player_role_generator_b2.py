@@ -42,9 +42,7 @@ def test_empirical_copula_is_deterministic_and_does_not_repeat_a_source_row() ->
         factor_rank=4,
         covariance_shrinkage=0.25,
     )
-    standardized = (
-        rows - smooth.training_center[None, :]
-    ) / smooth.training_scale[None, :]
+    standardized = (rows - smooth.training_center[None, :]) / smooth.training_scale[None, :]
     model = EmpiricalCopulaResidualModel(
         standardized_rows=standardized,
         probabilities=probabilities,
@@ -60,11 +58,7 @@ def test_empirical_copula_is_deterministic_and_does_not_repeat_a_source_row() ->
     assert np.array_equal(first, second)
     assert first.shape == (200, 12)
     assert np.isfinite(first).all()
-    assert not any(
-        np.array_equal(generated, source)
-        for generated in first
-        for source in standardized
-    )
+    assert not any(np.array_equal(generated, source) for generated in first for source in standardized)
 
 
 def test_empirical_copula_preserves_variance_scale_in_large_draw() -> None:
@@ -77,9 +71,7 @@ def test_empirical_copula_preserves_variance_scale_in_large_draw() -> None:
         factor_rank=3,
         covariance_shrinkage=0.25,
     )
-    standardized = (
-        rows - smooth.training_center[None, :]
-    ) / smooth.training_scale[None, :]
+    standardized = (rows - smooth.training_center[None, :]) / smooth.training_scale[None, :]
     model = EmpiricalCopulaResidualModel(
         standardized_rows=standardized,
         probabilities=probabilities,

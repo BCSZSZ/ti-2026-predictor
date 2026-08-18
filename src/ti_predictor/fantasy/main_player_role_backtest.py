@@ -162,11 +162,7 @@ def empirical_crps(samples: Sequence[float] | np.ndarray, observed: float) -> fl
     first = float(np.mean(np.abs(values - float(observed))))
     ordered = np.sort(values, kind="stable")
     indexes = np.arange(1, len(ordered) + 1, dtype=float)
-    pair_mean = float(
-        2.0
-        * np.sum((2.0 * indexes - len(ordered) - 1.0) * ordered)
-        / (len(ordered) ** 2)
-    )
+    pair_mean = float(2.0 * np.sum((2.0 * indexes - len(ordered) - 1.0) * ordered) / (len(ordered) ** 2))
     return first - 0.5 * pair_mean
 
 
@@ -216,9 +212,7 @@ def build_hash_fixed_banner_panel(
             emblems: list[Emblem] = []
             selected_stats: list[str] = []
             for slot_index, color in enumerate(colors):
-                digest = hashlib.sha256(
-                    f"{salt}:{role}:{projection_index}:{slot_index}".encode()
-                ).digest()
+                digest = hashlib.sha256(f"{salt}:{role}:{projection_index}:{slot_index}".encode()).digest()
                 candidates = stats_by_color[color]
                 stat_id = candidates[int.from_bytes(digest[:4], "big") % len(candidates)]
                 quality = quality_tiers[digest[4] % len(quality_tiers)]
@@ -265,12 +259,10 @@ def score_raw_games(
         raise MainPlayerRoleBacktestError("raw Game matrix does not match five players and Stats")
     index = {stat_id: offset for offset, stat_id in enumerate(stat_ids)}
     player_values = np.zeros(raw.shape[:-1], dtype=float)
-    for stat_id, multiplier in zip(
-        projection.stat_ids, projection.multipliers, strict=True
-    ):
-        player_values += _stat_value(
-            raw[..., index[stat_id]], rules["fantasy"]["stats"][stat_id]
-        ) * float(multiplier)
+    for stat_id, multiplier in zip(projection.stat_ids, projection.multipliers, strict=True):
+        player_values += _stat_value(raw[..., index[stat_id]], rules["fantasy"]["stats"][stat_id]) * float(
+            multiplier
+        )
     offsets = ROLE_PLAYER_OFFSETS[projection.role]
     return player_values[..., list(offsets)].mean(axis=-1)
 
@@ -306,9 +298,7 @@ def build_player_role_holdout(
     matches_path = evidence_paths.processed / "matches.parquet"
     observations_path = evidence_paths.processed / "fantasy_performance_samples.parquet"
     matches = _available_by_as_of(read_parquet_if_exists(matches_path), available)
-    observations = _available_by_as_of(
-        read_parquet_if_exists(observations_path), available
-    )
+    observations = _available_by_as_of(read_parquet_if_exists(observations_path), available)
     matches, identity_audit = canonicalize_match_team_ids(
         matches,
         manifest.team_identity_bridges,
@@ -325,14 +315,10 @@ def build_player_role_holdout(
         & matches["start_time"].ge(pd.Timestamp(train))
         & matches["start_time"].le(pd.Timestamp(end))
     ].copy()
-    selected_matches["match_id"] = pd.to_numeric(
-        selected_matches["match_id"], errors="coerce"
-    )
+    selected_matches["match_id"] = pd.to_numeric(selected_matches["match_id"], errors="coerce")
     selected_matches = selected_matches.dropna(subset=["match_id"]).astype({"match_id": int})
     context_by_game, series_rejection = _series_contexts(selected_matches)
-    match_by_id = {
-        int(row["match_id"]): row for row in selected_matches.to_dict(orient="records")
-    }
+    match_by_id = {int(row["match_id"]): row for row in selected_matches.to_dict(orient="records")}
     observations["match_id"] = pd.to_numeric(observations["match_id"], errors="coerce")
     observations["account_id"] = pd.to_numeric(observations["account_id"], errors="coerce")
     observations = observations.dropna(subset=["match_id", "account_id"]).astype(
@@ -344,20 +330,13 @@ def build_player_role_holdout(
         for match_id, group in observations.groupby("match_id", sort=False)
     }
     stat_ids = tuple(str(value) for value in rules["fantasy"]["stats"])
-    provenance = {
-        stat_id: str(rules["fantasy"]["stats"][stat_id]["provenance"])
-        for stat_id in stat_ids
-    }
+    provenance = {stat_id: str(rules["fantasy"]["stats"][stat_id]["provenance"]) for stat_id in stat_ids}
     team_by_id = {int(team.team_id): team for team in manifest.teams}
     game_blocks: dict[tuple[int, int], dict[str, Any]] = {}
     rejection: Counter[str] = Counter(series_rejection)
     for current_team_id in team_ids:
         team = team_by_id[current_team_id]
-        players = tuple(
-            int(player.account_id)
-            for role in ROLE_IDS
-            for player in team.players[role]
-        )
+        players = tuple(int(player.account_id) for role in ROLE_IDS for player in team.players[role])
         for match_id, match in match_by_id.items():
             indexed = observation_by_match.get(match_id)
             if indexed is None or any(account_id not in indexed.index for account_id in players):
@@ -460,9 +439,7 @@ def build_player_role_holdout(
                 opponent_team_id=opponent_team_id,
                 best_of=int(contexts[0]["best_of"]),
                 series_won=bool(contexts[0]["series_won"]),
-                opponent_probability=float(
-                    strength_model.predict(historical_team_id, opponent_team_id)
-                ),
+                opponent_probability=float(strength_model.predict(historical_team_id, opponent_team_id)),
                 match_ids=match_ids,
                 won_games=tuple(bool(item["won_game"]) for item in contexts),
                 durations=np.asarray([item["duration"] for item in selected_blocks]),
@@ -471,9 +448,7 @@ def build_player_role_holdout(
         )
     series_items.sort(key=lambda item: (item.series_id, item.current_team_id))
     if not series_items:
-        raise MainPlayerRoleBacktestError(
-            f"fold {fold_id} has no complete current-roster Series"
-        )
+        raise MainPlayerRoleBacktestError(f"fold {fold_id} has no complete current-roster Series")
     audit = {
         "schema_version": 1,
         "fold_id": fold_id,
@@ -485,9 +460,7 @@ def build_player_role_holdout(
         "catalog_games": len(selected_matches),
         "complete_team_games": len(game_blocks),
         "complete_series": len(series_items),
-        "teams_with_complete_series": sorted(
-            {item.current_team_id for item in series_items}
-        ),
+        "teams_with_complete_series": sorted({item.current_team_id for item in series_items}),
         "rejection_counts": dict(sorted(rejection.items())),
         "identity_audit": identity_audit,
         "source_sha256": {
@@ -534,9 +507,7 @@ def build_historical_series_templates(
     templates: list[HistoricalSeriesTemplate] = []
     team_index = {team_id: index for index, team_id in enumerate(evidence.team_ids)}
     complete_games: dict[tuple[int, int], dict[str, Any]] = {}
-    for (team_id, match_id), group in frame.groupby(
-        ["current_team_id", "match_id"], sort=True
-    ):
+    for (team_id, match_id), group in frame.groupby(["current_team_id", "match_id"], sort=True):
         team_id = int(team_id)
         expected = evidence.player_ids_by_team[team_index[team_id]]
         indexed = group.set_index("account_id", drop=False)
@@ -576,13 +547,8 @@ def build_historical_series_templates(
             for key, value in complete_games.items()
         ]
     )
-    for (team_id, series_id), group in index_frame.groupby(
-        ["team_id", "series_id"], sort=True
-    ):
-        games = [
-            complete_games[(int(team_id), int(match_id))]
-            for match_id in group["match_id"].astype(int)
-        ]
+    for (team_id, series_id), group in index_frame.groupby(["team_id", "series_id"], sort=True):
+        games = [complete_games[(int(team_id), int(match_id))] for match_id in group["match_id"].astype(int)]
         games.sort(key=lambda item: int(item["game_index"]))
         expected_length = int(games[0]["series_length"])
         if len(games) != expected_length or [int(item["game_index"]) for item in games] != list(
@@ -622,22 +588,10 @@ def _series_candidates(
             and item.series_won == target.series_won
             and item.opponent_band == band
         ],
-        [
-            item
-            for item in team
-            if item.best_of == target.best_of and item.series_won == target.series_won
-        ],
-        [
-            item
-            for item in team
-            if item.series_won == target.series_won and item.opponent_band == band
-        ],
+        [item for item in team if item.best_of == target.best_of and item.series_won == target.series_won],
+        [item for item in team if item.series_won == target.series_won and item.opponent_band == band],
         [item for item in team if item.series_won == target.series_won],
-        [
-            item
-            for item in team
-            if item.best_of == target.best_of and item.opponent_band == band
-        ],
+        [item for item in team if item.best_of == target.best_of and item.opponent_band == band],
         [item for item in team if item.best_of == target.best_of],
         [item for item in team if item.opponent_band == band],
         team,
@@ -679,9 +633,7 @@ def sample_v1_series(
     for sample_index, source_index in enumerate(source_indexes):
         source = candidates[int(source_index)]
         for game_index, desired_win in enumerate(target.won_games):
-            local = [
-                offset for offset, won in enumerate(source.won_games) if won == desired_win
-            ]
+            local = [offset for offset, won in enumerate(source.won_games) if won == desired_win]
             if local:
                 source_game = int(rng.choice(local))
                 result[sample_index, game_index] = source.raw_stats[source_game]
@@ -718,9 +670,7 @@ def sample_player_role_series(
     """Generate a conditional future Series without using its realized duration or Stats."""
 
     rng = np.random.default_rng(int(seed))
-    result = np.empty(
-        (sample_count, len(target.match_ids), 5, len(model.stat_ids)), dtype=np.float32
-    )
+    result = np.empty((sample_count, len(target.match_ids), 5, len(model.stat_ids)), dtype=np.float32)
     for game_index, won_game in enumerate(target.won_games):
         durations = model.sample_durations(
             opponent_probability=target.opponent_probability,
@@ -782,9 +732,9 @@ def evaluate_fold(
                 float(
                     np.nanstd(
                         np.log1p(
-                            pd.to_numeric(
-                                training_evidence.frame[stat_id], errors="coerce"
-                            ).to_numpy(dtype=float)
+                            pd.to_numeric(training_evidence.frame[stat_id], errors="coerce").to_numpy(
+                                dtype=float
+                            )
                         )
                     )
                 ),
@@ -880,9 +830,7 @@ def evaluate_fold(
                 "b_mean": float(np.mean(b_samples)),
                 "v1_mean": None if v1_samples is None else float(np.mean(v1_samples)),
                 "b_crps": empirical_crps(b_samples, actual),
-                "v1_crps": (
-                    None if v1_samples is None else empirical_crps(v1_samples, actual)
-                ),
+                "v1_crps": (None if v1_samples is None else empirical_crps(v1_samples, actual)),
                 "b_q05": float(np.quantile(b_samples, 0.05)),
                 "b_q10": float(np.quantile(b_samples, 0.10)),
                 "b_q90": float(np.quantile(b_samples, 0.90)),
@@ -909,12 +857,8 @@ def evaluate_fold(
     b_crps = float(frame["b_crps"].mean())
     common_b_crps = float(common_frame["b_crps"].mean())
     v1_crps = float(common_frame["v1_crps"].mean())
-    coverage80 = float(
-        ((frame["actual"] >= frame["b_q10"]) & (frame["actual"] <= frame["b_q90"])).mean()
-    )
-    coverage90 = float(
-        ((frame["actual"] >= frame["b_q05"]) & (frame["actual"] <= frame["b_q95"])).mean()
-    )
+    coverage80 = float(((frame["actual"] >= frame["b_q10"]) & (frame["actual"] <= frame["b_q90"])).mean())
+    coverage90 = float(((frame["actual"] >= frame["b_q05"]) & (frame["actual"] <= frame["b_q95"])).mean())
     role_metrics: dict[str, dict[str, float]] = {}
     for role, group in frame.groupby("role", sort=True):
         common_role = group.loc[group["v1_crps"].notna()]
@@ -937,8 +881,7 @@ def evaluate_fold(
         if len(team_payload) < 2:
             continue
         actual_by_team = {
-            team_id: max(float(item["actual"]) for item in values)
-            for team_id, values in team_payload.items()
+            team_id: max(float(item["actual"]) for item in values) for team_id, values in team_payload.items()
         }
         for label in ("b", "v1"):
             eligible_payload = {
@@ -949,18 +892,14 @@ def evaluate_fold(
             if len(eligible_payload) < 2:
                 continue
             predicted_mean = {
-                team_id: float(
-                    np.max(np.stack([item[label] for item in values]), axis=0).mean()
-                )
+                team_id: float(np.max(np.stack([item[label] for item in values]), axis=0).mean())
                 for team_id, values in eligible_payload.items()
             }
             selected = min(
                 predicted_mean,
                 key=lambda team_id: (-predicted_mean[team_id], team_id),
             )
-            eligible_actual = {
-                team_id: actual_by_team[team_id] for team_id in eligible_payload
-            }
+            eligible_actual = {team_id: actual_by_team[team_id] for team_id in eligible_payload}
             regrets[label].append(max(eligible_actual.values()) - eligible_actual[selected])
     metrics = {
         "fold_id": holdout.fold_id,
@@ -968,8 +907,7 @@ def evaluate_fold(
         "series": len(holdout.series),
         "common_v1_series": int(common_frame[["series_id", "team_id"]].drop_duplicates().shape[0]),
         "excluded_without_v1_training_pool": int(
-            len(holdout.series)
-            - common_frame[["series_id", "team_id"]].drop_duplicates().shape[0]
+            len(holdout.series) - common_frame[["series_id", "team_id"]].drop_duplicates().shape[0]
         ),
         "v1_training_team_ids": sorted(v1_team_ids),
         "series_projection_records": len(frame),
@@ -978,9 +916,7 @@ def evaluate_fold(
         "b_series_crps": b_crps,
         "common_b_series_crps": common_b_crps,
         "v1_series_crps": v1_crps,
-        "series_crps_relative_improvement": (
-            v1_crps - common_b_crps
-        ) / max(v1_crps, 1e-12),
+        "series_crps_relative_improvement": (v1_crps - common_b_crps) / max(v1_crps, 1e-12),
         "b_coverage80": coverage80,
         "b_coverage90": coverage90,
         "b_joint_energy": float(joint["b_energy"].mean()),
@@ -993,9 +929,7 @@ def evaluate_fold(
         "b_mean_regret": float(np.mean(regrets["b"])) if regrets["b"] else None,
         "v1_mean_regret": float(np.mean(regrets["v1"])) if regrets["v1"] else None,
         "role_metrics": role_metrics,
-        "v1_series_fallback_counts": {
-            str(level): count for level, count in sorted(fallback_counts.items())
-        },
+        "v1_series_fallback_counts": {str(level): count for level, count in sorted(fallback_counts.items())},
         "panel_sha256": sha256_json(
             [
                 {

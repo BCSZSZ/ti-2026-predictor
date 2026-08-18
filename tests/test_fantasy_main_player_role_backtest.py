@@ -102,8 +102,7 @@ def test_v1_sampler_is_deterministic_and_matches_requested_game_results() -> Non
 
 def test_paired_bootstrap_uses_series_blocks() -> None:
     records = [
-        {"series_id": series_id, "team_id": 101, "v1_crps": 10.0, "b_crps": 8.0}
-        for series_id in range(20)
+        {"series_id": series_id, "team_id": 101, "v1_crps": 10.0, "b_crps": 8.0} for series_id in range(20)
     ]
     result = paired_series_bootstrap_lower_bound(
         records,

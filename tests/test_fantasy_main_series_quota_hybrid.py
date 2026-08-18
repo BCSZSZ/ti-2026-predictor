@@ -54,9 +54,7 @@ def _templates() -> tuple[HistoricalSeriesTemplate, ...]:
 
 
 def test_frozen_quota_config_routes_truncated_mass_to_b1() -> None:
-    config = load_main_series_quota_hybrid_config(
-        "config/research/fantasy-main-series-quota-hybrid-v1.json"
-    )
+    config = load_main_series_quota_hybrid_config("config/research/fantasy-main-series-quota-hybrid-v1.json")
     assert isinstance(config, MainSeriesQuotaHybridConfig)
     assert config.maximum_final_series_mass == pytest.approx(0.10)
     assert config.truncated_mass_destination == "frozen-b1"

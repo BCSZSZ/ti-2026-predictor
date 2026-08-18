@@ -81,9 +81,7 @@ class MainConditionalTruthConfig(StrictModel):
     future_series_formats: list[Literal["bo3", "bo5"]]
     series_probability_model: Literal["iid-binomial-from-frozen-team-strength"]
     game_sampling: Literal["weighted-result-conditioned-joint-five-player-template"]
-    team_side_correlation: Literal[
-        "shared-series-sequence-independent-team-templates-given-game-result"
-    ]
+    team_side_correlation: Literal["shared-series-sequence-independent-team-templates-given-game-result"]
     coach_title_policy: Literal["excluded-from-reference-v1"]
     cvar_alpha: float = Field(gt=0.0, le=1.0)
     mean_retention_epsilon: float = Field(ge=0.0, lt=1.0)
@@ -225,9 +223,7 @@ def build_exact_main_outer_paths(
     probabilities = np.empty(len(paths), dtype=float)
     for path_index, path in enumerate(paths):
         probability = 1.0
-        for node, ((left, right), winner) in enumerate(
-            zip(path.participants, path.winners, strict=True)
-        ):
+        for node, ((left, right), winner) in enumerate(zip(path.participants, path.winners, strict=True)):
             participants[path_index, node] = (index[left], index[right])
             winners[path_index, node] = index[winner]
             best_of = 5 if node == SERIES_NODE_COUNT - 1 else 3
@@ -373,11 +369,7 @@ def _team_game_result(match: Mapping[str, Any], historical_team_id: int) -> tupl
 
 def _player_order(manifest: Any, team_id: int) -> tuple[int, ...]:
     team = next(item for item in manifest.teams if int(item.team_id) == int(team_id))
-    return tuple(
-        int(player.account_id)
-        for role in ROLE_IDS
-        for player in team.players[role]
-    )
+    return tuple(int(player.account_id) for role in ROLE_IDS for player in team.players[role])
 
 
 def build_joint_game_templates(
@@ -437,14 +429,10 @@ def build_joint_game_templates(
     match_frame["match_id"] = match_frame["match_id"].astype(int)
     match_frame["series_id"] = match_frame["series_id"].astype(int)
     match_frame["series_type"] = match_frame["series_type"].astype(int)
-    match_by_id = {
-        int(row["match_id"]): row for row in match_frame.to_dict(orient="records")
-    }
+    match_by_id = {int(row["match_id"]): row for row in match_frame.to_dict(orient="records")}
     observation_frame = observations.copy()
     observation_frame["match_id"] = pd.to_numeric(observation_frame["match_id"], errors="coerce")
-    observation_frame["account_id"] = pd.to_numeric(
-        observation_frame["account_id"], errors="coerce"
-    )
+    observation_frame["account_id"] = pd.to_numeric(observation_frame["account_id"], errors="coerce")
     observation_frame = observation_frame.dropna(subset=["match_id", "account_id"])
     observation_frame = observation_frame.astype({"match_id": int, "account_id": int})
     observation_by_match = {
@@ -468,9 +456,7 @@ def build_joint_game_templates(
     series_game_offsets = [0]
     series_game_ids: list[int] = []
     rejection = Counter()
-    accepted_by_team_format: dict[str, Counter[str]] = {
-        str(team_id): Counter() for team_id in team_ids
-    }
+    accepted_by_team_format: dict[str, Counter[str]] = {str(team_id): Counter() for team_id in team_ids}
 
     grouped_series = {
         int(series_id): games.sort_values(["start_time", "match_id"], kind="stable")
@@ -846,9 +832,7 @@ def generate_conditional_draws(
                             1 - left_results,
                         )
                         for desired_win in (0, 1):
-                            selected_rows = valid_rows[
-                                desired_results[valid_rows] == desired_win
-                            ]
+                            selected_rows = valid_rows[desired_results[valid_rows] == desired_win]
                             if not len(selected_rows):
                                 continue
                             selected_series = chosen[selected_rows]
@@ -894,9 +878,7 @@ def generate_conditional_draws(
         )
         actual_results = templates.game_wins[safe_side_ids]
         if np.any(side_valid & (actual_results != expected_results)):
-            raise MainConditionalTruthError(
-                "future Game templates do not match the shared Series results"
-            )
+            raise MainConditionalTruthError("future Game templates do not match the shared Series results")
     audit = {
         "seed": int(seed),
         "inner_samples_per_path": inner,
@@ -931,8 +913,7 @@ def _atomic_npz(path: Path, **arrays: np.ndarray) -> None:
         with np.load(path, allow_pickle=False) as current:
             same_keys = set(current.files) == set(arrays)
             same_values = same_keys and all(
-                np.array_equal(current[name], np.asarray(value))
-                for name, value in arrays.items()
+                np.array_equal(current[name], np.asarray(value)) for name, value in arrays.items()
             )
         temporary.unlink(missing_ok=True)
         if not same_values:
@@ -1281,9 +1262,7 @@ def solve_main_conditional_truth(
             }
         )
     all_weights = np.concatenate(seed_weights) / len(config.seeds)
-    role_outcomes = {
-        role: np.concatenate(role_seed_outcomes[role], axis=1) for role in ROLE_IDS
-    }
+    role_outcomes = {role: np.concatenate(role_seed_outcomes[role], axis=1) for role in ROLE_IDS}
     role_rows: dict[str, list[dict[str, Any]]] = {}
     selected_indexes: dict[str, int] = {}
     maximum_mean = 0.0
@@ -1297,22 +1276,15 @@ def solve_main_conditional_truth(
                 {
                     "team_id": team_id,
                     "mean": float(means[index]),
-                    "cvar10": weighted_lower_tail_cvar(
-                        outcomes[index], all_weights, config.cvar_alpha
-                    ),
+                    "cvar10": weighted_lower_tail_cvar(outcomes[index], all_weights, config.cvar_alpha),
                 }
             )
         rows.sort(key=lambda row: (-float(row["mean"]), -float(row["cvar10"]), int(row["team_id"])))
         role_rows[role] = rows
         selected_indexes[role] = team_ids.index(int(rows[0]["team_id"]))
-    selected_team_ids = tuple(
-        team_ids[selected_indexes[role]] for role in ROLE_IDS
-    )
+    selected_team_ids = tuple(team_ids[selected_indexes[role]] for role in ROLE_IDS)
     total_outcomes = sum(
-        (
-            role_outcomes[role][selected_indexes[role]]
-            for role in ROLE_IDS
-        ),
+        (role_outcomes[role][selected_indexes[role]] for role in ROLE_IDS),
         start=np.zeros_like(all_weights),
     )
     result = {

@@ -154,8 +154,7 @@ def _render_live_monitor_status(group_release_path: str) -> None:
 def _render_live_controls(group_release_path: str) -> None:
     st.subheader("自动读取 Main 画面")
     st.caption(
-        "读取三面战旗的全部 15 枚 Emblem、剩余 Roll，且仅在仍有 Roll 时读取三个选项；"
-        "不会截成 Group 九格。"
+        "读取三面战旗的全部 15 枚 Emblem、剩余 Roll，且仅在仍有 Roll 时读取三个选项；不会截成 Group 九格。"
     )
     monitor = _cached_main_monitor(group_release_path)
     snapshot = monitor.snapshot()
@@ -399,13 +398,9 @@ def _render_parallel_forecasts(result: dict[str, Any]) -> None:
         st.success("三套模型在 Core、Mid、Support 三个位置全部选择同一队伍。")
     else:
         disagreed = [
-            _ROLE_LABELS[role]
-            for role, agreed in result["agreement"]["by_role"].items()
-            if not agreed
+            _ROLE_LABELS[role] for role, agreed in result["agreement"]["by_role"].items() if not agreed
         ]
-        st.warning(
-            "三套模型存在真实分歧：" + "、".join(disagreed) + "。页面不投票，也不隐藏差异。"
-        )
+        st.warning("三套模型存在真实分歧：" + "、".join(disagreed) + "。页面不投票，也不隐藏差异。")
     comparison = []
     for model in result["models"]:
         title = model.get("title")
@@ -418,8 +413,7 @@ def _render_parallel_forecasts(result: dict[str, Any]) -> None:
                 "期望分": round(float(model["summary"]["mean"]), 1),
                 "低迷 10%": round(float(model["summary"]["cvar10"]), 1),
                 "Title": (
-                    f"{title['recommended_prefix']['name']} + "
-                    f"{title['recommended_suffix']['name']}"
+                    f"{title['recommended_prefix']['name']} + {title['recommended_suffix']['name']}"
                     if title is not None
                     else "不可用"
                 ),
@@ -584,12 +578,8 @@ def render_main_advisor(
     if submitted and state is not None and main_context is not None:
         try:
             if state.remaining_rolls == 0:
-                with st.spinner(
-                    "首次会校验并缓存完整证据包；随后依次计算 V1、B1 与混合，约需 20–40 秒…"
-                ):
-                    forecast_context = _cached_multi_forecast_context(
-                        str(MAIN_FORECAST_POINTER.resolve())
-                    )
+                with st.spinner("首次会校验并缓存完整证据包；随后依次计算 V1、B1 与混合，约需 20–40 秒…"):
+                    forecast_context = _cached_multi_forecast_context(str(MAIN_FORECAST_POINTER.resolve()))
                     result = solve_parallel_main_forecasts(
                         forecast_context,
                         state.banners,
@@ -602,9 +592,7 @@ def render_main_advisor(
                 st.session_state.pop("main_advisor_result", None)
             else:
                 with st.spinner("使用独立 Main 五槽求解器评估全部合法结果…"):
-                    triggered_states = set(
-                        st.session_state.get("main_advisor_g_lite_triggered_states", ())
-                    )
+                    triggered_states = set(st.session_state.get("main_advisor_g_lite_triggered_states", ()))
                     state_sha256 = main_state_sha256(state)
                     previously_counted = state_sha256 in triggered_states
                     triggers_used = len(triggered_states) - int(previously_counted)
@@ -616,14 +604,9 @@ def render_main_advisor(
                         strategy_id=strategy_id,
                         g_lite_triggers_used=triggers_used,
                     )
-                    if (
-                        strategy_id == G_LITE_MAIN_STRATEGY_ID
-                        and result["strategy"]["g_lite_triggered"]
-                    ):
+                    if strategy_id == G_LITE_MAIN_STRATEGY_ID and result["strategy"]["g_lite_triggered"]:
                         triggered_states.add(state_sha256)
-                        st.session_state["main_advisor_g_lite_triggered_states"] = sorted(
-                            triggered_states
-                        )
+                        st.session_state["main_advisor_g_lite_triggered_states"] = sorted(triggered_states)
                 st.session_state["main_advisor_result"] = result
                 st.session_state.pop("main_advisor_multi_forecast_result", None)
         except (OSError, ValueError, MainMultiForecastError) as error:

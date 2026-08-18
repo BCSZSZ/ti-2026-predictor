@@ -82,9 +82,7 @@ class MainSeriesQuotaHybridConfig(StrictModel):
 def load_main_series_quota_hybrid_config(
     path: str | Path,
 ) -> MainSeriesQuotaHybridConfig:
-    return MainSeriesQuotaHybridConfig.model_validate_json(
-        Path(path).read_text(encoding="utf-8")
-    )
+    return MainSeriesQuotaHybridConfig.model_validate_json(Path(path).read_text(encoding="utf-8"))
 
 
 @dataclass(frozen=True)
@@ -131,9 +129,7 @@ def _draw_v1_for_sources(
         source = candidates[int(source_index)]
         primary_counts[source.series_id] += 1
         for game_index, desired_win in enumerate(target.won_games):
-            local = [
-                offset for offset, won in enumerate(source.won_games) if won == desired_win
-            ]
+            local = [offset for offset, won in enumerate(source.won_games) if won == desired_win]
             if local:
                 source_game = int(rng.choice(local))
                 result[sample_index, game_index] = source.raw_stats[source_game]

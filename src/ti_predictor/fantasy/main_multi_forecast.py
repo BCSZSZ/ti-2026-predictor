@@ -194,8 +194,7 @@ def _validate_artifact(root: Path) -> dict[str, Any]:
         or manifest.get("artifact_type") != MAIN_FORECAST_ARTIFACT_TYPE
         or manifest.get("status") != "ready"
         or manifest.get("web_integration") is not True
-        or tuple(row.get("model_id") for row in manifest.get("models", ()))
-        != MAIN_FORECAST_MODELS
+        or tuple(row.get("model_id") for row in manifest.get("models", ())) != MAIN_FORECAST_MODELS
     ):
         raise MainMultiForecastError("Main three-model Forecast manifest contract is invalid")
     checksums = json.loads(checksums_path.read_text(encoding="utf-8"))
@@ -347,9 +346,7 @@ def _solve_model(
         rankings[role] = rows
         selected_indexes[role] = context.team_ids.index(int(rows[0]["team_id"]))
         role_base_means[role] = float(rows[0]["mean"])
-    selected_team_ids = tuple(
-        context.team_ids[selected_indexes[role]] for role in ROLE_IDS
-    )
+    selected_team_ids = tuple(context.team_ids[selected_indexes[role]] for role in ROLE_IDS)
     total = sum(
         (role_outcomes[role][selected_indexes[role]] for role in ROLE_IDS),
         start=np.zeros_like(weights),
@@ -407,8 +404,7 @@ def solve_parallel_main_forecasts(
         raise MainMultiForecastError("Forecast template bank exceeds uint16 identity space")
     rules = load_rules(paths.rules)
     role_template_values = {
-        banner.role: _template_role_values(scores, context.stat_ids, banner, rules)
-        for banner in frozen
+        banner.role: _template_role_values(scores, context.stat_ids, banner, rules) for banner in frozen
     }
     models = [
         _solve_model(

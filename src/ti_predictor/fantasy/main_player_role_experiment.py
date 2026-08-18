@@ -48,13 +48,16 @@ class PreparedFold:
 
 def _atomic_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    content = json.dumps(
-        payload,
-        ensure_ascii=False,
-        indent=2,
-        sort_keys=True,
-        default=str,
-    ) + "\n"
+    content = (
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+            default=str,
+        )
+        + "\n"
+    )
     temporary = path.with_name(f".{path.name}.tmp")
     temporary.write_text(content, encoding="utf-8", newline="\n")
     os.replace(temporary, path)
@@ -103,9 +106,7 @@ def _load_checkpoint(path: Path, *, contract: MappingLike) -> list[dict[str, Any
         return []
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("contract") != dict(contract):
-        raise MainPlayerRoleExperimentError(
-            f"checkpoint contract differs from the frozen run: {path}"
-        )
+        raise MainPlayerRoleExperimentError(f"checkpoint contract differs from the frozen run: {path}")
     rows = list(payload.get("candidates", []))
     if payload.get("semantic_hash") != sha256_json(rows):
         raise MainPlayerRoleExperimentError(f"checkpoint hash is invalid: {path}")
@@ -146,9 +147,7 @@ def _fit_and_evaluate(
     model = fit_player_role_generator_from_frame(
         prepared.evidence_build.evidence,
         ridge_alpha=float(parameters["ridge_alpha"]),
-        recent_effective_sample_constant=float(
-            parameters["recent_effective_sample_constant"]
-        ),
+        recent_effective_sample_constant=float(parameters["recent_effective_sample_constant"]),
         recent_residual_cap_sigma=float(parameters["recent_residual_cap_sigma"]),
         factor_rank=int(parameters["factor_rank"]),
         covariance_shrinkage=float(parameters["covariance_shrinkage"]),
@@ -172,15 +171,11 @@ def _fit_and_evaluate(
 def _aggregate(results: list[BacktestResult]) -> dict[str, Any]:
     if not results:
         raise MainPlayerRoleExperimentError("candidate has no fold results")
-    weights = np.asarray(
-        [float(item.metrics["series_projection_records"]) for item in results]
-    )
+    weights = np.asarray([float(item.metrics["series_projection_records"]) for item in results])
     weights /= weights.sum()
 
     def weighted(key: str) -> float:
-        return float(
-            np.dot(weights, np.asarray([float(item.metrics[key]) for item in results]))
-        )
+        return float(np.dot(weights, np.asarray([float(item.metrics[key]) for item in results])))
 
     return {
         "fold_count": len(results),
@@ -191,17 +186,13 @@ def _aggregate(results: list[BacktestResult]) -> dict[str, Any]:
         "b_series_crps": weighted("b_series_crps"),
         "common_b_series_crps": weighted("common_b_series_crps"),
         "v1_series_crps": weighted("v1_series_crps"),
-        "series_crps_relative_improvement": weighted(
-            "series_crps_relative_improvement"
-        ),
+        "series_crps_relative_improvement": weighted("series_crps_relative_improvement"),
         "b_coverage80": weighted("b_coverage80"),
         "b_coverage90": weighted("b_coverage90"),
         "b_joint_energy": weighted("b_joint_energy"),
         "common_b_joint_energy": weighted("common_b_joint_energy"),
         "v1_joint_energy": weighted("v1_joint_energy"),
-        "joint_energy_relative_improvement": weighted(
-            "joint_energy_relative_improvement"
-        ),
+        "joint_energy_relative_improvement": weighted("joint_energy_relative_improvement"),
         "fold_metrics": [dict(item.metrics) for item in results],
         "fold_result_sha256": [item.semantic_hash for item in results],
     }
@@ -321,9 +312,7 @@ def run_tuning(
     root.mkdir(parents=True, exist_ok=True)
     rules = load_rules(paths.rules)
     panel = build_hash_fixed_banner_panel(rules)
-    prepared = [
-        _prepare_fold(config, fold, paths=paths) for fold in config.tuning_folds
-    ]
+    prepared = [_prepare_fold(config, fold, paths=paths) for fold in config.tuning_folds]
     _atomic_json(
         root / "tuning-fold-audits.json",
         {
@@ -384,10 +373,7 @@ def run_tuning(
     )
     selected_joint = _select_joint(joint_rows)
     joint_base = dict(selected_joint["parameters"])
-    scale_candidates = [
-        {**joint_base, "latent_scale": scale}
-        for scale in config.joint_tuning.latent_scales
-    ]
+    scale_candidates = [{**joint_base, "latent_scale": scale} for scale in config.joint_tuning.latent_scales]
     scale_rows = _run_stage(
         stage="joint-latent-scale",
         candidates=scale_candidates,
@@ -426,9 +412,7 @@ def _paired_energy_bootstrap(
     replicates: int = 10_000,
 ) -> dict[str, Any]:
     frame = pd.DataFrame(records).dropna(subset=["b_energy", "v1_energy"])
-    frame["relative_loss"] = (
-        frame["b_energy"] - frame["v1_energy"]
-    ) / frame["v1_energy"].clip(lower=1e-12)
+    frame["relative_loss"] = (frame["b_energy"] - frame["v1_energy"]) / frame["v1_energy"].clip(lower=1e-12)
     grouped = frame.groupby("series_id", sort=True)["relative_loss"].mean().to_numpy()
     rng = np.random.default_rng(int(seed))
     indexes = rng.integers(0, len(grouped), size=(replicates, len(grouped)))
@@ -478,32 +462,21 @@ def run_confirmation(
     metrics = dict(result.metrics)
     gate_checks = {
         "series_crps_relative_improvement": (
-            metrics["series_crps_relative_improvement"]
-            >= config.gates.minimum_series_crps_improvement
+            metrics["series_crps_relative_improvement"] >= config.gates.minimum_series_crps_improvement
         ),
-        "series_crps_lower_bound_positive": (
-            crps_bootstrap["one_sided_lower_bound"] > 0.0
-        ),
-        "joint_energy_point_better": (
-            metrics["joint_energy_relative_improvement"] >= 0.0
-        ),
+        "series_crps_lower_bound_positive": (crps_bootstrap["one_sided_lower_bound"] > 0.0),
+        "joint_energy_point_better": (metrics["joint_energy_relative_improvement"] >= 0.0),
         "joint_energy_upper_noninferior": (
-            energy_bootstrap["one_sided_upper_bound"]
-            <= config.gates.maximum_joint_energy_relative_loss
+            energy_bootstrap["one_sided_upper_bound"] <= config.gates.maximum_joint_energy_relative_loss
         ),
         "coverage80": (
-            config.gates.coverage_80_lower
-            <= metrics["b_coverage80"]
-            <= config.gates.coverage_80_upper
+            config.gates.coverage_80_lower <= metrics["b_coverage80"] <= config.gates.coverage_80_upper
         ),
         "coverage90": (
-            config.gates.coverage_90_lower
-            <= metrics["b_coverage90"]
-            <= config.gates.coverage_90_upper
+            config.gates.coverage_90_lower <= metrics["b_coverage90"] <= config.gates.coverage_90_upper
         ),
         "role_crps_noninferior": all(
-            float(item["relative_improvement"])
-            >= -config.gates.maximum_role_crps_relative_loss
+            float(item["relative_improvement"]) >= -config.gates.maximum_role_crps_relative_loss
             for item in metrics["role_metrics"].values()
         ),
         "team_choice_regret_noninferior": (

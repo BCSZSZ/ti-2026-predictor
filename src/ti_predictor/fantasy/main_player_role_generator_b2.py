@@ -63,9 +63,7 @@ class EmpiricalCopulaTuningConfig(StrictModel):
 
 class MainPlayerRoleGeneratorB2Config(StrictModel):
     schema_version: Literal[2]
-    experiment_id: Literal[
-        "ti2026-main-player-role-generator-v2-empirical-copula"
-    ]
+    experiment_id: Literal["ti2026-main-player-role-generator-v2-empirical-copula"]
     period: Literal["main"]
     as_of: datetime
     evidence: PlayerRoleEvidenceConfig
@@ -92,10 +90,7 @@ class MainPlayerRoleGeneratorB2Config(StrictModel):
     def validate_fold_contract(self) -> MainPlayerRoleGeneratorB2Config:
         if sorted(self.tuning_folds, key=lambda fold: fold.train_as_of) != self.tuning_folds:
             raise ValueError("B2 tuning folds must be ordered by train_as_of")
-        if (
-            sorted(self.confirmation_folds, key=lambda fold: fold.train_as_of)
-            != self.confirmation_folds
-        ):
+        if sorted(self.confirmation_folds, key=lambda fold: fold.train_as_of) != self.confirmation_folds:
             raise ValueError("B2 confirmation folds must be ordered by train_as_of")
         all_folds = [*self.tuning_folds, *self.confirmation_folds, self.diagnostic_fold]
         league_ids = [fold.league_id for fold in all_folds]
@@ -113,9 +108,7 @@ class MainPlayerRoleGeneratorB2Config(StrictModel):
 def load_main_player_role_generator_b2_config(
     path: str | Path,
 ) -> MainPlayerRoleGeneratorB2Config:
-    return MainPlayerRoleGeneratorB2Config.model_validate_json(
-        Path(path).read_text(encoding="utf-8")
-    )
+    return MainPlayerRoleGeneratorB2Config.model_validate_json(Path(path).read_text(encoding="utf-8"))
 
 
 @dataclass(frozen=True)
@@ -138,9 +131,7 @@ class EmpiricalCopulaResidualModel:
         series_ids = np.ascontiguousarray(self.source_series_ids, dtype=np.int64).reshape(-1)
         if rows.ndim != 2 or rows.shape[0] < 2:
             raise MainPlayerRoleGeneratorError("empirical-copula residual rows are invalid")
-        if not (
-            rows.shape[0] == len(probabilities) == len(match_ids) == len(series_ids)
-        ):
+        if not (rows.shape[0] == len(probabilities) == len(match_ids) == len(series_ids)):
             raise MainPlayerRoleGeneratorError("empirical-copula source metadata does not align")
         if self.smooth_model.dimension != rows.shape[1]:
             raise MainPlayerRoleGeneratorError("empirical and smooth residual dimensions differ")
@@ -169,12 +160,8 @@ class EmpiricalCopulaResidualModel:
 
     def sample(self, rng: np.random.Generator, *, size: int) -> np.ndarray:
         if size < 1:
-            raise MainPlayerRoleGeneratorError(
-                "empirical-copula residual sample size must be positive"
-            )
-        indexes = rng.choice(
-            len(self.standardized_rows), size=size, replace=True, p=self.probabilities
-        )
+            raise MainPlayerRoleGeneratorError("empirical-copula residual sample size must be positive")
+        indexes = rng.choice(len(self.standardized_rows), size=size, replace=True, p=self.probabilities)
         empirical = self.standardized_rows[indexes]
         smooth = self.smooth_model.sample(rng, size=size)
         mixed = np.sqrt(self.empirical_mix) * empirical
@@ -218,9 +205,7 @@ def fit_empirical_copula_generator(
         covariance_shrinkage=covariance_shrinkage,
         latent_scale=1.0,
     )
-    standardized = (
-        training.values - smooth.training_center[None, :]
-    ) / smooth.training_scale[None, :]
+    standardized = (training.values - smooth.training_center[None, :]) / smooth.training_scale[None, :]
     joint = EmpiricalCopulaResidualModel(
         standardized_rows=standardized,
         probabilities=probabilities,

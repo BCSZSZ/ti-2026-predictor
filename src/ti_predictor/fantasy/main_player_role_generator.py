@@ -245,9 +245,7 @@ class MainPlayerRoleGeneratorConfig(StrictModel):
 def load_main_player_role_generator_config(
     path: str | Path,
 ) -> MainPlayerRoleGeneratorConfig:
-    return MainPlayerRoleGeneratorConfig.model_validate_json(
-        Path(path).read_text(encoding="utf-8")
-    )
+    return MainPlayerRoleGeneratorConfig.model_validate_json(Path(path).read_text(encoding="utf-8"))
 
 
 def _bounded_simplex_projection(weights: np.ndarray, capacities: np.ndarray) -> np.ndarray:
@@ -494,23 +492,21 @@ class ContextEncoder:
                 matrix[row_index, team_offset + team_map[team_raw]] = 1.0
 
         won = pd.to_numeric(frame["won_game"], errors="raise").to_numpy(dtype=float) - 0.5
-        opponent = (
-            pd.to_numeric(frame["opponent_probability"], errors="raise").to_numpy(dtype=float)
-            - 0.5
-        )
+        opponent = pd.to_numeric(frame["opponent_probability"], errors="raise").to_numpy(dtype=float) - 0.5
         best_of = pd.to_numeric(frame["best_of"], errors="raise").to_numpy(dtype=int)
-        series_won = (
-            pd.to_numeric(frame["series_won"], errors="raise").to_numpy(dtype=float) - 0.5
-        )
+        series_won = pd.to_numeric(frame["series_won"], errors="raise").to_numpy(dtype=float) - 0.5
         series_length = pd.to_numeric(frame["series_length"], errors="raise").to_numpy(dtype=float)
         game_index = pd.to_numeric(frame["game_index"], errors="raise").to_numpy(dtype=float)
         duration = pd.to_numeric(frame["duration"], errors="raise").to_numpy(dtype=float)
         if np.any(duration <= 0.0):
             raise MainPlayerRoleGeneratorError("context duration must be positive")
-        progress = np.divide(
-            game_index,
-            np.maximum(series_length - 1.0, 1.0),
-        ) - 0.5
+        progress = (
+            np.divide(
+                game_index,
+                np.maximum(series_length - 1.0, 1.0),
+            )
+            - 0.5
+        )
         numeric = np.column_stack(
             (
                 won,
@@ -656,21 +652,15 @@ class StatMarginalModel:
             if match_ids.isna().any():
                 fractions = [0.5] * int(zero_mask.sum())
             else:
-                for match_id, account_id in zip(
-                    match_ids.astype(int), zero_accounts, strict=True
-                ):
+                for match_id, account_id in zip(match_ids.astype(int), zero_accounts, strict=True):
                     digest = hashlib.sha256(
                         f"pit:{self.stat_id}:{match_id}:{int(account_id)}".encode()
                     ).digest()
-                    fractions.append(
-                        (int.from_bytes(digest[:8], "big") + 0.5) / (2**64)
-                    )
+                    fractions.append((int.from_bytes(digest[:8], "big") + 0.5) / (2**64))
             uniform[zero_mask] = np.asarray(fractions) * zero_probability[zero_mask]
         residual = np.log1p(values) - positive_location
         for role in ROLE_IDS:
-            mask = np.asarray(
-                [roles[int(account_id)] == role for account_id in accounts]
-            ) & ~zero_mask
+            mask = np.asarray([roles[int(account_id)] == role for account_id in accounts]) & ~zero_mask
             if not np.any(mask):
                 continue
             support = np.sort(
@@ -678,9 +668,7 @@ class StatMarginalModel:
             )
             ranks = np.searchsorted(support, residual[mask], side="right")
             positive_probability = (ranks + 0.5) / (len(support) + 1.0)
-            uniform[mask] = zero_probability[mask] + (
-                1.0 - zero_probability[mask]
-            ) * positive_probability
+            uniform[mask] = zero_probability[mask] + (1.0 - zero_probability[mask]) * positive_probability
         return ndtri(np.clip(uniform, 1e-6, 1.0 - 1e-6))
 
 
@@ -744,12 +732,7 @@ class JointResidualTrainingSet:
         series_ids = np.ascontiguousarray(self.series_ids, dtype=np.int64).reshape(-1)
         if values.ndim != 2 or values.shape[0] < 2:
             raise MainPlayerRoleGeneratorError("joint residual training matrix is invalid")
-        if not (
-            values.shape[0]
-            == len(probabilities)
-            == len(match_ids)
-            == len(series_ids)
-        ):
+        if not (values.shape[0] == len(probabilities) == len(match_ids) == len(series_ids)):
             raise MainPlayerRoleGeneratorError("joint residual training metadata does not align")
         if (
             not np.isfinite(values).all()
@@ -988,9 +971,7 @@ def _series_contexts(
 
     contexts: dict[tuple[int, int], dict[str, Any]] = {}
     rejection: Counter[str] = Counter()
-    eligible = matches.loc[
-        matches["series_id"].notna() & matches["series_type"].notna()
-    ].copy()
+    eligible = matches.loc[matches["series_id"].notna() & matches["series_type"].notna()].copy()
     eligible["series_id"] = pd.to_numeric(eligible["series_id"], errors="coerce")
     eligible["series_type"] = pd.to_numeric(eligible["series_type"], errors="coerce")
     eligible = eligible.dropna(subset=["series_id", "series_type"])
@@ -1071,25 +1052,19 @@ def build_player_role_evidence(
             "Player-role evidence requires explicit UTC training and availability cutoffs"
         )
     if availability < cutoff:
-        raise MainPlayerRoleGeneratorError(
-            "available_as_of cannot precede the Player-role training cutoff"
-        )
+        raise MainPlayerRoleGeneratorError("available_as_of cannot precede the Player-role training cutoff")
     evidence_paths = main_evidence_paths(paths, require=True)
     manifest = load_tournament_manifest(evidence_paths.tournament)
     rules = load_rules(evidence_paths.rules)
     team_ids = tuple(int(value) for value in manifest.main_event_seeds)
     if len(team_ids) != 8 or len(set(team_ids)) != 8:
-        raise MainPlayerRoleGeneratorError(
-            "Player-role evidence requires the frozen actual eight Main Teams"
-        )
+        raise MainPlayerRoleGeneratorError("Player-role evidence requires the frozen actual eight Main Teams")
 
     matches_path = evidence_paths.processed / "matches.parquet"
     observations_path = evidence_paths.processed / "fantasy_performance_samples.parquet"
     patches_path = evidence_paths.processed / "patches.parquet"
     matches = _available_by_as_of(read_parquet_if_exists(matches_path), availability)
-    observations = _available_by_as_of(
-        read_parquet_if_exists(observations_path), availability
-    )
+    observations = _available_by_as_of(read_parquet_if_exists(observations_path), availability)
     patches = _available_by_as_of(read_parquet_if_exists(patches_path), availability)
     if matches.empty or observations.empty or patches.empty:
         raise MainPlayerRoleGeneratorError(
@@ -1106,15 +1081,12 @@ def build_player_role_evidence(
         },
     )
     matches["start_time"] = pd.to_datetime(matches["start_time"], utc=True, errors="coerce")
-    observations["start_time"] = pd.to_datetime(
-        observations["start_time"], utc=True, errors="coerce"
-    )
+    observations["start_time"] = pd.to_datetime(observations["start_time"], utc=True, errors="coerce")
     training_matches = matches.loc[
         matches["start_time"].notna() & matches["start_time"].lt(pd.Timestamp(cutoff))
     ].copy()
     training_observations = observations.loc[
-        observations["start_time"].notna()
-        & observations["start_time"].lt(pd.Timestamp(cutoff))
+        observations["start_time"].notna() & observations["start_time"].lt(pd.Timestamp(cutoff))
     ].copy()
 
     strength_policy = load_team_strength_policy(
@@ -1129,13 +1101,10 @@ def build_player_role_evidence(
         policy=strength_policy,
         target_team_ids=set(team_ids),
     )
-    blocking_strength = [
-        issue.message for issue in strength_report.issues if issue.severity == "blocking"
-    ]
+    blocking_strength = [issue.message for issue in strength_report.issues if issue.severity == "blocking"]
     if blocking_strength:
         raise MainPlayerRoleGeneratorError(
-            "training-cutoff Team-strength evidence is blocked: "
-            + "; ".join(blocking_strength)
+            "training-cutoff Team-strength evidence is blocked: " + "; ".join(blocking_strength)
         )
     fantasy_policy = strength_policy.model_copy(
         update={
@@ -1151,9 +1120,7 @@ def build_player_role_evidence(
         target_patch_family=strength_model.target_patch_family,
         evidence_channel="fantasy",
     )
-    blocking_fantasy = [
-        issue.message for issue in fantasy_evidence.issues if issue.severity == "blocking"
-    ]
+    blocking_fantasy = [issue.message for issue in fantasy_evidence.issues if issue.severity == "blocking"]
     if blocking_fantasy:
         raise MainPlayerRoleGeneratorError(
             "training-cutoff Fantasy evidence is blocked: " + "; ".join(blocking_fantasy)
@@ -1170,9 +1137,7 @@ def build_player_role_evidence(
         pd.to_numeric(training_matches["match_id"], errors="coerce").isin(weight_by_match)
     ].copy()
     positive_matches["match_id"] = positive_matches["match_id"].astype(int)
-    match_by_id = {
-        int(row["match_id"]): row for row in positive_matches.to_dict(orient="records")
-    }
+    match_by_id = {int(row["match_id"]): row for row in positive_matches.to_dict(orient="records")}
     series_context, series_rejection = _series_contexts(positive_matches)
 
     player_metadata: dict[int, tuple[int, str]] = {}
@@ -1195,27 +1160,18 @@ def build_player_role_evidence(
         raise MainPlayerRoleGeneratorError("Main Player-role roster does not contain forty players")
 
     stat_ids = tuple(str(value) for value in rules["fantasy"]["stats"])
-    provenance = {
-        stat_id: str(rules["fantasy"]["stats"][stat_id]["provenance"])
-        for stat_id in stat_ids
-    }
-    training_observations["match_id"] = pd.to_numeric(
-        training_observations["match_id"], errors="coerce"
+    provenance = {stat_id: str(rules["fantasy"]["stats"][stat_id]["provenance"]) for stat_id in stat_ids}
+    training_observations["match_id"] = pd.to_numeric(training_observations["match_id"], errors="coerce")
+    training_observations["account_id"] = pd.to_numeric(training_observations["account_id"], errors="coerce")
+    training_observations = training_observations.dropna(subset=["match_id", "account_id"]).astype(
+        {"match_id": int, "account_id": int}
     )
-    training_observations["account_id"] = pd.to_numeric(
-        training_observations["account_id"], errors="coerce"
-    )
-    training_observations = training_observations.dropna(
-        subset=["match_id", "account_id"]
-    ).astype({"match_id": int, "account_id": int})
     training_observations = training_observations.loc[
         training_observations["account_id"].isin(player_metadata)
         & training_observations["match_id"].isin(match_by_id)
     ].copy()
     if training_observations.duplicated(["match_id", "account_id"]).any():
-        raise MainPlayerRoleGeneratorError(
-            "Player-role source contains duplicate account/Game observations"
-        )
+        raise MainPlayerRoleGeneratorError("Player-role source contains duplicate account/Game observations")
 
     rows: list[dict[str, Any]] = []
     rejection: Counter[str] = Counter(series_rejection)
@@ -1224,11 +1180,7 @@ def build_player_role_evidence(
         match_id = int(observation["match_id"])
         current_team_id, current_role = player_metadata[account_id]
         declared_role = observation.get("role")
-        if (
-            declared_role is not None
-            and not pd.isna(declared_role)
-            and str(declared_role) != current_role
-        ):
+        if declared_role is not None and not pd.isna(declared_role) and str(declared_role) != current_role:
             rejection["historical_role_conflict"] += 1
             continue
         source_team = observation.get("team_id")
@@ -1259,9 +1211,7 @@ def build_player_role_evidence(
             "current_role": current_role,
             "played_for_current_team": float(historical_team_id == current_team_id),
             "won_game": float(bool(context["won_game"])),
-            "opponent_probability": float(
-                strength_model.predict(historical_team_id, opponent_team_id)
-            ),
+            "opponent_probability": float(strength_model.predict(historical_team_id, opponent_team_id)),
             "best_of": int(context["best_of"]),
             "series_won": float(bool(context["series_won"])),
             "series_length": int(context["series_length"]),
@@ -1274,11 +1224,7 @@ def build_player_role_evidence(
         for stat_id in stat_ids:
             value = observation.get(stat_id)
             actual_provenance = observation.get(f"{stat_id}_provenance")
-            valid = (
-                value is not None
-                and not pd.isna(value)
-                and actual_provenance == provenance[stat_id]
-            )
+            valid = value is not None and not pd.isna(value) and actual_provenance == provenance[stat_id]
             numeric = float(value) if valid else np.nan
             if valid and numeric < 0.0:
                 # OpenDota occasionally emits negative aggregate stun durations.
@@ -1316,9 +1262,7 @@ def build_player_role_evidence(
         "player_game_minimum": int(player_counts.min()),
         "player_game_median": float(player_counts.median()),
         "player_game_maximum": int(player_counts.max()),
-        "stat_available_rows": {
-            stat_id: int(frame[stat_id].notna().sum()) for stat_id in stat_ids
-        },
+        "stat_available_rows": {stat_id: int(frame[stat_id].notna().sum()) for stat_id in stat_ids},
         "rejection_counts": dict(sorted(rejection.items())),
         "fantasy_evidence_audit": fantasy_evidence.audit,
         "fantasy_evidence_warnings": sorted(
@@ -1378,17 +1322,10 @@ def _duration_design(frame: pd.DataFrame) -> np.ndarray:
             "duration context is missing columns: " + ", ".join(sorted(missing))
         )
     won = pd.to_numeric(frame["won_game"], errors="raise").to_numpy(dtype=float) - 0.5
-    opponent = (
-        pd.to_numeric(frame["opponent_probability"], errors="raise").to_numpy(dtype=float)
-        - 0.5
-    )
+    opponent = pd.to_numeric(frame["opponent_probability"], errors="raise").to_numpy(dtype=float) - 0.5
     best_of = pd.to_numeric(frame["best_of"], errors="raise").to_numpy(dtype=int)
-    series_won = (
-        pd.to_numeric(frame["series_won"], errors="raise").to_numpy(dtype=float) - 0.5
-    )
-    series_length = pd.to_numeric(
-        frame["series_length"], errors="raise"
-    ).to_numpy(dtype=float)
+    series_won = pd.to_numeric(frame["series_won"], errors="raise").to_numpy(dtype=float) - 0.5
+    series_length = pd.to_numeric(frame["series_length"], errors="raise").to_numpy(dtype=float)
     game_index = pd.to_numeric(frame["game_index"], errors="raise").to_numpy(dtype=float)
     progress = np.divide(game_index, np.maximum(series_length - 1.0, 1.0)) - 0.5
     matrix = np.column_stack(
@@ -1662,18 +1599,14 @@ def build_joint_residual_training_set(
     """Extract capped complete-Game residual rows after conditional marginals are removed."""
 
     if tuple(marginal_models) != evidence.stat_ids:
-        raise MainPlayerRoleGeneratorError(
-            "joint residual marginals do not follow the evidence Stat order"
-        )
+        raise MainPlayerRoleGeneratorError("joint residual marginals do not follow the evidence Stat order")
     frame = evidence.frame
     complete_frames: list[pd.DataFrame] = []
     complete_weights: list[float] = []
     complete_match_ids: list[int] = []
     complete_series_ids: list[int] = []
     team_index = {team_id: index for index, team_id in enumerate(evidence.team_ids)}
-    for (current_team_id, match_id), group in frame.groupby(
-        ["current_team_id", "match_id"], sort=True
-    ):
+    for (current_team_id, match_id), group in frame.groupby(["current_team_id", "match_id"], sort=True):
         if int(current_team_id) not in team_index or group["historical_team_id"].nunique() != 1:
             continue
         expected = evidence.player_ids_by_team[team_index[int(current_team_id)]]
@@ -1684,8 +1617,7 @@ def build_joint_residual_training_set(
         if isinstance(ordered, pd.Series):
             ordered = ordered.to_frame().T
         if len(ordered) != 5 or any(
-            pd.to_numeric(ordered[stat_id], errors="coerce").isna().any()
-            for stat_id in evidence.stat_ids
+            pd.to_numeric(ordered[stat_id], errors="coerce").isna().any() for stat_id in evidence.stat_ids
         ):
             continue
         complete_frames.append(ordered.reset_index(drop=True))
@@ -1693,25 +1625,21 @@ def build_joint_residual_training_set(
         complete_match_ids.append(int(match_id))
         complete_series_ids.append(int(ordered["series_id"].iloc[0]))
     if len(complete_frames) < 20:
-        raise MainPlayerRoleGeneratorError(
-            "insufficient complete Games for joint residual fitting"
-        )
+        raise MainPlayerRoleGeneratorError("insufficient complete Games for joint residual fitting")
     complete_frame = pd.concat(complete_frames, ignore_index=True)
     complete_design = encoder.transform(complete_frame)
-    complete_matrix = np.empty(
-        (len(complete_frames), 5, len(evidence.stat_ids)), dtype=float
-    )
+    complete_matrix = np.empty((len(complete_frames), 5, len(evidence.stat_ids)), dtype=float)
     for stat_index, stat_id in enumerate(evidence.stat_ids):
-        complete_matrix[:, :, stat_index] = marginal_models[
-            stat_id
-        ].latent_from_observed(
-            complete_frame,
-            encoder,
-            pd.to_numeric(complete_frame[stat_id], errors="raise").to_numpy(
-                dtype=float
-            ),
-            design=complete_design,
-        ).reshape(len(complete_frames), 5)
+        complete_matrix[:, :, stat_index] = (
+            marginal_models[stat_id]
+            .latent_from_observed(
+                complete_frame,
+                encoder,
+                pd.to_numeric(complete_frame[stat_id], errors="raise").to_numpy(dtype=float),
+                design=complete_design,
+            )
+            .reshape(len(complete_frames), 5)
+        )
     probabilities = cap_grouped_probability_mass(
         np.asarray(complete_weights, dtype=float),
         np.asarray(complete_series_ids),
@@ -1756,9 +1684,7 @@ def fit_player_role_generator_from_frame(
     )
     log_duration = np.log1p(duration_values)
     duration_center = float(np.dot(duration_mass, log_duration))
-    duration_scale = float(
-        np.sqrt(np.dot(duration_mass, np.square(log_duration - duration_center)))
-    )
+    duration_scale = float(np.sqrt(np.dot(duration_mass, np.square(log_duration - duration_center))))
     duration_scale = max(duration_scale, 1e-3)
     encoder = ContextEncoder(
         player_ids=evidence.player_ids,
@@ -1793,9 +1719,7 @@ def fit_player_role_generator_from_frame(
     )
     duration_residual = duration_target - duration_design @ duration_coefficients
     duration_quantiles = _weighted_quantile_grid(duration_residual, duration_weights)
-    duration_support = _weighted_quantile_grid(
-        np.expm1(duration_target), duration_weights, points=1001
-    )
+    duration_support = _weighted_quantile_grid(np.expm1(duration_target), duration_weights, points=1001)
     duration_model = GameDurationModel(
         coefficients=duration_coefficients,
         residual_quantiles=duration_quantiles,
@@ -1923,9 +1847,7 @@ def fit_player_role_generator_from_frame(
             recent_mean_adjustments=recent_mean,
             recent_zero_adjustments=recent_zero,
             integer_output=stat_id in INTEGER_STAT_IDS,
-            upper_bound=(
-                1.0 if stat_id in {"first_blood", "teamfight_participation"} else None
-            ),
+            upper_bound=(1.0 if stat_id in {"first_blood", "teamfight_participation"} else None),
         )
         marginal_models[stat_id] = marginal
         marginal_audit[stat_id] = {
@@ -1971,9 +1893,7 @@ def fit_player_role_generator_from_frame(
         "maximum_residual_game_mass": float(residual_training.probabilities.max()),
         "maximum_residual_series_mass": float(
             max(
-                residual_training.probabilities[
-                    residual_training.series_ids == series_id
-                ].sum()
+                residual_training.probabilities[residual_training.series_ids == series_id].sum()
                 for series_id in set(residual_training.series_ids.tolist())
             )
         ),

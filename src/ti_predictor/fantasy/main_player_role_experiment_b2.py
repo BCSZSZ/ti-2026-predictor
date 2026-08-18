@@ -54,13 +54,16 @@ class PreparedB2Fold:
 
 def _atomic_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    content = json.dumps(
-        payload,
-        ensure_ascii=False,
-        indent=2,
-        sort_keys=True,
-        default=str,
-    ) + "\n"
+    content = (
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+            default=str,
+        )
+        + "\n"
+    )
     temporary = path.with_name(f".{path.name}.tmp")
     temporary.write_text(content, encoding="utf-8", newline="\n")
     os.replace(temporary, path)
@@ -203,9 +206,7 @@ def _aggregate_pair(
 ) -> dict[str, Any]:
     if len(b2_results) != len(b1_results) or not b2_results:
         raise MainPlayerRoleExperimentB2Error("B2 and B1 fold results do not align")
-    projection_weights = [
-        float(result.metrics["series_projection_records"]) for result in b2_results
-    ]
+    projection_weights = [float(result.metrics["series_projection_records"]) for result in b2_results]
     joint_weights = [float(result.metrics["joint_games"]) for result in b2_results]
     b2_crps = _weighted_mean(
         [float(result.metrics["b_series_crps"]) for result in b2_results],
@@ -237,12 +238,10 @@ def _aggregate_pair(
         "joint_games": int(sum(joint_weights)),
         "b2_series_crps": b2_crps,
         "b1_series_crps": b1_crps,
-        "series_crps_relative_loss_vs_b1": (b2_crps - b1_crps)
-        / max(b1_crps, 1e-12),
+        "series_crps_relative_loss_vs_b1": (b2_crps - b1_crps) / max(b1_crps, 1e-12),
         "b2_joint_energy": b2_energy,
         "b1_joint_energy": b1_energy,
-        "joint_energy_relative_improvement_vs_b1": (b1_energy - b2_energy)
-        / max(b1_energy, 1e-12),
+        "joint_energy_relative_improvement_vs_b1": (b1_energy - b2_energy) / max(b1_energy, 1e-12),
         "b2_coverage80": coverage80,
         "b2_coverage90": coverage90,
         "coverage_distance": _coverage_distance(coverage80, 0.75, 0.85)
@@ -277,9 +276,7 @@ def _load_checkpoint(path: Path, *, contract: Mapping[str, Any]) -> list[dict[st
         return []
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("contract") != dict(contract):
-        raise MainPlayerRoleExperimentB2Error(
-            f"B2 checkpoint contract differs from the frozen run: {path}"
-        )
+        raise MainPlayerRoleExperimentB2Error(f"B2 checkpoint contract differs from the frozen run: {path}")
     rows = list(payload.get("candidates", []))
     if payload.get("semantic_hash") != sha256_json(rows):
         raise MainPlayerRoleExperimentB2Error(f"B2 checkpoint hash is invalid: {path}")
@@ -312,8 +309,7 @@ def _select_candidate(
     eligible = [
         row
         for row in rows
-        if float(row["aggregate"]["series_crps_relative_loss_vs_b1"])
-        <= maximum_crps_relative_loss
+        if float(row["aggregate"]["series_crps_relative_loss_vs_b1"]) <= maximum_crps_relative_loss
     ]
     if not eligible:
         raise MainPlayerRoleExperimentB2Error(
@@ -341,8 +337,7 @@ def run_tuning(
     rules = load_rules(paths.rules)
     panel = build_hash_fixed_banner_panel(rules)
     prepared = [
-        _prepare_fold(config, fold, rules=rules, panel=panel, paths=paths)
-        for fold in config.tuning_folds
+        _prepare_fold(config, fold, rules=rules, panel=panel, paths=paths) for fold in config.tuning_folds
     ]
     _atomic_json(
         root / "tuning-fold-audits.json",
@@ -418,9 +413,7 @@ def run_tuning(
         )
     selected = _select_candidate(
         rows,
-        maximum_crps_relative_loss=(
-            config.copula_tuning.maximum_crps_relative_loss_vs_b1
-        ),
+        maximum_crps_relative_loss=(config.copula_tuning.maximum_crps_relative_loss_vs_b1),
     )
     result = {
         "schema_version": 2,
@@ -491,13 +484,9 @@ def _validation_statistics(
     aggregate = _aggregate_pair(b2_results, b1_results)
     series = _combine_records(b2_results, kind="series")
     joint = _combine_records(b2_results, kind="joint")
-    b1_joint = _combine_records(b1_results, kind="joint").rename(
-        columns={"b_energy": "b1_energy"}
-    )
+    b1_joint = _combine_records(b1_results, kind="joint").rename(columns={"b_energy": "b1_energy"})
     joint = joint.merge(
-        b1_joint[
-            ["fold_id", "match_id", "series_id", "team_id", "b1_energy"]
-        ],
+        b1_joint[["fold_id", "match_id", "series_id", "team_id", "b1_energy"]],
         on=["fold_id", "match_id", "series_id", "team_id"],
         how="inner",
         validate="one_to_one",
@@ -511,9 +500,8 @@ def _validation_statistics(
         .to_numpy(dtype=float)
     )
     common_v1 = joint.dropna(subset=["v1_energy"]).copy()
-    v1_energy_loss = (
-        (common_v1["b_energy"] - common_v1["v1_energy"])
-        / common_v1["v1_energy"].clip(lower=1e-12)
+    v1_energy_loss = (common_v1["b_energy"] - common_v1["v1_energy"]) / common_v1["v1_energy"].clip(
+        lower=1e-12
     )
     v1_energy_blocks = (
         common_v1.assign(relative_loss=v1_energy_loss)
@@ -523,8 +511,7 @@ def _validation_statistics(
     )
     b1_energy_blocks = (
         joint.assign(
-            relative_loss=(joint["b_energy"] - joint["b1_energy"])
-            / joint["b1_energy"].clip(lower=1e-12)
+            relative_loss=(joint["b_energy"] - joint["b1_energy"]) / joint["b1_energy"].clip(lower=1e-12)
         )
         .groupby(["fold_id", "series_id"], sort=True)["relative_loss"]
         .mean()
@@ -563,9 +550,7 @@ def _gate_checks(
     config: MainPlayerRoleGeneratorB2Config,
 ) -> dict[str, bool]:
     aggregate = statistics["aggregate"]
-    projection_weights = [
-        float(result.metrics["series_projection_records"]) for result in b2_results
-    ]
+    projection_weights = [float(result.metrics["series_projection_records"]) for result in b2_results]
     common_b2_crps = _weighted_mean(
         [float(result.metrics["common_b_series_crps"]) for result in b2_results],
         projection_weights,
@@ -593,10 +578,7 @@ def _gate_checks(
             [float(result.metrics["role_metrics"][role]["v1_crps"]) for result in b2_results],
             projection_weights,
         )
-        role_checks.append(
-            (v1 - b2) / max(v1, 1e-12)
-            >= -config.gates.maximum_role_crps_relative_loss
-        )
+        role_checks.append((v1 - b2) / max(v1, 1e-12) >= -config.gates.maximum_role_crps_relative_loss)
     b2_regrets = [
         (float(result.metrics["b_mean_regret"]), weight)
         for result, weight in zip(b2_results, projection_weights, strict=True)
@@ -609,38 +591,27 @@ def _gate_checks(
     ]
     regret_ok = bool(b2_regrets and v1_regrets) and _weighted_mean(
         [item[0] for item in b2_regrets], [item[1] for item in b2_regrets]
-    ) <= _weighted_mean(
-        [item[0] for item in v1_regrets], [item[1] for item in v1_regrets]
-    )
+    ) <= _weighted_mean([item[0] for item in v1_regrets], [item[1] for item in v1_regrets])
     return {
         "series_crps_relative_improvement_vs_v1": (
-            (v1_crps - common_b2_crps) / max(v1_crps, 1e-12)
-            >= config.gates.minimum_series_crps_improvement
+            (v1_crps - common_b2_crps) / max(v1_crps, 1e-12) >= config.gates.minimum_series_crps_improvement
         ),
-        "series_crps_lower_bound_positive": (
-            statistics["crps_vs_v1"]["one_sided_lower_bound"] > 0.0
-        ),
+        "series_crps_lower_bound_positive": (statistics["crps_vs_v1"]["one_sided_lower_bound"] > 0.0),
         "joint_energy_point_better_than_v1": common_b2_energy <= v1_energy,
         "joint_energy_upper_noninferior_to_v1": (
             statistics["joint_energy_vs_v1"]["one_sided_upper_bound"]
             <= config.gates.maximum_joint_energy_relative_loss
         ),
-        "joint_energy_point_better_than_b1": (
-            aggregate["b2_joint_energy"] <= aggregate["b1_joint_energy"]
-        ),
+        "joint_energy_point_better_than_b1": (aggregate["b2_joint_energy"] <= aggregate["b1_joint_energy"]),
         "joint_energy_upper_better_than_b1": (
             statistics["joint_energy_vs_b1"]["one_sided_upper_bound"]
             <= config.maximum_joint_energy_relative_loss_vs_b1
         ),
         "coverage80": (
-            config.gates.coverage_80_lower
-            <= aggregate["b2_coverage80"]
-            <= config.gates.coverage_80_upper
+            config.gates.coverage_80_lower <= aggregate["b2_coverage80"] <= config.gates.coverage_80_upper
         ),
         "coverage90": (
-            config.gates.coverage_90_lower
-            <= aggregate["b2_coverage90"]
-            <= config.gates.coverage_90_upper
+            config.gates.coverage_90_lower <= aggregate["b2_coverage90"] <= config.gates.coverage_90_upper
         ),
         "role_crps_noninferior_to_v1": all(role_checks),
         "team_choice_regret_noninferior_to_v1": regret_ok,
@@ -678,9 +649,7 @@ def _run_panel(
         print(f"[B2 panel] preparing {index}/{len(folds)} {fold.fold_id}", flush=True)
         item = _prepare_fold(config, fold, rules=rules, panel=panel, paths=paths)
         prepared.append(item)
-        results.append(
-            _evaluate_b2(item, config, parameters, rules=rules, panel=panel)
-        )
+        results.append(_evaluate_b2(item, config, parameters, rules=rules, panel=panel))
     return prepared, results, selection
 
 
@@ -690,9 +659,7 @@ def run_confirmation(
     paths: ProjectPaths = PATHS,
 ) -> dict[str, Any]:
     root, _ = _load_selection(config, paths=paths)
-    prepared, b2_results, selection = _run_panel(
-        config, config.confirmation_folds, paths=paths
-    )
+    prepared, b2_results, selection = _run_panel(config, config.confirmation_folds, paths=paths)
     statistics = _validation_statistics(
         b2_results,
         [item.b1_result for item in prepared],
@@ -738,9 +705,7 @@ def run_ti_diagnostic(
     paths: ProjectPaths = PATHS,
 ) -> dict[str, Any]:
     root, _ = _load_selection(config, paths=paths)
-    prepared, b2_results, selection = _run_panel(
-        config, [config.diagnostic_fold], paths=paths
-    )
+    prepared, b2_results, selection = _run_panel(config, [config.diagnostic_fold], paths=paths)
     statistics = _validation_statistics(
         b2_results,
         [prepared[0].b1_result],
@@ -797,9 +762,7 @@ def main() -> None:
         type=Path,
         default=Path("config/research/fantasy-main-player-role-generator-v2.json"),
     )
-    parser.add_argument(
-        "--mode", choices=("tune", "confirm", "diagnose", "all"), default="all"
-    )
+    parser.add_argument("--mode", choices=("tune", "confirm", "diagnose", "all"), default="all")
     arguments = parser.parse_args()
     result = run_experiment(arguments.config, mode=arguments.mode)
     print(json.dumps({"status": result["status"]}, ensure_ascii=False), flush=True)

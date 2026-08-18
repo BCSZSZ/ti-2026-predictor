@@ -109,11 +109,7 @@ class RollScreenObservation:
                     }
                     for banner in self.state.banners
                 ],
-                "offer": (
-                    list(self.state.offer.operation_ids)
-                    if self.state.offer is not None
-                    else None
-                ),
+                "offer": (list(self.state.offer.operation_ids) if self.state.offer is not None else None),
                 "remaining_rolls": self.state.remaining_rolls,
                 "period": self.state.period,
                 "slot_count": self.state.slot_count,
@@ -1145,9 +1141,8 @@ def _state_from_readings(
             "banners": tuple(banners),
             "offer": (
                 None
-                if int(values["remaining_rolls"]) == 0 and not any(
-                    f"offer.{index}" in values for index in range(3)
-                )
+                if int(values["remaining_rolls"]) == 0
+                and not any(f"offer.{index}" in values for index in range(3))
                 else RollOffer(tuple(int(values[f"offer.{index}"]) for index in range(3)))
             ),
             "remaining_rolls": int(values["remaining_rolls"]),

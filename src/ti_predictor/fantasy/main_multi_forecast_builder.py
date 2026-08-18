@@ -296,9 +296,7 @@ def build_synthetic_template_bank(
                 team_ids[context.opponent_index],
             )
         )
-        rng = np.random.default_rng(
-            _derived_seed(base_seed, f"synthetic-context:{context_index}:{context}")
-        )
+        rng = np.random.default_rng(_derived_seed(base_seed, f"synthetic-context:{context_index}:{context}"))
         durations = model.sample_durations(
             opponent_probability=probability,
             won_game=bool(context.won_game),
@@ -560,15 +558,11 @@ def build_main_multi_forecast_release(
     )
     blocking = [issue.message for issue in strength_report.issues if issue.severity == "blocking"]
     if blocking:
-        raise MainMultiForecastBuildError(
-            "frozen Team-strength evidence is blocked: " + "; ".join(blocking)
-        )
+        raise MainMultiForecastBuildError("frozen Team-strength evidence is blocked: " + "; ".join(blocking))
     model_sha256 = sha256_json(strength_model.as_dict())
     if model_sha256 != source_manifest["provenance"]["model_sha256"]:
         raise MainMultiForecastBuildError("source v1 and frozen Team-strength model differ")
-    if _prediction_semantic_hash(b1_training_strength_model) != _prediction_semantic_hash(
-        strength_model
-    ):
+    if _prediction_semantic_hash(b1_training_strength_model) != _prediction_semantic_hash(strength_model):
         raise MainMultiForecastBuildError("B1 and source v1 use different Team-strength predictions")
     if tuple(b1_model.stat_ids) != historical.stat_ids:
         raise MainMultiForecastBuildError("B1 and source v1 use different Fantasy Stat order")
@@ -670,9 +664,7 @@ def build_main_multi_forecast_release(
         "seeds": list(config.seeds),
         "inner_samples_per_path": config.inner_samples_per_path,
         "outer_path_count": len(probabilities),
-        "weighted_scenario_count": (
-            len(probabilities) * config.inner_samples_per_path * len(config.seeds)
-        ),
+        "weighted_scenario_count": (len(probabilities) * config.inner_samples_per_path * len(config.seeds)),
         "cvar_alpha": config.cvar_alpha,
         "models": [
             {
@@ -702,12 +694,8 @@ def build_main_multi_forecast_release(
             "main_snapshot_manifest_sha256": sha256_file(evidence_paths.processed / "manifest.json"),
             "rules_sha256": sha256_file(evidence_paths.rules),
             "team_strength_model_sha256": model_sha256,
-            "team_strength_prediction_semantic_sha256": _prediction_semantic_hash(
-                strength_model
-            ),
-            "b1_training_strength_model_sha256": sha256_json(
-                b1_training_strength_model.as_dict()
-            ),
+            "team_strength_prediction_semantic_sha256": _prediction_semantic_hash(strength_model),
+            "b1_training_strength_model_sha256": sha256_json(b1_training_strength_model.as_dict()),
             "b1_model_sha256": b1_model.semantic_hash,
             "b1_evidence_audit_sha256": sha256_json(b1_evidence_audit),
             "historical_template_scores_sha256": _array_sha256(historical.scores),

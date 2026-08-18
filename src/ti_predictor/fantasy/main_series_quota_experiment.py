@@ -58,13 +58,16 @@ class QuotaFoldResult:
 
 def _atomic_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    content = json.dumps(
-        payload,
-        ensure_ascii=False,
-        indent=2,
-        sort_keys=True,
-        default=str,
-    ) + "\n"
+    content = (
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+            default=str,
+        )
+        + "\n"
+    )
     temporary = path.with_name(f".{path.name}.tmp")
     temporary.write_text(content, encoding="utf-8", newline="\n")
     os.replace(temporary, path)
@@ -79,17 +82,12 @@ def _artifact_root(
     identity = sha256_json(
         {
             "config_sha256": config.semantic_hash,
-            "snapshot_manifest_sha256": sha256_file(
-                evidence_paths.processed / "manifest.json"
-            ),
+            "snapshot_manifest_sha256": sha256_file(evidence_paths.processed / "manifest.json"),
             "source_tree_sha256": source_tree_hash(paths),
         }
     )
     return (
-        paths.artifacts
-        / "research"
-        / "main-series-quota-hybrid"
-        / f"{config.as_of:%Y-%m-%d}-{identity[:12]}"
+        paths.artifacts / "research" / "main-series-quota-hybrid" / f"{config.as_of:%Y-%m-%d}-{identity[:12]}"
     )
 
 
@@ -178,16 +176,11 @@ def _weighted_mean(values: Sequence[float], weights: Sequence[float]) -> float:
 
 
 def _aggregate_metrics(folds: Sequence[QuotaFoldResult]) -> dict[str, Any]:
-    projection_weights = [
-        float(item.hybrid_result.metrics["series_projection_records"])
-        for item in folds
-    ]
+    projection_weights = [float(item.hybrid_result.metrics["series_projection_records"]) for item in folds]
     joint_weights = [float(item.hybrid_result.metrics["joint_games"]) for item in folds]
 
     def metric(label: str, key: str, *, joint: bool = False) -> float:
-        results = [
-            item.hybrid_result if label == "hybrid" else item.b1_result for item in folds
-        ]
+        results = [item.hybrid_result if label == "hybrid" else item.b1_result for item in folds]
         return _weighted_mean(
             [float(result.metrics[key]) for result in results],
             joint_weights if joint else projection_weights,
@@ -207,20 +200,17 @@ def _aggregate_metrics(folds: Sequence[QuotaFoldResult]) -> dict[str, Any]:
         "series_projection_records": int(sum(projection_weights)),
         "hybrid_joint_energy": hybrid_energy,
         "b1_joint_energy": b1_energy,
-        "hybrid_energy_relative_improvement_vs_b1": (b1_energy - hybrid_energy)
-        / max(b1_energy, 1e-12),
+        "hybrid_energy_relative_improvement_vs_b1": (b1_energy - hybrid_energy) / max(b1_energy, 1e-12),
         "common_hybrid_joint_energy": common_hybrid_energy,
         "v1_joint_energy": v1_energy,
         "hybrid_energy_relative_improvement_vs_v1": (v1_energy - common_hybrid_energy)
         / max(v1_energy, 1e-12),
         "hybrid_series_crps": hybrid_crps,
         "b1_series_crps": b1_crps,
-        "hybrid_crps_relative_improvement_vs_b1": (b1_crps - hybrid_crps)
-        / max(b1_crps, 1e-12),
+        "hybrid_crps_relative_improvement_vs_b1": (b1_crps - hybrid_crps) / max(b1_crps, 1e-12),
         "common_hybrid_series_crps": common_hybrid_crps,
         "v1_series_crps": v1_crps,
-        "hybrid_crps_relative_improvement_vs_v1": (v1_crps - common_hybrid_crps)
-        / max(v1_crps, 1e-12),
+        "hybrid_crps_relative_improvement_vs_v1": (v1_crps - common_hybrid_crps) / max(v1_crps, 1e-12),
         "hybrid_coverage80": metric("hybrid", "b_coverage80"),
         "hybrid_coverage90": metric("hybrid", "b_coverage90"),
         "b1_coverage80": metric("b1", "b_coverage80"),
@@ -271,20 +261,15 @@ def _paired_statistics(
     config: MainSeriesQuotaHybridConfig,
 ) -> dict[str, Any]:
     hybrid_joint = _record_frame(folds, label="hybrid", kind="joint")
-    b1_joint = _record_frame(folds, label="b1", kind="joint").rename(
-        columns={"b_energy": "b1_energy"}
-    )
+    b1_joint = _record_frame(folds, label="b1", kind="joint").rename(columns={"b_energy": "b1_energy"})
     joint = hybrid_joint.merge(
-        b1_joint[
-            ["fold_id", "match_id", "series_id", "team_id", "b1_energy"]
-        ],
+        b1_joint[["fold_id", "match_id", "series_id", "team_id", "b1_energy"]],
         on=["fold_id", "match_id", "series_id", "team_id"],
         validate="one_to_one",
     )
     b1_loss = (
         joint.assign(
-            relative_loss=(joint["b_energy"] - joint["b1_energy"])
-            / joint["b1_energy"].clip(lower=1e-12)
+            relative_loss=(joint["b_energy"] - joint["b1_energy"]) / joint["b1_energy"].clip(lower=1e-12)
         )
         .groupby(["fold_id", "series_id"], sort=True)["relative_loss"]
         .mean()
@@ -293,8 +278,7 @@ def _paired_statistics(
     common = joint.dropna(subset=["v1_energy"])
     v1_loss = (
         common.assign(
-            relative_loss=(common["b_energy"] - common["v1_energy"])
-            / common["v1_energy"].clip(lower=1e-12)
+            relative_loss=(common["b_energy"] - common["v1_energy"]) / common["v1_energy"].clip(lower=1e-12)
         )
         .groupby(["fold_id", "series_id"], sort=True)["relative_loss"]
         .mean()
@@ -321,9 +305,7 @@ def _concentration(audits: Sequence[QuotaHybridDrawAudit]) -> dict[str, Any]:
     teams: dict[str, Any] = {}
     for team_id, items in sorted(by_team.items()):
         series_denominator = sum(item.draws for item in items)
-        game_denominator = sum(
-            item.draws * item.future_games_per_draw for item in items
-        )
+        game_denominator = sum(item.draws * item.future_games_per_draw for item in items)
         primary: Counter[int] = Counter()
         actual_series: Counter[str] = Counter()
         games: Counter[str] = Counter()
@@ -334,28 +316,19 @@ def _concentration(audits: Sequence[QuotaHybridDrawAudit]) -> dict[str, Any]:
                 actual_series[key.split(":", maxsplit=1)[0]] += count
         teams[str(team_id)] = {
             "contexts": len(items),
-            "mean_theoretical_v1_mass": sum(
-                item.draws * item.theoretical_v1_mass for item in items
-            )
+            "mean_theoretical_v1_mass": sum(item.draws * item.theoretical_v1_mass for item in items)
             / series_denominator,
-            "mean_theoretical_b1_mass": sum(
-                item.draws * item.theoretical_b1_mass for item in items
-            )
+            "mean_theoretical_b1_mass": sum(item.draws * item.theoretical_b1_mass for item in items)
             / series_denominator,
             "maximum_theoretical_primary_series_mass": max(
                 item.theoretical_max_primary_series_mass for item in items
             ),
-            "maximum_realized_primary_series_share": (
-                max(primary.values(), default=0) / series_denominator
-            ),
-            "maximum_realized_actual_game_share": (
-                max(games.values(), default=0) / game_denominator
-            ),
+            "maximum_realized_primary_series_share": (max(primary.values(), default=0) / series_denominator),
+            "maximum_realized_actual_game_share": (max(games.values(), default=0) / game_denominator),
             "maximum_realized_actual_series_share": (
                 max(actual_series.values(), default=0) / game_denominator
             ),
-            "realized_v1_share": sum(item.realized_v1_draws for item in items)
-            / series_denominator,
+            "realized_v1_share": sum(item.realized_v1_draws for item in items) / series_denominator,
             "series_draws": series_denominator,
             "game_draws": game_denominator,
         }
@@ -367,13 +340,9 @@ def _concentration(audits: Sequence[QuotaHybridDrawAudit]) -> dict[str, Any]:
         "maximum_theoretical_primary_series_mass": max(
             item.theoretical_max_primary_series_mass for item in all_items
         ),
-        "mean_theoretical_v1_mass": sum(
-            item.draws * item.theoretical_v1_mass for item in all_items
-        )
+        "mean_theoretical_v1_mass": sum(item.draws * item.theoretical_v1_mass for item in all_items)
         / total_draws,
-        "mean_theoretical_b1_mass": sum(
-            item.draws * item.theoretical_b1_mass for item in all_items
-        )
+        "mean_theoretical_b1_mass": sum(item.draws * item.theoretical_b1_mass for item in all_items)
         / total_draws,
         "teams": teams,
     }
@@ -387,9 +356,7 @@ def _panel_payload(
 ) -> dict[str, Any]:
     metrics = _aggregate_metrics(folds)
     paired = _paired_statistics(folds, config=config)
-    concentration = _concentration(
-        [audit for item in folds for audit in item.draw_audits]
-    )
+    concentration = _concentration([audit for item in folds for audit in item.draw_audits])
     payload = {
         "kind": kind,
         "metrics": metrics,
@@ -426,9 +393,7 @@ def run_experiment(
     evaluation: list[QuotaFoldResult] = []
     for index, fold in enumerate(config.evaluation_folds, start=1):
         print(f"[quota hybrid] evaluation {index}/{len(config.evaluation_folds)} {fold.fold_id}", flush=True)
-        evaluation.append(
-            _run_fold(config, fold, rules=rules, panel=panel, paths=paths)
-        )
+        evaluation.append(_run_fold(config, fold, rules=rules, panel=panel, paths=paths))
     evaluation_payload = _panel_payload(
         evaluation,
         config=config,

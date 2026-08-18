@@ -19,6 +19,12 @@ from ti_predictor.fantasy.live_ocr import (
 from ti_predictor.fantasy.main_advice_policy import main_state_sha256
 from ti_predictor.fantasy.main_advice_strategy import G_LITE_MAIN_STRATEGY_ID
 from ti_predictor.fantasy.main_current_advisor import analyze_main_current_screen
+from ti_predictor.fantasy.main_multi_forecast import (
+    MAIN_FORECAST_POINTER,
+    MainMultiForecastError,
+    load_main_multi_forecast_context,
+    solve_parallel_main_forecasts,
+)
 from ti_predictor.fantasy.main_roll import MainRollState
 from ti_predictor.fantasy.main_solver_release import (
     MainSolverReleaseError,
@@ -70,6 +76,11 @@ def _cached_main_monitor(group_release_path: str) -> LiveRollMonitor:
     )
 
 
+@st.cache_resource(show_spinner=False)
+def _cached_multi_forecast_context(pointer_path: str):
+    return load_main_multi_forecast_context(pointer_path=Path(pointer_path))
+
+
 def _stat_labels() -> dict[str, str]:
     return {stat_id: str(row["label"]) for stat_id, row in load_rules()["fantasy"]["stats"].items()}
 
@@ -80,6 +91,7 @@ def _public_operation_label(operation_id: int, rules) -> str:
 
 def _clear_main_result() -> None:
     st.session_state.pop("main_advisor_result", None)
+    st.session_state.pop("main_advisor_multi_forecast_result", None)
 
 
 def _reset_g_lite_budget() -> None:
@@ -113,7 +125,7 @@ def _consume_pending_observation(rules) -> None:
     for key, value in updates.items():
         st.session_state[key] = value
     st.session_state["main_advisor_last_observation"] = observation
-    st.session_state.pop("main_advisor_result", None)
+    _clear_main_result()
     if observation.get("status") == "confirmed":
         st.session_state["main_advisor_autocalculate"] = True
 
@@ -141,7 +153,9 @@ def _render_live_monitor_status(group_release_path: str) -> None:
 
 def _render_live_controls(group_release_path: str) -> None:
     st.subheader("自动读取 Main 画面")
-    st.caption("读取三面战旗的全部 15 枚 Emblem、三个选项与剩余 Roll；不会截成 Group 九格。")
+    st.caption(
+        "读取三面战旗的全部 15 枚 Emblem、剩余 Roll，且仅在仍有 Roll 时读取三个选项；不会截成 Group 九格。"
+    )
     monitor = _cached_main_monitor(group_release_path)
     snapshot = monitor.snapshot()
     if snapshot.running:
@@ -222,20 +236,6 @@ def _input_form(
                         emblems.append(EmblemState(stat_id, quality, trait))
                 banners.append(BannerState(role, tuple(emblems)))
 
-        st.subheader("2. 录入当前三个 Main 选项")
-        offer_ids = []
-        for index, column in enumerate(st.columns(3)):
-            with column:
-                key = f"main_advisor_offer_{index}"
-                offer_ids.append(
-                    st.selectbox(
-                        f"Main 选项 {index + 1}",
-                        operation_ids,
-                        index=None if key in st.session_state else index,
-                        key=key,
-                        format_func=lambda item: _public_operation_label(item, rules),
-                    )
-                )
         remaining_key = "main_advisor_remaining"
         remaining = int(
             st.number_input(
@@ -247,6 +247,23 @@ def _input_form(
                 key=remaining_key,
             )
         )
+        offer_ids = []
+        if remaining > 0:
+            st.subheader("2. 录入当前三个 Main 选项")
+            for index, column in enumerate(st.columns(3)):
+                with column:
+                    key = f"main_advisor_offer_{index}"
+                    offer_ids.append(
+                        st.selectbox(
+                            f"Main 选项 {index + 1}",
+                            operation_ids,
+                            index=None if key in st.session_state else index,
+                            key=key,
+                            format_func=lambda item: _public_operation_label(item, rules),
+                        )
+                    )
+        else:
+            st.info("Main Roll 已用完：终局只需要 15 格战旗，不再要求填写已消失的三个选项。")
 
         selected_team_ids = None
         if manual_team_mode and team_options is not None:
@@ -280,13 +297,13 @@ def _input_form(
             disabled=not solver_ready,
         )
 
-    if len(set(offer_ids)) != 3:
+    if remaining > 0 and len(set(offer_ids)) != 3:
         if submitted:
             st.error("三个 Main Roll 选项必须互不重复。")
         return None, selected_team_ids, risk_profile, False
     state = MainRollState(
         banners=tuple(banners),
-        offer=RollOffer(tuple(offer_ids)),
+        offer=RollOffer(tuple(offer_ids)) if remaining > 0 else None,
         remaining_rolls=remaining,
     )
     return state, selected_team_ids, risk_profile, submitted or (auto_calculate and solver_ready)
@@ -372,6 +389,86 @@ def _render_result(result: dict[str, Any]) -> None:
         for limitation in result["limitations"]:
             st.warning(limitation)
         st.caption(f"数据截止：{result['as_of']} · 分析指纹：{result['analysis_sha256'][:12]}")
+
+
+def _render_parallel_forecasts(result: dict[str, Any]) -> None:
+    st.divider()
+    st.subheader("Main 终局 · V1 / B1 / 混合三模型并列预测")
+    if result["agreement"]["all_roles"]:
+        st.success("三套模型在 Core、Mid、Support 三个位置全部选择同一队伍。")
+    else:
+        disagreed = [
+            _ROLE_LABELS[role] for role, agreed in result["agreement"]["by_role"].items() if not agreed
+        ]
+        st.warning("三套模型存在真实分歧：" + "、".join(disagreed) + "。页面不投票，也不隐藏差异。")
+    comparison = []
+    for model in result["models"]:
+        title = model.get("title")
+        comparison.append(
+            {
+                "模型": model["model_label"],
+                "Core": model["selected_teams"][0],
+                "Mid": model["selected_teams"][1],
+                "Support": model["selected_teams"][2],
+                "期望分": round(float(model["summary"]["mean"]), 1),
+                "低迷 10%": round(float(model["summary"]["cvar10"]), 1),
+                "Title": (
+                    f"{title['recommended_prefix']['name']} + {title['recommended_suffix']['name']}"
+                    if title is not None
+                    else "不可用"
+                ),
+            }
+        )
+    st.dataframe(pd.DataFrame(comparison), hide_index=True, width="stretch")
+    tabs = st.tabs([model["model_label"] for model in result["models"]])
+    for tab, model in zip(tabs, result["models"], strict=True):
+        with tab:
+            st.caption(model["model_explanation"])
+            metrics = st.columns(2)
+            metrics[0].metric("三面合计期望", f"{model['summary']['mean']:,.1f}")
+            metrics[1].metric("三面合计低迷 10%", f"{model['summary']['cvar10']:,.1f}")
+            st.markdown("**队伍选择**")
+            for column, role, name in zip(
+                st.columns(3),
+                ("core", "mid", "support"),
+                model["selected_teams"],
+                strict=True,
+            ):
+                column.metric(
+                    _ROLE_LABELS[role],
+                    name,
+                    f"期望 {model['role_base_means'][role]:,.1f}",
+                )
+            title = model.get("title")
+            if title is not None:
+                prefix = title["recommended_prefix"]
+                suffix = title["recommended_suffix"]
+                st.markdown("**Title**")
+                st.success(
+                    f"**{prefix['name']} + {suffix['name']}** · "
+                    f"纸面平均加成约 +{title['estimated_pair_bonus_percent']:.2f}%"
+                )
+            rows = []
+            for role in ("core", "mid", "support"):
+                for rank, row in enumerate(model["role_rankings"][role][:3], start=1):
+                    rows.append(
+                        {
+                            "位置": _ROLE_LABELS[role],
+                            "排名": rank,
+                            "队伍": row["team_name"],
+                            "期望": round(float(row["mean"]), 1),
+                            "低迷 10%": round(float(row["cvar10"]), 1),
+                        }
+                    )
+            with st.expander("查看每个位置 Top 3"):
+                st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+    with st.expander("三模型证据边界"):
+        for limitation in result["limitations"]:
+            st.warning(limitation)
+        st.caption(
+            f"每模型加权情景：{result['scenario_count_per_model']:,} · "
+            f"数据截止：{result['as_of']} · 分析指纹：{result['analysis_sha256'][:12]}"
+        )
 
 
 def render_main_advisor(
@@ -480,28 +577,46 @@ def render_main_advisor(
     )
     if submitted and state is not None and main_context is not None:
         try:
-            with st.spinner("使用独立 Main 五槽求解器评估全部合法结果…"):
-                triggered_states = set(st.session_state.get("main_advisor_g_lite_triggered_states", ()))
-                state_sha256 = main_state_sha256(state)
-                previously_counted = state_sha256 in triggered_states
-                triggers_used = len(triggered_states) - int(previously_counted)
-                result = analyze_main_current_screen(
-                    main_context,
-                    state,
-                    risk_profile=risk_profile,
-                    selected_team_ids=selected_team_ids,
-                    strategy_id=strategy_id,
-                    g_lite_triggers_used=triggers_used,
-                )
-                if strategy_id == G_LITE_MAIN_STRATEGY_ID and result["strategy"]["g_lite_triggered"]:
-                    triggered_states.add(state_sha256)
-                    st.session_state["main_advisor_g_lite_triggered_states"] = sorted(triggered_states)
-            st.session_state["main_advisor_result"] = result
-        except (OSError, ValueError) as error:
+            if state.remaining_rolls == 0:
+                with st.spinner("首次会校验并缓存完整证据包；随后依次计算 V1、B1 与混合，约需 20–40 秒…"):
+                    forecast_context = _cached_multi_forecast_context(str(MAIN_FORECAST_POINTER.resolve()))
+                    result = solve_parallel_main_forecasts(
+                        forecast_context,
+                        state.banners,
+                        team_names=main_context.team_names,
+                        title_evidence=main_context.title_evidence,
+                        title_excluded_suffix_ids=main_context.title_excluded_suffix_ids,
+                        title_top_k=main_context.title_top_k,
+                    )
+                st.session_state["main_advisor_multi_forecast_result"] = result
+                st.session_state.pop("main_advisor_result", None)
+            else:
+                with st.spinner("使用独立 Main 五槽求解器评估全部合法结果…"):
+                    triggered_states = set(st.session_state.get("main_advisor_g_lite_triggered_states", ()))
+                    state_sha256 = main_state_sha256(state)
+                    previously_counted = state_sha256 in triggered_states
+                    triggers_used = len(triggered_states) - int(previously_counted)
+                    result = analyze_main_current_screen(
+                        main_context,
+                        state,
+                        risk_profile=risk_profile,
+                        selected_team_ids=selected_team_ids,
+                        strategy_id=strategy_id,
+                        g_lite_triggers_used=triggers_used,
+                    )
+                    if strategy_id == G_LITE_MAIN_STRATEGY_ID and result["strategy"]["g_lite_triggered"]:
+                        triggered_states.add(state_sha256)
+                        st.session_state["main_advisor_g_lite_triggered_states"] = sorted(triggered_states)
+                st.session_state["main_advisor_result"] = result
+                st.session_state.pop("main_advisor_multi_forecast_result", None)
+        except (OSError, ValueError, MainMultiForecastError) as error:
             st.error(f"本次 Main 结果被阻断：{error}")
-            st.session_state.pop("main_advisor_result", None)
+            _clear_main_result()
     result = st.session_state.get("main_advisor_result")
-    if result is not None:
+    multi_forecast_result = st.session_state.get("main_advisor_multi_forecast_result")
+    if multi_forecast_result is not None:
+        _render_parallel_forecasts(multi_forecast_result)
+    elif result is not None:
         _render_result(result)
     elif solver_ready:
         st.info("完成 Main 输入后点击“计算 Main 现在应该怎么选”。")

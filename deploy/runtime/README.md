@@ -5,6 +5,7 @@
 - `current.json`：已冻结的历史 Group 三槽求解包；
 - `main-current.json`：当前 Main 五槽求解包；八队形成前为可计算的 `provisional/projected`，
   形成后为 `ready/actual`。
+- `main-forecast-current.json`：0 Roll 终局的 V1 / B1 / 10% Series 限额混合证据包。
 
 两个玩家入口共同使用这些指针：
 
@@ -20,6 +21,11 @@
 压缩包足以在固定 `as_of` 下复现当前屏幕建议，但不含原始响应、处理后表、维护者运行产物、
 截图或 OCR 模型。用户 clone 仓库后不需要
 下载或生成 `data/raw`、`data/processed`、`data/cache` 或 `artifacts`。
+
+终局三模型是独立的大型只读派生证据。只有 `remaining_rolls=0` 时，消费者才读取
+`main-forecast-current.json`，从 GitHub Release 下载精确 SHA-256 对应的约 `266.1 MiB` ZIP，
+校验后解压到被 Git 忽略的 `data/cache/main-forecast/`。普通 G/G-Lite 不触发下载；任何字节数、
+ZIP 哈希、内部 manifest 或文件校验失败都会阻断终局输出。
 
 当前 Main 指针已是 `ready / actual`：数据截止 `2026-08-16T15:31:30Z`，正式八队的三个位置
 均为 8 个候选，并内嵌赛后重建的 Main Fantasy Series pool。此前 projected 16 队流程保留为

@@ -9,6 +9,60 @@ from streamlit.testing.v1 import AppTest
 _GROUP_TAB = "小组赛（历史 · 三格）"
 
 
+def _parallel_forecast_ui_fixture() -> dict:
+    model_specs = (
+        ("historical-template-v1", "V1 · 历史 Series 模板", ("Falcons", "Nigma", "VISION")),
+        ("player-role-conditional-b1", "B1 · 选手—定位条件生成", ("Spirit", "Nigma", "Nigma")),
+        (
+            "series-capped-hybrid-v1-b1",
+            "混合 · V1 单 Series 10% 上限 + B1",
+            ("VISION", "Nigma", "VISION"),
+        ),
+    )
+    models = []
+    for offset, (model_id, label, teams) in enumerate(model_specs):
+        models.append(
+            {
+                "model_id": model_id,
+                "model_label": label,
+                "model_explanation": f"fixture-{model_id}",
+                "selected_team_ids": [offset * 3 + 1, offset * 3 + 2, offset * 3 + 3],
+                "selected_teams": list(teams),
+                "role_base_means": {"core": 30000.0, "mid": 25000.0, "support": 32000.0},
+                "summary": {"mean": 87000.0 - offset * 1000, "cvar10": 68000.0},
+                "role_rankings": {
+                    role: [
+                        {
+                            "team_id": rank,
+                            "team_name": f"{role}-{rank}",
+                            "mean": 10000.0 - rank,
+                            "cvar10": 8000.0 - rank,
+                        }
+                        for rank in range(1, 4)
+                    ]
+                    for role in ("core", "mid", "support")
+                },
+                "title": {
+                    "recommended_prefix": {"name": "Elemental"},
+                    "recommended_suffix": {"name": "the Clutch"},
+                    "estimated_pair_bonus_percent": 12.5,
+                },
+            }
+        )
+    return {
+        "models": models,
+        "agreement": {
+            "by_role": {"core": False, "mid": True, "support": False},
+            "all_roles": False,
+            "policy": "display-disagreement-no-majority-vote",
+        },
+        "scenario_count_per_model": 786432,
+        "as_of": "2026-08-16T15:31:30Z",
+        "analysis_sha256": "a" * 64,
+        "limitations": ["fixture limitation"],
+    }
+
+
 def _run_group_tab(app: AppTest, *, timeout: int = 20) -> AppTest:
     app.session_state["fantasy_advisor_period_tab"] = _GROUP_TAB
     return app.run(timeout=timeout)
@@ -152,6 +206,31 @@ def test_streamlit_main_strategy_can_switch_to_g_lite_without_exposing_failed_va
     assert result["strategy"]["strategy_id"] == "main-greedy-selective-two-step-v1"
     assert any("本次策略：G-Lite" in caption.value for caption in app.caption)
     assert not app.error
+
+
+def test_streamlit_main_terminal_hides_disappeared_offers_and_displays_three_models() -> None:
+    app_path = Path(__file__).resolve().parents[1] / "src/ti_predictor/web_app.py"
+    app = _open_roll_page(AppTest.from_file(str(app_path)).run(timeout=20))
+    remaining = next(item for item in app.number_input if item.label == "Main 剩余 Roll 次数")
+
+    remaining.set_value(0)
+    app.run(timeout=20)
+
+    assert not any(select.label.startswith("Main 选项 ") for select in app.selectbox)
+    assert any("终局只需要 15 格战旗" in info.value for info in app.info)
+
+    app.session_state["main_advisor_multi_forecast_result"] = _parallel_forecast_ui_fixture()
+    app.run(timeout=20)
+
+    assert any("三模型并列预测" in subheader.value for subheader in app.subheader)
+    assert any("页面不投票" in warning.value for warning in app.warning)
+    table = next(dataframe for dataframe in app.dataframe if "模型" in dataframe.value.columns)
+    assert list(table.value["模型"]) == [
+        "V1 · 历史 Series 模板",
+        "B1 · 选手—定位条件生成",
+        "混合 · V1 单 Series 10% 上限 + B1",
+    ]
+    assert not app.exception
 
 
 def test_streamlit_actual_main_manual_lineup_exposes_confirmed_eight_candidates() -> None:

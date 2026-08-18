@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "experiment_id": "ti2026-main-series-quota-v1-b1-hybrid",
+  "period": "main",
+  "as_of": "2026-08-16T15:31:30Z",
+  "maximum_final_series_mass": 0.10,
+  "truncated_mass_destination": "frozen-b1",
+  "minimum_conditioned_series": 3,
+  "evidence": {
+    "scope": "global-positive-weight-current-main-players",
+    "time_half_life_days": 60.0,
+    "maximum_game_parameter_mass": 0.02,
+    "maximum_series_parameter_mass": 0.05,
+    "maximum_residual_game_mass": 0.01,
+    "maximum_residual_series_mass": 0.02
+  },
+  "frozen_b1": {
+    "ridge_alpha": 1.0,
+    "recent_effective_sample_constant": 8.0,
+    "recent_residual_cap_sigma": 0.5,
+    "factor_rank": 12,
+    "covariance_shrinkage": 0.25,
+    "latent_scale": 1.1
+  },
+  "simulation": {
+    "synthetic_samples_per_context": 16,
+    "inner_samples_per_path": 16,
+    "seeds": [2026081801, 2026081802, 2026081803],
+    "cvar_alpha": 0.1
+  },
+  "evaluation_folds": [
+    {
+      "fold_id": "pgl-wallachia-s7-quota-fixed",
+      "league_id": 19435,
+      "train_as_of": "2026-03-07T08:00:31Z",
+      "test_end": "2026-03-15T20:24:45Z"
+    },
+    {
+      "fold_id": "esl-one-birmingham-quota-fixed",
+      "league_id": 19422,
+      "train_as_of": "2026-03-22T11:59:55Z",
+      "test_end": "2026-03-29T19:34:21Z"
+    },
+    {
+      "fold_id": "pgl-wallachia-s8-quota-fixed",
+      "league_id": 19543,
+      "train_as_of": "2026-04-18T07:00:07Z",
+      "test_end": "2026-04-26T14:11:02Z"
+    },
+    {
+      "fold_id": "ti2026-europe-qualifier-quota-fixed",
+      "league_id": 19892,
+      "train_as_of": "2026-06-21T08:02:15Z",
+      "test_end": "2026-06-28T17:21:39Z"
+    }
+  ],
+  "diagnostic_fold": {
+    "fold_id": "ti2026-group-and-advancement-quota-diagnostic",
+    "league_id": 19719,
+    "train_as_of": "2026-08-13T02:00:00Z",
+    "test_end": "2026-08-16T11:32:39Z"
+  },
+  "research_only": true
+}

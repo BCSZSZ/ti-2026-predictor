@@ -78,7 +78,7 @@ def main_state_payload(state: MainRollState) -> dict[str, Any]:
             }
             for banner in state.banners
         ],
-        "offer": {"operation_ids": list(state.offer.operation_ids)},
+        "offer": ({"operation_ids": list(state.offer.operation_ids)} if state.offer is not None else None),
     }
 
 

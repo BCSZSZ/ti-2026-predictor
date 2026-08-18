@@ -5,9 +5,13 @@
   "slot_count": 5,
   "max_rolls": 30,
   "source": {
-    "client_build": "6898:10904633",
-    "rule_snapshot_sha256": "9728c506baf6b5b2a706d0c70e4869fc6354c543d0cb4b911a4bf8427276bf06",
-    "localization_english_sha256": "4a243ee1f9dc349bf05c9583ea78c5bbdcf25987a16fb4ea28419954aa364be6",
-    "localization_schinese_sha256": "17edc241c6cb22c38ffdfd3aa0cef58515b3a89feb9f0cf4d659f3a67b4bc6cd"
-  }
+    "client_build": "6905:10917981",
+    "rule_snapshot_sha256": "c20ffb525cf441a2b1025d2b0b4002ff4c46d2f411da7a69439cf4b12eeed0cb",
+    "localization_english_sha256": "b9b1ac92163124eee64c53e528a58143bd08a8a408399d90d958ef995e0a40bd",
+    "localization_schinese_sha256": "2a3b006c2eb8621dfe8cc52eefa7db56e0ab0e93646a2d3c3feea86f2becd5f2"
+  },
+  "terminal_no_roll_labels": [
+    "No Roll Tokens Available",
+    "没有可用的重选代币"
+  ]
 }

@@ -140,3 +140,19 @@ def test_main_legal_actions_use_five_slot_rules_and_zero_rolls_finish(main_rules
     assert actions[0] == REFRESH
     assert any(getattr(action, "banner_role", None) == "core" for action in actions)
     assert legal_actions(_state(main_rules, remaining=0), main_rules) == ()
+
+
+def test_main_terminal_state_does_not_require_disappeared_offer(main_rules) -> None:
+    source = _state(main_rules)
+    terminal = MainRollState(source.banners, None, 0)
+
+    validate_main_state(terminal, main_rules)
+
+    assert legal_actions(terminal, main_rules) == ()
+
+
+def test_active_main_state_still_requires_three_visible_options(main_rules) -> None:
+    source = _state(main_rules)
+
+    with pytest.raises(RollStateError, match="three visible options"):
+        validate_main_state(MainRollState(source.banners, None, 1), main_rules)

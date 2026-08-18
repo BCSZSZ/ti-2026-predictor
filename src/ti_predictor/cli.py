@@ -19,6 +19,10 @@ from ti_predictor.fantasy.main_evidence import (
     build_main_evidence_snapshot,
     validate_actual_main_evidence_refresh,
 )
+from ti_predictor.fantasy.main_multi_forecast_builder import (
+    build_main_multi_forecast_release,
+    load_main_multi_forecast_build_config,
+)
 from ti_predictor.fantasy.main_publication import generate_main_publication_evidence
 from ti_predictor.fantasy.main_scenarios import (
     build_main_scenario_set_from_model,
@@ -1013,6 +1017,41 @@ def fantasy_manual_release_compatibility(
     """Compatibility alias for the former manual-only release name."""
 
     _write_current_solver_release(as_of=as_of, output=output)
+
+
+@fantasy_app.command("main-parallel-forecast-release")
+def fantasy_main_parallel_forecast_release(
+    source_v1: Annotated[
+        Path,
+        typer.Option(
+            "--source-v1",
+            exists=True,
+            file_okay=False,
+            help="已冻结并通过校验的完整 Main V1 条件真值目录。",
+        ),
+    ],
+    config: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            exists=True,
+            dir_okay=False,
+            help="三模型正式发布契约。",
+        ),
+    ] = PATHS.config / "models" / "fantasy-main-parallel-forecast-v1.json",
+    output: Annotated[
+        Path,
+        typer.Option("--output", file_okay=False, help="内容寻址目录与 ZIP 的输出父目录。"),
+    ] = PATHS.artifacts / "releases" / "main-parallel-forecast",
+) -> None:
+    """Build the immutable V1/B1/hybrid terminal Forecast evidence archive."""
+
+    payload = build_main_multi_forecast_release(
+        load_main_multi_forecast_build_config(config),
+        source_v1_root=source_v1,
+        output_root=output,
+    )
+    _echo(payload)
 
 
 @app.command("audit")

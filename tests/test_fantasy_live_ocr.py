@@ -263,6 +263,45 @@ def test_complete_main_tokens_build_exactly_fifteen_emblems_and_49_fields() -> N
     assert observation.to_payload()["state"]["period"] == "main"
 
 
+def test_main_terminal_label_confirms_fifteen_emblems_without_roll_options() -> None:
+    tokens = (
+        *_complete_main_tokens()[:-4],
+        _token("No Roll Tokens Available", 0.99, 0.50, 0.90, width=0.22),
+    )
+
+    observation = _parse_main(tokens)
+
+    assert observation.status == "confirmed"
+    assert observation.missing_field_ids == ()
+    assert len(observation.fields) == 46
+    assert isinstance(observation.state, MainRollState)
+    assert observation.state.remaining_rolls == 0
+    assert observation.state.offer is None
+    assert observation.to_payload()["state"]["offer"] is None
+    updates = observation_widget_updates(
+        observation.to_payload(),
+        _main_roll_rules(),
+        period="main",
+        key_prefix="main_advisor",
+    )
+    assert updates["main_advisor_remaining"] == 0
+    assert not any(key.startswith("main_advisor_offer_") for key in updates)
+
+
+def test_main_terminal_simplified_chinese_label_is_officially_supported() -> None:
+    tokens = (
+        *_complete_main_tokens()[:-4],
+        _token("没有可用的重选代币", 0.99, 0.50, 0.90, width=0.22),
+    )
+
+    observation = _parse_main(tokens)
+
+    assert observation.status == "confirmed"
+    assert observation.state is not None
+    assert observation.state.remaining_rolls == 0
+    assert observation.state.offer is None
+
+
 def test_group_profile_rejects_a_five_slot_main_screen_instead_of_truncating_it() -> None:
     observation = parse_roll_screen_tokens(
         _complete_main_tokens(),
@@ -537,6 +576,15 @@ def test_ocr_profile_covers_every_current_positive_weight_offer() -> None:
 
     assert profile.language_priority == ("en", "zh-Hans")
     assert set(profile.operations) == {operation.operation_id for operation in rules.offered_operations}
+
+    main_profile = load_live_ocr_profile(
+        Path(__file__).resolve().parents[1] / "config/ocr/fantasy-main-roll-screen-v1.json"
+    )
+    assert main_profile.source["client_build"] == "6905:10917981"
+    assert main_profile.terminal_no_roll_labels == (
+        "No Roll Tokens Available",
+        "没有可用的重选代币",
+    )
 
 
 def test_stop_prevents_a_slow_recognition_from_overwriting_idle_state() -> None:

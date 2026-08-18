@@ -109,7 +109,7 @@ class RollScreenObservation:
                     }
                     for banner in self.state.banners
                 ],
-                "offer": list(self.state.offer.operation_ids),
+                "offer": (list(self.state.offer.operation_ids) if self.state.offer is not None else None),
                 "remaining_rolls": self.state.remaining_rolls,
                 "period": self.state.period,
                 "slot_count": self.state.slot_count,
@@ -164,6 +164,7 @@ class LiveOCRProfile:
     traits: dict[str, tuple[str, ...]]
     target_anchors: tuple[str, ...]
     operations: dict[int, tuple[str, ...]]
+    terminal_no_roll_labels: tuple[str, ...]
 
 
 def load_live_ocr_profile(
@@ -199,6 +200,7 @@ def load_live_ocr_profile(
         traits={key: tuple(values) for key, values in raw["traits"].items()},
         target_anchors=tuple(raw["target_anchors"]),
         operations={int(key): tuple(values) for key, values in raw["operations"].items()},
+        terminal_no_roll_labels=tuple(str(value) for value in raw.get("terminal_no_roll_labels", ())),
     )
 
 
@@ -884,6 +886,25 @@ def _parse_offers(tokens: tuple[OCRToken, ...], profile: LiveOCRProfile) -> list
 
 def _parse_remaining(tokens: tuple[OCRToken, ...], profile: LiveOCRProfile) -> RollFieldReading:
     threshold = float(profile.recognition["field_confidence"])
+    terminal_candidates = _multiline_token_candidates(tokens)
+    terminal_matches = [
+        (token.confidence * _similarity(token.text, label), token, label)
+        for token in terminal_candidates
+        for label in profile.terminal_no_roll_labels
+        if _similarity(token.text, label) >= 0.72
+    ]
+    if terminal_matches:
+        confidence, token, _ = max(terminal_matches, key=lambda item: item[0])
+        status: FieldStatus = "confirmed" if confidence >= threshold else "low_confidence"
+        return RollFieldReading(
+            "remaining_rolls",
+            0,
+            confidence,
+            status,
+            token.text,
+            token.box,
+            "已读到无可用 Roll，但文字置信度不足" if status != "confirmed" else "",
+        )
     patterns = (
         re.compile(r"roll\s*tokens?\s*[:：]?\s*(\d{1,2})", re.IGNORECASE),
         re.compile(r"重选代币\s*[:：]?\s*(\d{1,2})\s*枚?"),
@@ -1075,8 +1096,11 @@ def parse_roll_screen_tokens(
                 for reading in readings
             ]
 
-    readings.extend(_parse_offers(tokens, profile))
-    readings.append(_parse_remaining(tokens, profile))
+    remaining = _parse_remaining(tokens, profile)
+    terminal = remaining.status == "confirmed" and remaining.value == 0
+    if not terminal:
+        readings.extend(_parse_offers(tokens, profile))
+    readings.append(remaining)
     confirmed = all(reading.status == "confirmed" for reading in readings)
     state = _state_from_readings(readings, rules, profile) if confirmed else None
     return RollScreenObservation(
@@ -1115,7 +1139,12 @@ def _state_from_readings(
         state: GroupRollState | MainRollState
         common = {
             "banners": tuple(banners),
-            "offer": RollOffer(tuple(int(values[f"offer.{index}"]) for index in range(3))),
+            "offer": (
+                None
+                if int(values["remaining_rolls"]) == 0
+                and not any(f"offer.{index}" in values for index in range(3))
+                else RollOffer(tuple(int(values[f"offer.{index}"]) for index in range(3)))
+            ),
             "remaining_rolls": int(values["remaining_rolls"]),
         }
         if profile.period == "group":

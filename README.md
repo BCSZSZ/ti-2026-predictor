@@ -12,6 +12,20 @@ OCR 版。它覆盖：
 
 LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统计模型和固定随机种子产生。
 
+## v0.4.0：Main 终局 V1 / B1 / 10% 混合并列预测
+
+- Main 仍有 Roll 时继续使用默认 G 或用户可选 G-Lite；Roll 用完后只需最终 15 格，不再要求
+  客户端已经隐藏的三个选项。
+- 终局同时运行 **V1 历史模板、B1 选手—定位条件生成、10% Series 限额混合**，分别显示队伍、
+  期望、低迷 10% 与 Title。页面保留分歧，不平均、不多数投票。
+- 公开 Streamlit 继续只允许手填；Windows 本地版额外支持终局截图。用户提供的原始截图已通过
+  `46/46` 字段验收，正确得到 `remaining_rolls=0 / offer=null`。
+- 三模型证据包约 `266.1 MiB`，只在第一次终局计算时从 GitHub Release 下载并校验；随后按内容
+  哈希缓存。普通 G/G-Lite 不下载它。
+
+完整算法、回溯与当前画面三套结果见
+[Main 终局三模型发布报告](docs/reports/ti2026-main-parallel-fantasy-forecast-release-2026-08-19.md)。
+
 ## v0.3.1：Main Web 动态 Title 推荐
 
 - 公开 Streamlit 手填版与 Windows 本地 OCR 版现在都会按当前 Core / Mid /
@@ -50,6 +64,7 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 | --- | --- | --- |
 | Main 五格 / 小组赛三格手填 | 支持 | 支持 |
 | G / G-Lite 分析 | 支持 | 支持 |
+| 0 Roll 时 V1 / B1 / 10% 混合并列预测 | 支持 | 支持 |
 | 按当前三队动态推荐 Title | 支持 | 支持 |
 | Dota 画面识别 | 不提供 | 支持 Main 15 格与小组赛九格 |
 | 控制客户端或自动填写 | 不提供 | 不提供 |
@@ -57,7 +72,8 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 ### 1. 公开 Streamlit：仅手动输入
 
 公开版入口是 [`streamlit_app.py`](streamlit_app.py)。玩家在 Main/小组赛 Tab 手动录入当前
-15/9 格、同屏三个 Roll 选项和剩余次数；页面返回当前动作建议、队伍组合与 Title 排名。它明确
+15/9 格、有 Roll 时的同屏三个选项和剩余次数；页面返回当前动作建议、队伍组合与 Title 排名。
+Main 终局只填 15 格，并显示三套独立 Forecast。它明确
 不包含：
 
 - 截图或画面识别；
@@ -69,7 +85,9 @@ LLM 不参与最终数值结论。推荐由版本化规则、数据快照、统�
 [`deploy/runtime/main-current.json`](deploy/runtime/main-current.json) 指向的内容寻址
 **冻结求解发布包**。Group 历史包截止 `2026-08-10T13:45:12Z`；Main 当前包截止
 `2026-08-16T15:31:30Z`，为 `ready / actual` 八队。发布包只含求解所需的紧凑派生证据，
-不含也不会下载约 188 GB 的原始数据。本地手动预览：
+不含也不会下载约 188 GB 的原始数据。终局三模型另由
+[`deploy/runtime/main-forecast-current.json`](deploy/runtime/main-forecast-current.json) 指向约
+`266.1 MiB` 的 GitHub Release 派生证据包；它不是原始数据，只在首次终局求解时下载。本地手动预览：
 
 ```powershell
 uv sync --locked
@@ -136,7 +154,8 @@ Elo/Glicko 对位表、随机乱填与模型网格的数学期望，以及 G/G-L
 
 Main 五格运行时为 `ready / actual`，Core / Mid / Support 各有 8 个实际参赛队候选。Web 默认
 使用 G，也允许用户主动选择 G-Lite；Streamlit 云端只接受手动 15 格录入，本地版另外保留截图
-识别。Main 锁定时间为 `2026-08-20T02:00:00Z`。当前 Stat、Title 和逐 Roll 使用说明集中在
+识别。Roll 用完后两端都显示 V1 / B1 / 10% 混合三套终局结果。Main 锁定时间为
+`2026-08-20T02:00:00Z`。当前 Stat、Title 和逐 Roll 使用说明集中在
 [Main Fantasy 玩家资料](docs/playbooks/main-roll/README.md)。
 
 ## Group 冻结历史版本

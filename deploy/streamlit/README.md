@@ -5,6 +5,9 @@
 捕获、Dota 进程检查和本地数据同步均不在这条云端路径中；手动版和本地 OCR 版的求解事实来源
 统一放在 `deploy/runtime/`。
 
+Main Roll 用完后，手动版只要求最终 15 格，并并列显示 V1、B1 与 10% Series 限额混合三套
+终局 Forecast。页面不平均、不投票，也不把任何一套静默设为真值。
+
 ## Community Cloud 参数
 
 在 [Streamlit Community Cloud](https://share.streamlit.io/) 新建应用时使用：
@@ -28,6 +31,7 @@ Streamlit 当前会优先识别仓库根目录的 `uv.lock` 并使用 uv 安装�
 
 - `../runtime/current.json`；
 - `../runtime/main-current.json`；
+- `../runtime/main-forecast-current.json`；
 - `../runtime/releases/` 中由该清单指向的 `.json.zst` 与 `.sha256`；
 - 仓库中的版本化 `src/` 与 `config/`。
 
@@ -42,9 +46,14 @@ Fantasy Series pool、五槽/30 Roll 规则、256 个完整双败 Scenario、动
 目录。云端只允许手动录入 15 格、三个当前选项和剩余 Roll；G-Lite 仅按发布包内的固定 seed 与
 主出率模型做受限下一轮抽样。当前截止为 `2026-08-16T15:31:30Z`。
 
+终局三模型证据不提交进 Git：`main-forecast-current.json` 锁定 GitHub Release URL、字节数、ZIP
+SHA-256 与内部 manifest SHA-256。第一次 0 Roll 求解会下载约 `266.1 MiB` 并缓存；普通页面不
+下载。每套模型使用 `16,384 × 16 × 3 = 786,432` 个加权情景。
+
 它不提供原始 API 响应、处理后数据集、运行产物、截图、OCR 模型或写入接口。加载时会依次验证
 当前指针、文件清单、发布内容、源码树、配置、P3、Title、规则快照、Pool 和 Scenario 身份；任一
-不一致即停止计算。缺失时也不会尝试联网下载或从本机数据重建。
+不一致即停止计算。Group/Main 滚动求解包缺失时不会联网重建；终局大包只有在指针给出固定
+HTTPS URL 且所有内容哈希通过时才允许下载，不会访问原始 API 或本机数据仓。
 
 ## 重新生成
 
@@ -76,5 +85,6 @@ uv run streamlit run streamlit_app.py
 3. Main Tab 显示 15 格与 30 次 Roll，小组赛 Tab 显示九格与 40 次 Roll；
 4. Main 显示 `ready / actual`，三个位置各只提供正式 8 队；
 5. Main 策略选择只包含默认 G 和可选 G-Lite，两者都能从手填状态得到建议；
-6. 本地 `local_ocr_app.py` 额外显示 Main/Group 单次识别按钮，但使用相同求解包；
-7. 任何快照或源码哈希错误都会显示阻断信息，而不是退回未经验证的默认值。
+6. Main 剩余次数设为 0 后，三个选项消失并显示 V1 / B1 / 10% 混合三套独立结果；
+7. 本地 `local_ocr_app.py` 额外显示 Main/Group 单次识别按钮，但使用相同求解包；
+8. 任何快照或源码哈希错误都会显示阻断信息，而不是退回未经验证的默认值。
